@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 133 177" role="img" aria-label="Ícone IFBA (colorido)">
+  <g>
+      <rect x="49" y="5" width="36" height="38" rx="4" ry="4" fill="#359830"/>
+      <rect x="93" y="5" width="36" height="38" rx="4" ry="4" fill="#359830"/>
+
+      <rect x="6" y="49" width="36" height="37" rx="4" ry="4" fill="#359830"/>
+      <rect x="49" y="49" width="36" height="37" rx="4" ry="4" fill="#359830"/>
+
+      <rect x="6" y="92" width="36" height="38" rx="4" ry="4" fill="#359830"/>
+      <rect x="49" y="92" width="36" height="38" rx="4" ry="4" fill="#359830"/>
+      <rect x="93" y="92" width="36" height="38" rx="4" ry="4" fill="#359830"/>
+
+      <rect x="6" y="136" width="36" height="37" rx="4" ry="4" fill="#359830"/>
+      <rect x="49" y="136" width="36" height="37" rx="4" ry="4" fill="#359830"/>
+
+      <circle cx="24" cy="24" r="20" fill="#C90C0F"/>
+    </g>
+</svg>

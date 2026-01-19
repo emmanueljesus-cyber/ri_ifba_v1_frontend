@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 133 177" role="img" aria-label="Ícone IFBA (negativo branco)">
+  <g transform="translate(-102 -27)" fill="#FFFFFF">
+    <rect x="151" y="32" width="36" height="38"/>
+    <rect x="195" y="32" width="36" height="38"/>
+
+    <rect x="108" y="76" width="36" height="37"/>
+    <rect x="151" y="76" width="36" height="37"/>
+
+    <rect x="108" y="119" width="36" height="38"/>
+    <rect x="151" y="119" width="36" height="38"/>
+    <rect x="195" y="119" width="36" height="38"/>
+
+    <rect x="108" y="163" width="36" height="37"/>
+    <rect x="151" y="163" width="36" height="37"/>
+
+    <ellipse cx="126" cy="51.5" rx="20" ry="20.5"/>
+  </g>
+</svg>

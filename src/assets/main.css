@@ -1,0 +1,22 @@
+@import 'primeicons/primeicons.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ifba-verde: #32a041;
+  --ifba-vermelho: #e30613;
+
+  /* PrimeVue 4 Aura Primary Color Overrides */
+  --p-primary-50: #eef8f0;
+  --p-primary-100: #d6eedb;
+  --p-primary-200: #aeddb7;
+  --p-primary-300: #7bc58a;
+  --p-primary-400: #49a85f;
+  --p-primary-500: #32a041; /* Verde IFBA */
+  --p-primary-600: #268133;
+  --p-primary-700: #1f662a;
+  --p-primary-800: #1a5224;
+  --p-primary-900: #15431e;
+  --p-primary-950: #0b2510;
+}

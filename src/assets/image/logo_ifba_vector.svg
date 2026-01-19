@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+<svg xmlns="http://www.w3.org/2000/svg" width="316" height="225" viewBox="0 0 316 225" role="img" aria-label="Ícone IFBA estilizado">
+  <rect x="151" y="32" width="36" height="38" fill="#359830"/>
+  <rect x="195" y="32" width="36" height="38" fill="#359830"/>
+  <rect x="108" y="76" width="36" height="37" fill="#359830"/>
+  <rect x="151" y="76" width="36" height="37" fill="#359830"/>
+  <rect x="108" y="119" width="36" height="38" fill="#359830"/>
+  <rect x="151" y="119" width="36" height="38" fill="#359830"/>
+  <rect x="195" y="119" width="36" height="38" fill="#359830"/>
+  <rect x="108" y="163" width="36" height="37" fill="#359830"/>
+  <rect x="151" y="163" width="36" height="37" fill="#359830"/>
+  <ellipse cx="126.0" cy="51.5" rx="20.0" ry="20.5" fill="#C90C0F"/>
+</svg>
