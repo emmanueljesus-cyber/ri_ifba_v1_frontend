@@ -172,6 +172,13 @@ onMounted(() => {
                     <i class="pi pi-file-excel text-slate-600"></i>
                     <span class="text-sm font-medium text-slate-700">Relatórios e Modelos</span>
                   </button>
+                  <button
+                    class="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-100 rounded-lg transition-colors"
+                    @click="menuPanel?.hide(); router.push('/admin/extras')"
+                  >
+                    <i class="pi pi-ticket text-slate-600"></i>
+                    <span class="text-sm font-medium text-slate-700">Fila de Extras</span>
+                  </button>
                 </template>
 
                 <!-- Links para Estudante -->

@@ -20,22 +20,23 @@ const loadingValidacao = ref(false)
 
 // Lista do dia
 const dataFiltro = ref(new Date())
-const turnoFiltro = ref('almoco')
+const turnoFiltro = ref<'almoco' | 'jantar'>('almoco')
 const listaDia = ref<any[]>([])
 const loadingDia = ref(false)
-const refeicaoId = ref<number | null>(null)
 
-const turnos = [
+type TurnoType = 'almoco' | 'jantar'
+const turnos: Array<{label: string, value: TurnoType}> = [
   { label: 'Almoço', value: 'almoco' },
   { label: 'Jantar', value: 'jantar' }
 ]
+
+const getTurnoAtual = (): string => turnoFiltro.value || 'almoco'
 
 const carregarListaDia = async () => {
   loadingDia.value = true
   try {
     const dataIso = dataFiltro.value.toISOString().split('T')[0]
-    const res = await adminPresencaService.listarDoDia(dataIso, turnoFiltro.value)
-    listaDia.value = res
+    listaDia.value = await adminPresencaService.listarDoDia(dataIso, getTurnoAtual())
   } catch (err) {
     console.error('Erro ao carregar lista do dia', err)
   } finally {
@@ -51,7 +52,8 @@ onMounted(() => {
   carregarListaDia()
 })
 
-const getStatusSeverity = (status: string | null) => {
+const getStatusSeverity = (status: string | null, temFaltaAntecipada = false) => {
+  if (temFaltaAntecipada) return 'info'
   if (!status) return 'secondary'
   switch (status) {
     case 'presente': return 'success'
@@ -62,9 +64,16 @@ const getStatusSeverity = (status: string | null) => {
   }
 }
 
-const getStatusLabel = (status: string | null) => {
+const getStatusLabel = (status: string | null, temFaltaAntecipada = false) => {
+  if (temFaltaAntecipada) return 'FALTA ANTECIPADA'
   if (!status) return 'Pendente'
-  return status.replace('_', ' ').toUpperCase()
+  switch (status) {
+    case 'presente': return 'PRESENTE'
+    case 'falta_justificada': return 'FALTA JUSTIFICADA'
+    case 'falta_injustificada': return 'FALTA'
+    case 'cancelado': return 'CANCELADO'
+    default: return status.replace('_', ' ').toUpperCase()
+  }
 }
 
 const validarToken = async () => {
@@ -119,8 +128,12 @@ const confirmarPresencaManual = async (userId: number) => {
 const marcarFaltaManual = async (userId: number, justificada = false) => {
   try {
     const dataIso = dataFiltro.value.toISOString().split('T')[0]
-    await adminPresencaService.marcarFalta(userId, dataIso, turnoFiltro.value, justificada)
-    toast.add({ severity: 'info', summary: 'Sucesso', detail: 'Falta registrada' })
+    await adminPresencaService.marcarFalta(userId, dataIso, getTurnoAtual(), justificada)
+    toast.add({
+      severity: justificada ? 'info' : 'warn',
+      summary: 'Sucesso',
+      detail: justificada ? 'Falta justificada registrada' : 'Falta injustificada registrada'
+    })
     carregarListaDia()
   } catch (err: any) {
     toast.add({ 
@@ -167,33 +180,60 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
             </Column>
             <Column header="Status">
               <template #body="{ data }">
-                <Tag 
-                  :value="getStatusLabel(data.presenca_atual?.status_da_presenca)" 
-                  :severity="getStatusSeverity(data.presenca_atual?.status_da_presenca)" 
-                  class="!rounded-full px-3 text-[10px]"
-                />
+                <div class="flex flex-col gap-1">
+                  <Tag
+                    :value="getStatusLabel(data.presenca_atual?.status_da_presenca, data.tem_falta_antecipada)"
+                    :severity="getStatusSeverity(data.presenca_atual?.status_da_presenca, data.tem_falta_antecipada)"
+                    class="!rounded-full px-3 text-[10px]"
+                  />
+                  <span v-if="data.tem_falta_antecipada && data.justificativa_antecipada" class="text-[9px] text-slate-400 italic">
+                    {{ data.justificativa_antecipada.motivo?.substring(0, 40) }}{{ data.justificativa_antecipada.motivo?.length > 40 ? '...' : '' }}
+                  </span>
+                </div>
               </template>
             </Column>
             <Column header="Ações">
               <template #body="{ data }">
-                <div class="flex gap-1">
-                  <Button 
-                    v-if="!data.presenca_atual || data.presenca_atual.status_da_presenca !== 'presente'"
-                    icon="pi pi-check" 
+                <!-- Se tem falta antecipada, ações desabilitadas -->
+                <div v-if="data.tem_falta_antecipada" class="text-xs text-slate-400 italic">
+                  <i class="pi pi-lock mr-1"></i> Justificado antecipadamente
+                </div>
+                <!-- Se já está presente, só mostra indicador -->
+                <div v-else-if="data.presenca_atual?.status_da_presenca === 'presente'" class="text-xs text-green-600">
+                  <i class="pi pi-check-circle mr-1"></i> Presente
+                </div>
+                <!-- Se já está com falta marcada, mostra status -->
+                <div v-else-if="data.presenca_atual?.status_da_presenca === 'falta_justificada' || data.presenca_atual?.status_da_presenca === 'falta_injustificada'" class="text-xs text-slate-500">
+                  <i class="pi pi-info-circle mr-1"></i> Falta registrada
+                </div>
+                <!-- Ações disponíveis -->
+                <div v-else class="flex gap-1 flex-wrap">
+                  <Button
+                    icon="pi pi-check"
                     severity="success" 
                     text 
-                    rounded 
-                    @click="confirmarPresencaManual(data.id)" 
+                    rounded
+                    size="small"
+                    @click="confirmarPresencaManual(data.id)"
                     title="Confirmar Presença"
                   />
                   <Button 
-                    v-if="!data.presenca_atual || (data.presenca_atual.status_da_presenca !== 'falta_injustificada' && data.presenca_atual.status_da_presenca !== 'falta_justificada')"
-                    icon="pi pi-times" 
+                    icon="pi pi-times"
                     severity="danger" 
                     text 
-                    rounded 
-                    title="Marcar Falta"
+                    rounded
+                    size="small"
+                    title="Marcar Falta Injustificada"
                     @click="marcarFaltaManual(data.id, false)"
+                  />
+                  <Button
+                    icon="pi pi-file-check"
+                    severity="info"
+                    text
+                    rounded
+                    size="small"
+                    title="Marcar Falta Justificada"
+                    @click="marcarFaltaManual(data.id, true)"
                   />
                 </div>
               </template>

@@ -91,6 +91,11 @@ const router = createRouter({
           component: () => import('../views/admin/RelatoriosView.vue')
         },
         {
+          path: 'extras',
+          name: 'admin-extras',
+          component: () => import('../views/admin/ExtrasView.vue')
+        },
+        {
           path: 'perfil',
           name: 'admin-perfil',
           component: () => import('../views/estudante/PerfilView.vue')

@@ -37,6 +37,7 @@ export interface CardapioLegacy {
 export interface Refeicao {
   id: number
   cardapio_id: number
+  data_do_cardapio?: string
   turno: 'almoco' | 'jantar'
   prato_principal: string
   acompanhamento: string
