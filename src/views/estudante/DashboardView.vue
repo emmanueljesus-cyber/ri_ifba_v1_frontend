@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import { cardapioService } from '../../services/cardapio'
 import { filaExtrasService } from '../../services/filaExtras'
+import PageHeader from '../../components/common/PageHeader.vue'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Skeleton from 'primevue/skeleton'
@@ -111,14 +112,14 @@ onMounted(() => {
 <template>
   <div class="space-y-6">
     <!-- Header -->
-    <div class="flex justify-between items-center">
-      <div>
-        <h1 class="text-3xl font-bold text-slate-800">Dashboard</h1>
-        <p class="text-slate-600 mt-1">Bem-vindo ao sistema de gestão de refeições</p>
-      </div>
-      <div v-if="presencaHoje && presencaHoje.status !== 'presente'">
-        <Button label="Meu QR Code" icon="pi pi-qrcode" severity="success" @click="displayQrCode = true" />
-      </div>
+    <PageHeader
+      title="Dashboard"
+      subtitle="Bem-vindo ao sistema de gestão de refeições"
+      :breadcrumbs="[]"
+    />
+
+    <div v-if="presencaHoje && presencaHoje.status !== 'presente'" class="flex justify-end -mt-16 relative z-10">
+      <Button label="Meu QR Code" icon="pi pi-qrcode" severity="success" @click="displayQrCode = true" class="!rounded-2xl shadow-lg shadow-primary-100" />
     </div>
 
     <!-- Dialog QR Code -->
@@ -148,7 +149,7 @@ onMounted(() => {
         <template #title>
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <i class="pi pi-calendar text-emerald-600"></i>
+              <i class="pi pi-calendar text-primary-600"></i>
               <span class="text-xl font-bold text-slate-700">Cardápio de Hoje</span>
             </div>
             <Button icon="pi pi-arrow-right" text rounded @click="router.push('/cardapio')" />
@@ -165,21 +166,21 @@ onMounted(() => {
 
           <div v-else-if="cardapio" class="grid sm:grid-cols-2 gap-4">
             <!-- Almoço -->
-            <div v-if="cardapio.almoco" class="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100 flex flex-col justify-between">
+            <div v-if="cardapio.almoco" class="p-4 bg-primary-50/50 rounded-2xl border border-primary-100 flex flex-col justify-between">
               <div>
-                <h3 class="font-bold text-emerald-800 mb-3 flex items-center gap-2">
+                <h3 class="font-bold text-primary-800 mb-3 flex items-center gap-2">
                    <span class="text-xl">🌅</span> Almoço
                 </h3>
-                <p class="text-sm font-semibold text-emerald-900 line-clamp-2">
+                <p class="text-sm font-semibold text-primary-900 line-clamp-2">
                   {{ cardapio.almoco.prato_principal }}
                 </p>
-                <p class="text-xs text-emerald-700 mt-2 italic">
+                <p class="text-xs text-primary-700 mt-2 italic">
                   {{ cardapio.almoco.acompanhamento }}, {{ cardapio.almoco.guarnicao }}
                 </p>
               </div>
               <div class="mt-4 flex justify-between items-end">
                  <Tag value="Disponível" severity="success" class="!text-[10px] !px-2 !py-0" />
-                 <span class="text-xs text-emerald-600 font-medium">11:00 - 14:00</span>
+                 <span class="text-xs text-primary-600 font-medium">11:00 - 14:00</span>
               </div>
             </div>
 
@@ -234,22 +235,22 @@ onMounted(() => {
       <Card v-if="isBolsista" class="!rounded-3xl border border-slate-200 shadow-sm">
         <template #title>
           <div class="flex items-center gap-2">
-            <i class="pi pi-user-check text-emerald-600"></i>
+            <i class="pi pi-user-check text-primary-600"></i>
             <span class="text-xl font-bold text-slate-700">Meu Status</span>
           </div>
         </template>
         <template #content>
           <div class="space-y-4">
             <!-- Status de presença hoje -->
-            <div class="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100">
+            <div class="p-4 bg-primary-50/50 rounded-2xl border border-primary-100">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center">
+                  <div class="w-10 h-10 rounded-xl bg-primary-600 flex items-center justify-center">
                     <i class="pi pi-check-circle text-white"></i>
                   </div>
                   <div>
-                    <p class="font-bold text-emerald-800">Bolsista Ativo</p>
-                    <p class="text-xs text-emerald-600">Acesso garantido às refeições</p>
+                    <p class="font-bold text-primary-800">Bolsista Ativo</p>
+                    <p class="text-xs text-primary-600">Acesso garantido às refeições</p>
                   </div>
                 </div>
                 <Tag value="Ativo" severity="success" class="!text-[10px]" />
@@ -298,7 +299,7 @@ onMounted(() => {
       <Card v-if="isNaoBolsista" class="!rounded-3xl border border-slate-200 shadow-sm">
         <template #title>
           <div class="flex items-center gap-2">
-            <i class="pi pi-ticket text-emerald-600"></i>
+            <i class="pi pi-ticket text-primary-600"></i>
             <span class="text-xl font-bold text-slate-700">Fila Extra</span>
           </div>
         </template>
@@ -326,7 +327,7 @@ onMounted(() => {
             <div
               v-for="inscricao in minhasInscricoes.slice(0, 2)"
               :key="inscricao.id"
-              class="p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-emerald-200 transition-colors"
+              class="p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-primary-200 transition-colors"
             >
               <div class="flex items-start justify-between">
                 <div>
@@ -334,7 +335,7 @@ onMounted(() => {
                     {{ inscricao.refeicao?.turno === 'almoco' ? '🌅 Almoço' : '🌙 Jantar' }}
                   </p>
                   <p class="text-xs text-slate-500 font-medium">
-                    {{ new Date(inscricao.refeicao?.data || '').toLocaleDateString('pt-BR') }}
+                    {{ inscricao.refeicao?.data ? inscricao.refeicao.data.split('-').reverse().join('/') : '-' }}
                   </p>
                 </div>
                 <Tag
@@ -372,37 +373,37 @@ onMounted(() => {
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <!-- Ações para TODOS os estudantes -->
       <div
-        class="group cursor-pointer p-4 rounded-3xl bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all flex items-center gap-4"
+        class="group cursor-pointer p-4 rounded-3xl bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-primary-300 transition-all flex items-center gap-4"
         @click="router.push('/cardapio')"
       >
-        <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-inner transition-transform group-hover:scale-110 bg-emerald-600">
+        <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-inner transition-transform group-hover:scale-110 bg-primary-600">
           <i class="pi pi-calendar text-xl"></i>
         </div>
         <div class="flex-1">
           <h3 class="font-bold text-slate-700 text-sm leading-tight">Cardápio Semanal</h3>
-          <span class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter group-hover:text-emerald-500 transition-colors">Acessar agora</span>
+          <span class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter group-hover:text-primary-600 transition-colors">Acessar agora</span>
         </div>
       </div>
 
       <!-- Ação: Fila de Extras - APENAS para NÃO-BOLSISTAS -->
       <div
         v-if="isNaoBolsista"
-        class="group cursor-pointer p-4 rounded-3xl bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all flex items-center gap-4"
+        class="group cursor-pointer p-4 rounded-3xl bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-primary-300 transition-all flex items-center gap-4"
         @click="router.push('/fila-extras')"
       >
-        <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-inner transition-transform group-hover:scale-110 bg-emerald-700">
+        <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-inner transition-transform group-hover:scale-110 bg-primary-700">
           <i class="pi pi-ticket text-xl"></i>
         </div>
         <div class="flex-1">
           <h3 class="font-bold text-slate-700 text-sm leading-tight">Fila de Extras</h3>
-          <span class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter group-hover:text-emerald-500 transition-colors">Acessar agora</span>
+          <span class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter group-hover:text-primary-600 transition-colors">Acessar agora</span>
         </div>
       </div>
 
       <!-- Ação: Justificativas - APENAS para BOLSISTAS -->
       <div
         v-if="isBolsista"
-        class="group cursor-pointer p-4 rounded-3xl bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all flex items-center gap-4"
+        class="group cursor-pointer p-4 rounded-3xl bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-primary-300 transition-all flex items-center gap-4"
         @click="router.push('/justificativas')"
       >
         <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-inner transition-transform group-hover:scale-110 bg-amber-600">
@@ -410,13 +411,13 @@ onMounted(() => {
         </div>
         <div class="flex-1">
           <h3 class="font-bold text-slate-700 text-sm leading-tight">Justificativas</h3>
-          <span class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter group-hover:text-emerald-500 transition-colors">Acessar agora</span>
+          <span class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter group-hover:text-primary-600 transition-colors">Acessar agora</span>
         </div>
       </div>
 
       <!-- Ações para TODOS os estudantes -->
       <div
-        class="group cursor-pointer p-4 rounded-3xl bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all flex items-center gap-4"
+        class="group cursor-pointer p-4 rounded-3xl bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-primary-300 transition-all flex items-center gap-4"
         @click="router.push('/historico')"
       >
         <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-inner transition-transform group-hover:scale-110 bg-slate-700">
@@ -424,12 +425,12 @@ onMounted(() => {
         </div>
         <div class="flex-1">
           <h3 class="font-bold text-slate-700 text-sm leading-tight">Histórico</h3>
-          <span class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter group-hover:text-emerald-500 transition-colors">Acessar agora</span>
+          <span class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter group-hover:text-primary-600 transition-colors">Acessar agora</span>
         </div>
       </div>
 
       <div
-        class="group cursor-pointer p-4 rounded-3xl bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all flex items-center gap-4"
+        class="group cursor-pointer p-4 rounded-3xl bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-primary-300 transition-all flex items-center gap-4"
         @click="router.push('/perfil')"
       >
         <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-inner transition-transform group-hover:scale-110 bg-slate-800">
@@ -437,7 +438,7 @@ onMounted(() => {
         </div>
         <div class="flex-1">
           <h3 class="font-bold text-slate-700 text-sm leading-tight">Meu Perfil</h3>
-          <span class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter group-hover:text-emerald-500 transition-colors">Acessar agora</span>
+          <span class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter group-hover:text-primary-600 transition-colors">Acessar agora</span>
         </div>
       </div>
     </div>

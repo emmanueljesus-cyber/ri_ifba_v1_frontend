@@ -9,6 +9,7 @@ export interface Perfil {
   turno?: 'matutino' | 'vespertino' | 'noturno' | null
   foto?: string | null
   preferencia_alimentar?: string | null
+  restricoes_alimentares?: string[]
   dias_cadastrados?: string[]
   created_at?: string
   updated_at?: string

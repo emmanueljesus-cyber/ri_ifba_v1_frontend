@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { justificativaService } from '../../services/justificativas'
+import PageHeader from '../../components/common/PageHeader.vue'
 import type { Justificativa } from '../../types/justificativa'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -9,6 +10,7 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 import Textarea from 'primevue/textarea'
+import Avatar from 'primevue/avatar'
 
 const toast = useToast()
 const justificativas = ref<Justificativa[]>([])
@@ -88,20 +90,30 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-6">
-    <div>
-      <h1 class="text-2xl font-bold text-slate-800">Gerenciar Justificativas</h1>
-      <p class="text-slate-500">Analise e decida sobre as justificativas dos alunos.</p>
-    </div>
+  <div class="space-y-6 animate-fadein">
+    <PageHeader
+      title="Gerenciar Justificativas"
+      subtitle="Analise e decida sobre as justificativas dos alunos."
+      :breadcrumbs="[{ label: 'Admin', route: '/admin' }, { label: 'Justificativas' }]"
+    />
 
     <div class="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-sm">
       <DataTable :value="justificativas" :loading="loading" paginator :rows="10" class="p-datatable-sm">
         <Column header="Aluno">
           <template #body="{ data }">
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-500">
-                {{ data.usuario?.nome?.charAt(0) }}
-              </div>
+              <Avatar
+                v-if="data.usuario?.foto"
+                :image="data.usuario.foto"
+                shape="circle"
+                class="flex-shrink-0"
+              />
+              <Avatar
+                v-else
+                icon="pi pi-user"
+                shape="circle"
+                class="bg-primary-50 text-primary-600 flex-shrink-0"
+              />
               <div class="flex flex-col">
                 <span class="font-bold text-slate-700">{{ data.usuario?.nome }}</span>
                 <span class="text-[10px] text-slate-400 font-black uppercase tracking-tighter">{{ data.usuario?.matricula }}</span>
@@ -111,11 +123,13 @@ onMounted(() => {
         </Column>
         <Column header="Refeição">
           <template #body="{ data }">
-            <div class="flex items-center gap-2" v-if="data.refeicao">
-              <span class="text-lg">{{ data.refeicao.turno === 'almoco' ? '🌅' : '🌙' }}</span>
+            <div class="flex items-center gap-3" v-if="data.refeicao">
+              <div :class="data.refeicao.turno === 'almoco' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'" class="w-10 h-10 rounded-xl flex items-center justify-center">
+                <i :class="data.refeicao.turno === 'almoco' ? 'pi pi-sun' : 'pi pi-moon'" class="text-xl"></i>
+              </div>
               <div>
-                <p class="text-sm font-bold text-slate-800">{{ data.refeicao.data }}</p>
-                <p class="text-[10px] text-slate-400 font-black uppercase">{{ data.refeicao.turno }}</p>
+                <p class="font-bold text-slate-800 leading-tight">{{ data.refeicao.data ? data.refeicao.data.split('-').reverse().join('/') : '-' }}</p>
+                <p class="text-[10px] text-slate-400 font-black uppercase tracking-tighter">{{ data.refeicao.turno }}</p>
               </div>
             </div>
           </template>

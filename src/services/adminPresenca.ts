@@ -6,9 +6,11 @@ export const adminPresencaService = {
     return data
   },
 
-  async buscarBolsista(termo: string) {
-    const { data } = await api.get(`/admin/bolsistas/buscar?termo=${termo}`)
-    return data.data
+  async buscarBolsista(search: string, turno: string, data?: string) {
+    const { data: res } = await api.get('/admin/bolsistas/buscar', {
+      params: { search, turno, data }
+    })
+    return res.data
   },
 
   async confirmarPorId(userId: number, data?: string, turno?: string) {

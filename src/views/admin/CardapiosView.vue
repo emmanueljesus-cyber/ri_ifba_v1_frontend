@@ -2,6 +2,19 @@
 import { ref, onMounted, computed } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { cardapioService } from '../../services/cardapio'
+import PageHeader from '../../components/common/PageHeader.vue'
+
+// Locale pt-BR para DatePicker
+const ptBR = {
+  firstDayOfWeek: 0,
+  dayNames: ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'],
+  dayNamesShort: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
+  dayNamesMin: ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'],
+  monthNames: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'],
+  monthNamesShort: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+  today: 'Hoje',
+  clear: 'Limpar'
+}
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
@@ -185,17 +198,34 @@ const diasCalendario = computed(() => {
 </script>
 
 <template>
-  <div class="space-y-6">
-    <div class="flex justify-between items-center">
-      <div>
-        <h1 class="text-2xl font-bold text-slate-800">Gestão de Cardápios</h1>
-        <p class="text-slate-500">Crie e gerencie os cardápios diários.</p>
-      </div>
-      <div class="flex gap-2">
-        <SelectButton v-model="viewMode" :options="[{label: 'Lista', value: 'list'}, {label: 'Cards', value: 'cards'}, {label: 'Mensal', value: 'calendar'}]" optionLabel="label" optionValue="value" class="mr-4" />
-        <Button label="Modelos Excel" icon="pi pi-download" severity="info" text @click="displayTemplates = true" />
-        <Button label="Importar" icon="pi pi-upload" severity="secondary" outlined @click="displayImport = true" />
-        <Button label="Novo" icon="pi pi-plus" severity="success" @click="abrirNovo" />
+  <div class="space-y-6 animate-fadein">
+    <PageHeader
+      title="Gestão de Cardápios"
+      subtitle="Crie e gerencie os cardápios diários."
+      :breadcrumbs="[{ label: 'Admin', route: '/admin' }, { label: 'Gestão de Cardápio' }]"
+    />
+
+    <div class="flex justify-end -mt-16 mb-4 relative z-10">
+      <div class="flex items-center gap-2 bg-white/50 backdrop-blur-sm p-1 rounded-2xl border border-slate-200 shadow-sm">
+        <SelectButton 
+          v-model="viewMode" 
+          :options="[{label: 'Lista', value: 'list', icon: 'pi pi-list'}, {label: 'Cards', value: 'cards', icon: 'pi pi-th-large'}, {label: 'Mensal', value: 'calendar', icon: 'pi pi-calendar'}]" 
+          optionLabel="label" 
+          optionValue="value"
+          :allowEmpty="false"
+          class="custom-select-button"
+        >
+          <template #option="slotProps">
+            <div class="flex items-center gap-2 px-1">
+              <i :class="slotProps.option.icon"></i>
+              <span class="text-xs font-bold uppercase tracking-tight">{{ slotProps.option.label }}</span>
+            </div>
+          </template>
+        </SelectButton>
+        <div class="h-6 w-px bg-slate-200 mx-1"></div>
+        <Button label="Modelos" icon="pi pi-download" severity="info" text size="small" @click="displayTemplates = true" class="!rounded-xl" />
+        <Button label="Importar" icon="pi pi-upload" severity="secondary" outlined size="small" @click="displayImport = true" class="!rounded-xl" />
+        <Button label="Novo" icon="pi pi-plus" severity="success" size="small" @click="abrirNovo" class="!rounded-xl shadow-md shadow-emerald-100" />
       </div>
     </div>
 
@@ -330,90 +360,101 @@ const diasCalendario = computed(() => {
       </div>
     </Dialog>
 
-    <Dialog v-model:visible="displayDialog" :header="cardapioForm.id ? 'Editar Cardápio' : 'Novo Cardápio'" :style="{ width: '600px' }" modal class="p-fluid">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+    <Dialog v-model:visible="displayDialog" :header="cardapioForm.id ? 'Editar Cardápio' : 'Novo Cardápio'" :style="{ width: '95%', maxWidth: '600px' }" modal class="p-fluid !rounded-[2.5rem] overflow-hidden">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
         <div class="field">
-          <label class="font-bold block mb-2">Data <span class="text-red-500">*</span></label>
-          <DatePicker v-model="cardapioForm.data_do_cardapio" dateFormat="dd/mm/yy" showIcon />
+          <label class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Data *</label>
+          <DatePicker v-model="cardapioForm.data_do_cardapio" dateFormat="dd/mm/yy" showIcon :locale="ptBR" class="!rounded-xl" />
         </div>
         <div class="field">
-          <label class="font-bold block mb-2">Turnos <span class="text-red-500">*</span></label>
-          <div class="flex gap-4 items-center h-10">
-            <div class="flex items-center gap-2">
-              <Checkbox v-model="cardapioForm.turnos" inputId="t1" value="almoco" />
-              <label for="t1" class="text-sm">Almoço</label>
-            </div>
-            <div class="flex items-center gap-2">
-              <Checkbox v-model="cardapioForm.turnos" inputId="t2" value="jantar" />
-              <label for="t2" class="text-sm">Jantar</label>
-            </div>
-          </div>
+          <label class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Turnos *</label>
+          <SelectButton 
+            v-model="cardapioForm.turnos" 
+            :options="[{label: 'Almoço', value: 'almoco'}, {label: 'Jantar', value: 'jantar'}]" 
+            optionLabel="label" 
+            optionValue="value" 
+            multiple
+            class="custom-select-button-multiple"
+          >
+            <template #option="slotProps">
+              <div class="flex items-center gap-2 px-2">
+                <i :class="slotProps.option.value === 'almoco' ? 'pi pi-sun' : 'pi pi-moon'"></i>
+                <span class="text-sm font-bold uppercase tracking-tight">{{ slotProps.option.label }}</span>
+              </div>
+            </template>
+          </SelectButton>
         </div>
         <div class="field md:col-span-2">
-          <label class="font-bold block mb-2">Prato Principal 01 <span class="text-red-500">*</span></label>
-          <InputText v-model="cardapioForm.prato_principal_ptn01" placeholder="Ex: Frango Grelhado" />
+          <label class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Prato Principal 01 *</label>
+          <InputText v-model="cardapioForm.prato_principal_ptn01" placeholder="Ex: Frango Grelhado" class="!rounded-xl !py-3" />
         </div>
         <div class="field md:col-span-2">
-          <label class="font-bold block mb-2">Prato Principal 02 <span class="text-red-500">*</span></label>
-          <InputText v-model="cardapioForm.prato_principal_ptn02" placeholder="Ex: Omelete" />
+          <label class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Prato Principal 02</label>
+          <InputText v-model="cardapioForm.prato_principal_ptn02" placeholder="Ex: Omelete (Opcional)" class="!rounded-xl !py-3" />
         </div>
         <div class="field">
-          <label class="font-bold block mb-2">Guarnição</label>
-          <InputText v-model="cardapioForm.guarnicao" placeholder="Ex: Farofa" />
+          <label class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Guarnição</label>
+          <InputText v-model="cardapioForm.guarnicao" placeholder="Ex: Farofa" class="!rounded-xl !py-3" />
         </div>
         <div class="field">
-          <label class="font-bold block mb-2">Acompanhamento 01 <span class="text-red-500">*</span></label>
-          <InputText v-model="cardapioForm.acompanhamento_01" placeholder="Ex: Arroz" />
+          <label class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Acompanhamento 01 *</label>
+          <InputText v-model="cardapioForm.acompanhamento_01" placeholder="Ex: Arroz" class="!rounded-xl !py-3" />
         </div>
         <div class="field">
-          <label class="font-bold block mb-2">Acompanhamento 02 <span class="text-red-500">*</span></label>
-          <InputText v-model="cardapioForm.acompanhamento_02" placeholder="Ex: Feijão" />
+          <label class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Acompanhamento 02 *</label>
+          <InputText v-model="cardapioForm.acompanhamento_02" placeholder="Ex: Feijão" class="!rounded-xl !py-3" />
         </div>
         <div class="field">
-          <label class="font-bold block mb-2">Salada</label>
-          <InputText v-model="cardapioForm.salada" />
+          <label class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Salada</label>
+          <InputText v-model="cardapioForm.salada" class="!rounded-xl !py-3" />
         </div>
         <div class="field">
-          <label class="font-bold block mb-2">Ovo Lacto Vegetariano</label>
-          <InputText v-model="cardapioForm.ovo_lacto_vegetariano" />
+          <label class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Ovo Lacto Veg.</label>
+          <InputText v-model="cardapioForm.ovo_lacto_vegetariano" class="!rounded-xl !py-3" />
         </div>
         <div class="field">
-          <label class="font-bold block mb-2">Suco</label>
-          <InputText v-model="cardapioForm.suco" />
+          <label class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Suco</label>
+          <InputText v-model="cardapioForm.suco" class="!rounded-xl !py-3" />
         </div>
         <div class="field">
-          <label class="font-bold block mb-2">Sobremesa</label>
-          <InputText v-model="cardapioForm.sobremesa" />
+          <label class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Sobremesa</label>
+          <InputText v-model="cardapioForm.sobremesa" class="!rounded-xl !py-3" />
         </div>
       </div>
       <template #footer>
-        <Button label="Cancelar" icon="pi pi-times" text @click="displayDialog = false" />
-        <Button label="Salvar" icon="pi pi-check" @click="salvarCardapio" />
+        <div class="flex gap-3 w-full pt-4">
+          <Button label="Cancelar" icon="pi pi-times" text @click="displayDialog = false" class="flex-1 !rounded-xl" />
+          <Button label="Salvar Cardápio" icon="pi pi-check" @click="salvarCardapio" severity="success" class="flex-1 !rounded-xl shadow-lg shadow-emerald-100" />
+        </div>
       </template>
     </Dialog>
 
     <!-- Dialog Importação -->
-    <Dialog v-model:visible="displayImport" header="Importar Cardápios" :style="{ width: '500px' }" modal class="p-fluid">
-      <div class="space-y-6 pt-2">
+    <Dialog v-model:visible="displayImport" header="Importar Cardápios" :style="{ width: '95%', maxWidth: '500px' }" modal class="p-fluid !rounded-[2.5rem] overflow-hidden">
+      <div class="space-y-6 pt-4">
         <div class="p-4 bg-blue-50 rounded-2xl border border-blue-100">
-          <p class="text-blue-800 text-sm">
-            Selecione o arquivo Excel (.xlsx, .xls) com os cardápios. 
-            Você pode definir para quais turnos as refeições serão geradas automaticamente.
+          <p class="text-blue-800 text-sm leading-relaxed">
+            Selecione o arquivo Excel (.xlsx, .xls) com os cardápios seguindo o modelo oficial. 
           </p>
         </div>
 
         <div class="field">
-          <label class="font-bold block mb-2">Turnos para Geração Automática</label>
-          <div class="flex gap-4 items-center h-10">
-            <div class="flex items-center gap-2">
-              <Checkbox v-model="turnosImport" inputId="it1" value="almoco" />
-              <label for="it1" class="text-sm">Almoço</label>
-            </div>
-            <div class="flex items-center gap-2">
-              <Checkbox v-model="turnosImport" inputId="it2" value="jantar" />
-              <label for="it2" class="text-sm">Jantar</label>
-            </div>
-          </div>
+          <label class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Turnos Automáticos</label>
+          <SelectButton 
+            v-model="turnosImport" 
+            :options="[{label: 'Almoço', value: 'almoco'}, {label: 'Jantar', value: 'jantar'}]" 
+            optionLabel="label" 
+            optionValue="value" 
+            multiple
+            class="custom-select-button-multiple"
+          >
+            <template #option="slotProps">
+              <div class="flex items-center gap-2 px-2">
+                <i :class="slotProps.option.value === 'almoco' ? 'pi pi-sun' : 'pi pi-moon'"></i>
+                <span class="text-sm font-bold uppercase tracking-tight">{{ slotProps.option.label }}</span>
+              </div>
+            </template>
+          </SelectButton>
         </div>
 
         <div class="field">
@@ -424,19 +465,58 @@ const diasCalendario = computed(() => {
             :maxFileSize="5000000" 
             customUpload 
             @select="onUpload" 
-            chooseLabel="Selecionar e Importar" 
-            class="w-full"
+            chooseLabel="Selecionar Arquivo Excel" 
+            class="w-full !rounded-xl"
             :disabled="loadingImport"
           />
-          <div v-if="loadingImport" class="mt-2 text-center">
-            <i class="pi pi-spin pi-spinner mr-2"></i>
-            <span class="text-sm text-slate-500">Processando arquivo...</span>
+          <div v-if="loadingImport" class="mt-4 p-4 bg-slate-50 rounded-2xl text-center">
+            <i class="pi pi-spin pi-spinner text-primary-600 mb-2"></i>
+            <p class="text-sm text-slate-600 font-bold">Processando dados, por favor aguarde...</p>
           </div>
         </div>
       </div>
       <template #footer>
-        <Button label="Fechar" icon="pi pi-times" text @click="displayImport = false" :disabled="loadingImport" />
+        <Button label="Fechar" icon="pi pi-times" text @click="displayImport = false" :disabled="loadingImport" class="w-full !rounded-xl" />
       </template>
     </Dialog>
   </div>
 </template>
+
+<style scoped>
+.custom-select-button :deep(.p-button) {
+  border: 0;
+  background: transparent;
+  color: #64748b;
+  font-weight: 700;
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+}
+
+.custom-select-button :deep(.p-button.p-highlight) {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.custom-select-button :deep(.p-button:not(.p-highlight):hover) {
+  background: #f8fafc;
+}
+
+.custom-select-button-multiple :deep(.p-button) {
+  background: #f8fafc;
+  color: #64748b;
+  font-weight: 700;
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+}
+
+.custom-select-button-multiple :deep(.p-button.p-highlight) {
+  background: var(--ifba-verde);
+  color: #ffffff;
+  border-color: var(--ifba-verde);
+}
+
+.custom-select-button-multiple :deep(.p-button:not(.p-highlight):hover) {
+  background: #f1f5f9;
+}
+</style>

@@ -20,7 +20,25 @@ const loading = ref(false)
 const isBolsista = computed(() => !!auth.user?.bolsista)
 
 const formatarData = (data: string) => {
-  return new Date(data).toLocaleDateString('pt-BR')
+  if (!data) return '-'
+  return data.split('-').reverse().join('/')
+}
+
+const formatarHora = (dataString: string) => {
+  if (!dataString) return '-'
+  try {
+    const data = new Date(dataString)
+    if (isNaN(data.getTime())) {
+      // Se já for uma string de hora HH:mm:ss
+      if (dataString.includes(':') && dataString.length >= 5) {
+        return dataString.substring(0, 5)
+      }
+      return dataString
+    }
+    return data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  } catch (e) {
+    return '-'
+  }
 }
 
 const formatarTurno = (turno: string) => {
@@ -55,12 +73,13 @@ onMounted(() => {
       title="Meu Histórico"
       :subtitle="isBolsista ? 'Registros das suas refeições bolsistas e extras' : 'Registros do seu histórico de alimentação'"
       :show-back-button="true"
+      :breadcrumbs="[{ label: 'Dashboard', route: '/dashboard' }, { label: 'Histórico' }]"
     />
 
     <!-- Resumo (Cards Estilizados) -->
     <div v-if="resumo" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <div class="bg-white border border-slate-200 rounded-[2rem] p-6 shadow-sm flex items-center gap-4">
-        <div class="w-14 h-14 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+        <div class="w-14 h-14 rounded-2xl bg-primary-100 flex items-center justify-center text-primary-600">
            <i class="pi pi-check-circle text-2xl"></i>
         </div>
         <div>
@@ -87,7 +106,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <div class="hidden lg:flex bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-[2rem] p-6 shadow-md shadow-emerald-100 items-center gap-4 text-white">
+      <div class="hidden lg:flex bg-gradient-to-br from-primary-600 to-primary-700 rounded-[2rem] p-6 shadow-md shadow-primary-100 items-center gap-4 text-white">
         <div class="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
            <i class="pi pi-bolt text-2xl"></i>
         </div>
@@ -103,8 +122,8 @@ onMounted(() => {
     <!-- Tabela de Histórico (Visual Clean) -->
     <section>
       <div class="flex items-center gap-2 mb-4 px-2">
-        <div class="w-2 h-6 bg-emerald-500 rounded-full"></div>
-        <h2 class="text-xl font-bold text-slate-800">Detalhamento</h2>
+        <div class="w-2 h-6 bg-primary-500 rounded-full"></div>
+        <h2 class="text-xl font-black text-slate-800 lato-black">Detalhamento</h2>
       </div>
 
       <div v-if="loading && historico.length === 0" class="space-y-4">
@@ -162,7 +181,7 @@ onMounted(() => {
             <template #body="{ data }">
               <div v-if="data.confirmado_em" class="flex items-center gap-2 text-slate-600">
                  <i class="pi pi-clock text-xs"></i>
-                 <span class="text-xs font-bold">{{ new Date(data.confirmado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) }}</span>
+                 <span class="text-xs font-bold">{{ formatarHora(data.confirmado_em) }}</span>
               </div>
               <span v-else class="text-slate-300 text-xs">-</span>
             </template>

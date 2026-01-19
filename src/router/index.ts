@@ -5,6 +5,14 @@ import DashboardLayout from '../layouts/DashboardLayout.vue'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    // Public Home Page
+    {
+      path: '/',
+      name: 'home',
+      component: () => import('../views/HomeView.vue'),
+      meta: { public: true }
+    },
+    // Auth Routes
     {
       path: '/login',
       name: 'login',
@@ -18,7 +26,14 @@ const router = createRouter({
       meta: { public: true }
     },
     {
-      path: '/',
+      path: '/cardapio',
+      name: 'cardapio',
+      component: () => import('../views/estudante/CardapioView.vue'),
+      meta: { public: true }
+    },
+    // Student Dashboard
+    {
+      path: '/dashboard',
       component: DashboardLayout,
       meta: { requiresAuth: true, role: 'estudante' },
       children: [
@@ -26,11 +41,6 @@ const router = createRouter({
           path: '',
           name: 'dashboard',
           component: () => import('../views/estudante/DashboardView.vue')
-        },
-        {
-          path: 'cardapio',
-          name: 'cardapio',
-          component: () => import('../views/estudante/CardapioView.vue')
         },
         {
           path: 'fila-extras',
@@ -55,6 +65,7 @@ const router = createRouter({
         }
       ]
     },
+    // Admin Dashboard
     {
       path: '/admin',
       component: DashboardLayout,
@@ -108,6 +119,7 @@ const router = createRouter({
 router.beforeEach(async (to, _from, next) => {
   const auth = useAuthStore()
 
+  // Fetch user data if authenticated but user data not loaded
   if (auth.isAuthenticated && !auth.user) {
     try {
       await auth.fetchMe()
@@ -116,21 +128,28 @@ router.beforeEach(async (to, _from, next) => {
     }
   }
 
+  // Redirect to login if route requires auth
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     return next({ name: 'login', query: { redirect: to.fullPath } })
   }
 
-  // Impede perfis diferentes de acessarem rotas reservadas
+  // Prevent different profiles from accessing reserved routes
   if (to.meta.role && auth.user && auth.user.perfil !== to.meta.role) {
     return next({ name: auth.user.perfil === 'admin' ? 'admin-dashboard' : 'dashboard' })
   }
 
-  // Verifica acesso exclusivo para bolsistas
+  // Check exclusive access for scholarship holders
   if (to.meta.bolsistaOnly && auth.user && !auth.user.bolsista) {
     return next({ name: 'dashboard' })
   }
 
-  if (to.meta.public && auth.isAuthenticated) {
+  // Redirect authenticated users from public pages (except home) to dashboard
+  if (to.meta.public && auth.isAuthenticated && to.name !== 'home') {
+    return next({ name: auth.user?.perfil === 'admin' ? 'admin-dashboard' : 'dashboard' })
+  }
+
+  // Redirect authenticated users from home to dashboard
+  if (to.name === 'home' && auth.isAuthenticated) {
     return next({ name: auth.user?.perfil === 'admin' ? 'admin-dashboard' : 'dashboard' })
   }
 

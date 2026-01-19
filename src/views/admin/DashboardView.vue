@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { adminDashboardService } from '../../services/adminDashboard'
+import PageHeader from '../../components/common/PageHeader.vue'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import ProgressBar from 'primevue/progressbar'
@@ -24,72 +25,58 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-6">
-    <div class="flex justify-between items-center">
-      <div>
-        <h1 class="text-2xl font-bold text-slate-800">Painel Administrativo</h1>
-        <p class="text-slate-500">Visão geral do Restaurante Institucional.</p>
-      </div>
-      <Button icon="pi pi-refresh" rounded outlined @click="carregarDados" :loading="loading" />
+  <div class="space-y-6 animate-fadein">
+    <PageHeader
+      title="Painel Administrativo"
+      subtitle="Visão geral do Restaurante Institucional."
+      :breadcrumbs="[{ label: 'Admin' }]"
+    />
+
+    <div class="flex justify-end -mt-16 mb-4 relative z-10">
+      <Button icon="pi pi-refresh" rounded outlined @click="carregarDados" :loading="loading" severity="secondary" />
     </div>
 
     <!-- Métricas Rápidas -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <Card class="border-l-4 border-emerald-500">
-        <template #content>
-          <div class="flex items-center gap-4">
-            <div class="p-3 bg-emerald-50 rounded-lg">
-              <i class="pi pi-users text-emerald-600 text-xl"></i>
-            </div>
-            <div>
-              <p class="text-sm text-slate-500 font-medium">Total Bolsistas</p>
-              <p class="text-2xl font-bold text-slate-800">{{ resumo?.metricas.total_bolsistas || 0 }}</p>
-            </div>
-          </div>
-        </template>
-      </Card>
+      <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center gap-4">
+        <div class="p-3 bg-primary-50 rounded-2xl text-primary-600">
+          <i class="pi pi-users text-2xl"></i>
+        </div>
+        <div>
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Bolsistas</p>
+          <p class="text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.total_bolsistas || 0 }}</p>
+        </div>
+      </div>
 
-      <Card class="border-l-4 border-blue-500">
-        <template #content>
-          <div class="flex items-center gap-4">
-            <div class="p-3 bg-blue-50 rounded-lg">
-              <i class="pi pi-check-circle text-blue-600 text-xl"></i>
-            </div>
-            <div>
-              <p class="text-sm text-slate-500 font-medium">Presenças Hoje</p>
-              <p class="text-2xl font-bold text-slate-800">{{ resumo?.metricas.presencas_hoje || 0 }}</p>
-            </div>
-          </div>
-        </template>
-      </Card>
+      <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center gap-4">
+        <div class="p-3 bg-blue-50 rounded-2xl text-blue-600">
+          <i class="pi pi-check-circle text-2xl"></i>
+        </div>
+        <div>
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Presenças Hoje</p>
+          <p class="text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.presencas_hoje || 0 }}</p>
+        </div>
+      </div>
 
-      <Card class="border-l-4 border-orange-500">
-        <template #content>
-          <div class="flex items-center gap-4">
-            <div class="p-3 bg-orange-50 rounded-lg">
-              <i class="pi pi-file-edit text-orange-600 text-xl"></i>
-            </div>
-            <div>
-              <p class="text-sm text-slate-500 font-medium">Justificativas</p>
-              <p class="text-2xl font-bold text-slate-800">{{ resumo?.metricas.justificativas_pendentes || 0 }}</p>
-            </div>
-          </div>
-        </template>
-      </Card>
+      <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center gap-4">
+        <div class="p-3 bg-orange-50 rounded-2xl text-orange-600">
+          <i class="pi pi-file-edit text-2xl"></i>
+        </div>
+        <div>
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Justificativas</p>
+          <p class="text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.justificativas_pendentes || 0 }}</p>
+        </div>
+      </div>
 
-      <Card class="border-l-4 border-red-500">
-        <template #content>
-          <div class="flex items-center gap-4">
-            <div class="p-3 bg-red-50 rounded-lg">
-              <i class="pi pi-times-circle text-red-600 text-xl"></i>
-            </div>
-            <div>
-              <p class="text-sm text-slate-500 font-medium">Faltas Hoje</p>
-              <p class="text-2xl font-bold text-slate-800">{{ resumo?.metricas.faltas_hoje || 0 }}</p>
-            </div>
-          </div>
-        </template>
-      </Card>
+      <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center gap-4">
+        <div class="p-3 bg-red-50 rounded-2xl text-red-600">
+          <i class="pi pi-times-circle text-2xl"></i>
+        </div>
+        <div>
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Faltas Hoje</p>
+          <p class="text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.faltas_hoje || 0 }}</p>
+        </div>
+      </div>
     </div>
 
     <!-- Refeição Atual -->
@@ -105,7 +92,7 @@ onMounted(() => {
                   {{ resumo.refeicao_atual.confirmados }} / {{ resumo.refeicao_atual.capacidade }}
                 </p>
               </div>
-              <p class="text-emerald-600 font-semibold">
+              <p class="text-primary-600 font-bold">
                 {{ Math.round((resumo.refeicao_atual.confirmados / resumo.refeicao_atual.capacidade) * 100) }}% ocupado
               </p>
             </div>

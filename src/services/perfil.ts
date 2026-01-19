@@ -8,10 +8,10 @@ interface ApiResponse<T> {
 
 const normalizeFotoUrl = (path: string | null): string | null => {
   if (!path || path.startsWith('http') || path.startsWith('data:')) return path
-  
+
   // Limpa possíveis barras duplas no início do path
   const cleanPath = path.startsWith('/') ? path.substring(1) : path
-  
+
   const baseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1').replace('/api/v1', '')
   return `${baseUrl}/storage/${cleanPath}`
 }
@@ -27,6 +27,7 @@ const normalizePerfil = (raw: any): Perfil => ({
   turno: raw.turno ?? null,
   foto: normalizeFotoUrl(raw.foto ?? raw.foto_url ?? null),
   preferencia_alimentar: raw.preferencia_alimentar ?? null,
+  restricoes_alimentares: raw.restricoes_alimentares ?? [],
   dias_cadastrados: raw.dias_cadastrados ?? [],
   created_at: raw.created_at,
   updated_at: raw.updated_at
@@ -61,5 +62,13 @@ export const perfilService = {
 
   async removerFoto(): Promise<void> {
     await api.delete('/estudante/perfil/foto')
+  },
+
+  async atualizarRestricoesAlimentares(payload: {
+    preferencia_alimentar?: string
+    restricoes_alimentares?: string[]
+  }): Promise<{ preferencia_alimentar: string; restricoes_alimentares: string[] }> {
+    const { data } = await api.put('/estudante/perfil/restricoes-alimentares', payload)
+    return data.data
   }
 }

@@ -2,9 +2,22 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { relatorioService } from '../../services/relatorios'
 import PageHeader from '../../components/common/PageHeader.vue'
+
+// Locale pt-BR para DatePicker
+const ptBR = {
+  firstDayOfWeek: 0,
+  dayNames: ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'],
+  dayNamesShort: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
+  dayNamesMin: ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'],
+  monthNames: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'],
+  monthNamesShort: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+  today: 'Hoje',
+  clear: 'Limpar'
+}
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
+import SelectButton from 'primevue/selectbutton'
 import ProgressSpinner from 'primevue/progressspinner'
 import Tabs from 'primevue/tabs'
 import TabList from 'primevue/tablist'
@@ -188,17 +201,18 @@ watch(activeTab, (newTab) => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6 animate-fadein">
     <PageHeader 
       title="Relatórios e Modelos" 
       subtitle="Acompanhamento de consumo e ferramentas de importação"
+      :breadcrumbs="[{ label: 'Admin', route: '/admin' }, { label: 'Relatórios' }]"
     />
 
     <Tabs v-model:value="activeTab">
-      <TabList>
-        <Tab value="0">Geral Mensal</Tab>
-        <Tab value="1">Presenças e Extras</Tab>
-        <Tab value="2">Modelos de Importação</Tab>
+      <TabList class="gap-4">
+        <Tab value="0" class="!px-6">Geral Mensal</Tab>
+        <Tab value="1" class="!px-6">Presenças e Extras</Tab>
+        <Tab value="2" class="!px-6">Modelos de Importação</Tab>
       </TabList>
       <TabPanels>
         <!-- ABA 0: RELATÓRIO GERAL MENSAL -->
@@ -306,15 +320,22 @@ watch(activeTab, (newTab) => {
                 <div class="flex flex-wrap gap-4 items-end">
                   <div class="flex flex-col gap-1">
                     <label class="text-[10px] font-black uppercase text-slate-400">Início</label>
-                    <DatePicker v-model="filtroDataInicio" dateFormat="dd/mm/yy" class="w-32" />
+                    <DatePicker v-model="filtroDataInicio" dateFormat="dd/mm/yy" class="w-32" :locale="ptBR" />
                   </div>
                   <div class="flex flex-col gap-1">
                     <label class="text-[10px] font-black uppercase text-slate-400">Fim</label>
-                    <DatePicker v-model="filtroDataFim" dateFormat="dd/mm/yy" class="w-32" />
+                    <DatePicker v-model="filtroDataFim" dateFormat="dd/mm/yy" class="w-32" :locale="ptBR" />
                   </div>
                   <div class="flex flex-col gap-1">
-                    <label class="text-[10px] font-black uppercase text-slate-400">Turno</label>
-                    <Select v-model="filtroTurno" :options="turnos" optionLabel="label" optionValue="value" class="w-32" />
+                    <label class="text-[10px] font-black uppercase text-slate-400 ml-1">Turno</label>
+                    <SelectButton 
+                      v-model="filtroTurno" 
+                      :options="turnos" 
+                      optionLabel="label" 
+                      optionValue="value" 
+                      :allowEmpty="false"
+                      class="custom-select-button"
+                    />
                   </div>
                   <Button icon="pi pi-search" label="Filtrar" @click="carregarPresencas" :loading="loading" class="!rounded-xl" />
                 </div>
@@ -325,14 +346,17 @@ watch(activeTab, (newTab) => {
                 <template #empty>
                   <p class="text-center p-8 text-slate-500">Nenhum registro encontrado para o período.</p>
                 </template>
-                <Column header="Data">
+                <Column header="Refeição">
                   <template #body="{ data }">
-                    <span class="font-bold text-slate-700">{{ data.data }}</span>
-                  </template>
-                </Column>
-                <Column header="Turno">
-                  <template #body="{ data }">
-                    <Tag :value="data.turno === 'almoco' ? '🌅 Almoço' : '🌙 Jantar'" severity="secondary" />
+                    <div class="flex items-center gap-3">
+                      <div :class="data.turno === 'almoco' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'" class="w-10 h-10 rounded-xl flex items-center justify-center">
+                        <i :class="data.turno === 'almoco' ? 'pi pi-sun' : 'pi pi-moon'" class="text-xl"></i>
+                      </div>
+                      <div>
+                        <p class="font-bold text-slate-800 leading-tight">{{ data.data }}</p>
+                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-tighter">{{ data.turno === 'almoco' ? 'Almoço' : 'Jantar' }}</p>
+                      </div>
+                    </div>
                   </template>
                 </Column>
                 <Column header="Matrícula" field="matricula"></Column>
@@ -448,5 +472,23 @@ watch(activeTab, (newTab) => {
 <style scoped>
 table th, table td {
   border-width: 1px;
+}
+
+.custom-select-button :deep(.p-button) {
+  border: 0;
+  background: transparent;
+  color: #64748b;
+  font-weight: 700;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+}
+
+.custom-select-button :deep(.p-button.p-highlight) {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.custom-select-button :deep(.p-button:not(.p-highlight):hover) {
+  background: #f8fafc;
 }
 </style>

@@ -100,15 +100,16 @@ onMounted(async () => {
       title="Fila de Extras"
       subtitle="Garanta sua refeição inscrevendo-se nas vagas remanescentes"
       :show-back-button="true"
+      :breadcrumbs="[{ label: 'Dashboard', route: '/dashboard' }, { label: 'Fila de Extras' }]"
     />
 
     <!-- Minhas Inscrições (Cards Horizontais) -->
     <section>
       <div class="flex items-center gap-2 mb-4">
-        <div class="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
-          <i class="pi pi-ticket text-emerald-600"></i>
+        <div class="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center">
+          <i class="pi pi-ticket text-primary-600"></i>
         </div>
-        <h2 class="text-xl font-bold text-slate-800">Minhas Inscrições Ativas</h2>
+        <h2 class="text-xl font-black text-slate-800 lato-black">Minhas Inscrições Ativas</h2>
       </div>
 
       <div v-if="filaStore.loading && filaStore.minhasInscricoes.length === 0" class="grid gap-4 sm:grid-cols-2">
@@ -162,7 +163,7 @@ onMounted(async () => {
           <div class="flex justify-between items-center">
             <div class="flex flex-col">
                <span class="text-[10px] text-slate-400 uppercase font-black">Sua Posição</span>
-               <span class="text-lg font-black text-emerald-600">{{ inscricao.posicao }}º</span>
+               <span class="text-lg font-black text-primary-600">{{ inscricao.posicao }}º</span>
             </div>
             <Button
               v-if="!inscricao.confirmado && !inscricao.cancelado"
@@ -183,10 +184,10 @@ onMounted(async () => {
     <!-- Refeições Disponíveis -->
     <section>
       <div class="flex items-center gap-2 mb-4">
-        <div class="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
-          <i class="pi pi-list text-emerald-600"></i>
+        <div class="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center">
+          <i class="pi pi-list text-primary-600"></i>
         </div>
-        <h2 class="text-xl font-bold text-slate-800">Vagas Disponíveis</h2>
+        <h2 class="text-xl font-black text-slate-800 lato-black">Refeições Disponíveis</h2>
       </div>
 
       <div v-if="filaStore.loading && filaStore.refeicoesDisponiveis.length === 0" class="space-y-4">
@@ -246,7 +247,7 @@ onMounted(async () => {
                 severity="success"
                 @click="abrirDialogInscricao(data)"
               />
-              <div v-else-if="data.ja_inscrito" class="flex items-center justify-end gap-2 text-emerald-600 font-bold text-sm">
+              <div v-else-if="data.ja_inscrito" class="flex items-center justify-end gap-2 text-primary-600 font-bold text-sm">
                  <i class="pi pi-check-circle"></i>
                  Inscrito
               </div>
@@ -267,8 +268,8 @@ onMounted(async () => {
       class="!rounded-[2rem] overflow-hidden"
     >
       <div v-if="refeicaoSelecionada" class="space-y-6 py-4">
-        <div class="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
-           <p class="text-emerald-800 text-sm leading-relaxed">
+        <div class="p-4 bg-primary-50 rounded-2xl border border-primary-100">
+           <p class="text-primary-800 text-sm leading-relaxed">
              Deseja confirmar sua inscrição para esta refeição? Sua posição será gerada por ordem de chegada na fila virtual.
            </p>
         </div>

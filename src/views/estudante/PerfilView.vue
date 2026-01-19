@@ -228,9 +228,10 @@ onMounted(() => {
   <div class="space-y-6">
     <!-- Header -->
     <PageHeader
-      title="Perfil"
-      subtitle="Gerencie suas informações pessoais"
+      title="Meu Perfil"
+      subtitle="Gerencie suas informações e segurança da conta."
       :show-back-button="true"
+      :breadcrumbs="[{ label: 'Dashboard', route: '/dashboard' }, { label: 'Perfil' }]"
     />
 
     <!-- Foto de Perfil -->
@@ -246,7 +247,7 @@ onMounted(() => {
           />
           <Avatar
             v-else
-            :label="getInitials(perfil?.nome)"
+            icon="pi pi-user"
             size="xlarge"
             shape="circle"
             :style="getAvatarStyle(perfil?.nome)"
@@ -355,12 +356,12 @@ onMounted(() => {
         <div v-else class="grid gap-6 md:grid-cols-2">
           <!-- Nome Completo -->
           <div class="space-y-2">
-            <label class="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <i class="pi pi-user text-emerald-600"></i>
+            <label class="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 ml-1">
+              <i class="pi pi-user text-primary-600"></i>
               Nome Completo
             </label>
-            <div class="px-4 py-3 bg-slate-50 rounded-lg border border-slate-200">
-              <p class="text-slate-900 font-medium">
+            <div class="px-4 py-3 bg-slate-50/50 rounded-2xl border border-slate-100">
+              <p class="text-slate-900 font-bold">
                 {{ perfil?.nome || '-' }}
               </p>
             </div>
@@ -368,12 +369,12 @@ onMounted(() => {
 
           <!-- Matrícula -->
           <div class="space-y-2">
-            <label class="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <i class="pi pi-id-card text-emerald-600"></i>
+            <label class="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 ml-1">
+              <i class="pi pi-id-card text-primary-600"></i>
               Matrícula
             </label>
-            <div class="px-4 py-3 bg-slate-50 rounded-lg border border-slate-200">
-              <p class="text-slate-900 font-medium font-mono">
+            <div class="px-4 py-3 bg-slate-50/50 rounded-2xl border border-slate-100">
+              <p class="text-slate-900 font-bold font-mono">
                 {{ perfil?.matricula || '-' }}
               </p>
             </div>
@@ -381,12 +382,12 @@ onMounted(() => {
 
           <!-- E-mail -->
           <div class="space-y-2">
-            <label class="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <i class="pi pi-envelope text-emerald-600"></i>
+            <label class="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 ml-1">
+              <i class="pi pi-envelope text-primary-600"></i>
               E-mail
             </label>
-            <div class="px-4 py-3 bg-slate-50 rounded-lg border border-slate-200">
-              <p class="text-slate-900">
+            <div class="px-4 py-3 bg-slate-50/50 rounded-2xl border border-slate-100">
+              <p class="text-slate-900 font-medium">
                 {{ perfil?.email || '-' }}
               </p>
             </div>
@@ -394,12 +395,12 @@ onMounted(() => {
 
           <!-- Curso -->
           <div v-if="perfil?.perfil === 'estudante'" class="space-y-2">
-            <label class="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <i class="pi pi-book text-emerald-600"></i>
+            <label class="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 ml-1">
+              <i class="pi pi-book text-primary-600"></i>
               Curso
             </label>
-            <div class="px-4 py-3 bg-slate-50 rounded-lg border border-slate-200">
-              <p class="text-slate-900">
+            <div class="px-4 py-3 bg-slate-50/50 rounded-2xl border border-slate-100">
+              <p class="text-slate-900 font-medium">
                 {{ perfil?.curso || '-' }}
               </p>
             </div>
@@ -407,12 +408,12 @@ onMounted(() => {
 
           <!-- Turno -->
           <div v-if="perfil?.perfil === 'estudante'" class="space-y-2">
-            <label class="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <i class="pi pi-clock text-emerald-600"></i>
+            <label class="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 ml-1">
+              <i class="pi pi-clock text-primary-600"></i>
               Turno
             </label>
-            <div class="px-4 py-3 bg-slate-50 rounded-lg border border-slate-200">
-              <p class="text-slate-900">
+            <div class="px-4 py-3 bg-slate-50/50 rounded-2xl border border-slate-100">
+              <p class="text-slate-900 font-medium capitalize">
                 {{ perfil?.turno || '-' }}
               </p>
             </div>
@@ -420,20 +421,22 @@ onMounted(() => {
 
           <!-- Tipo de Acesso -->
           <div class="space-y-2">
-            <label class="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <i class="pi pi-shield text-emerald-600"></i>
+            <label class="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 ml-1">
+              <i class="pi pi-shield text-primary-600"></i>
               Tipo de Acesso
             </label>
-            <div class="px-4 py-3 bg-slate-50 rounded-lg border border-slate-200">
+            <div class="px-4 py-3 bg-slate-50/50 rounded-2xl border border-slate-100">
               <Tag
                 v-if="perfil?.perfil === 'admin'"
                 value="Administrador"
                 severity="danger"
+                class="!rounded-full"
               />
               <Tag
                 v-else
                 :value="perfil?.bolsista ? 'Bolsista' : 'Não Bolsista'"
                 :severity="perfil?.bolsista ? 'success' : 'info'"
+                class="!rounded-full"
               />
             </div>
           </div>

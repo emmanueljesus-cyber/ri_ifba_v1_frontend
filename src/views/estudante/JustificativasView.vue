@@ -3,6 +3,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { justificativaService } from '../../services/justificativas'
 import { cardapioService } from '../../services/cardapio'
+import PageHeader from '../../components/common/PageHeader.vue'
 import type { Justificativa, TipoJustificativa } from '../../types/justificativa'
 import type { Refeicao } from '../../types/cardapio'
 import DataTable from 'primevue/datatable'
@@ -16,6 +17,8 @@ import FileUpload from 'primevue/fileupload'
 import Message from 'primevue/message'
 import InputNumber from 'primevue/inputnumber'
 import Skeleton from 'primevue/skeleton'
+import ProgressBar from 'primevue/progressbar'
+import Badge from 'primevue/badge'
 
 const toast = useToast()
 const justificativas = ref<Justificativa[]>([])
@@ -25,6 +28,10 @@ const displayDetails = ref(false)
 const selectedJustificativa = ref<Justificativa | null>(null)
 const refeicoesDisponiveis = ref<Refeicao[]>([])
 
+// Estado para FileUpload customizado
+const totalSize = ref(0)
+const totalSizePercent = ref(0)
+
 const novaJustificativa = ref({
   refeicao_id: null as number | null,
   tipo: 'posterior' as TipoJustificativa,
@@ -33,6 +40,39 @@ const novaJustificativa = ref({
   quantidade_dias: 1,
   anexo: null as File | null
 })
+
+const onRemoveTemplatingFile = (file: any, removeFileCallback: any, index: number) => {
+  removeFileCallback(index)
+  totalSize.value -= file.size
+  totalSizePercent.value = (totalSize.value / 10000000) * 100
+}
+
+const onClearTemplatingFile = (clearCallback: any) => {
+  clearCallback()
+  totalSize.value = 0
+  totalSizePercent.value = 0
+}
+
+const onSelectedFiles = (event: any) => {
+  novaJustificativa.value.anexo = event.files[0]
+  totalSize.value = 0
+  event.files.forEach((file: any) => {
+    totalSize.value += file.size
+  })
+  totalSizePercent.value = (totalSize.value / 10000000) * 100
+}
+
+const formatSize = (bytes: number) => {
+  const k = 1024
+  const dm = 3
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
+
+  if (bytes === 0) return `0 ${sizes[0]}`
+
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
+}
 
 const tipos = [
   { label: 'Programada (Antecipada)', value: 'antecipada' },
@@ -98,11 +138,9 @@ const abrirNovo = () => {
     quantidade_dias: 1,
     anexo: null
   }
+  totalSize.value = 0
+  totalSizePercent.value = 0
   displayDialog.value = true
-}
-
-const onFileSelect = (event: any) => {
-  novaJustificativa.value.anexo = event.files[0]
 }
 
 const enviarJustificativa = async () => {
@@ -167,16 +205,18 @@ onMounted(() => {
 <template>
   <div class="space-y-6">
     <!-- Header -->
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-      <div>
-        <h1 class="text-3xl font-bold text-slate-800">Justificativas</h1>
-        <p class="text-slate-500 mt-1">Gerencie suas ausências e acompanhe o status das suas solicitações.</p>
-      </div>
+    <PageHeader
+      title="Justificativas"
+      subtitle="Gerencie suas ausências e acompanhe o status das suas solicitações."
+      :breadcrumbs="[{ label: 'Dashboard', route: '/dashboard' }, { label: 'Justificativas' }]"
+    />
+
+    <div class="flex justify-end -mt-20 mb-4 relative z-10">
       <Button 
         label="Nova Justificativa" 
         icon="pi pi-plus" 
         severity="success" 
-        class="!rounded-2xl shadow-lg shadow-emerald-200"
+        class="!rounded-2xl shadow-lg shadow-primary-100"
         @click="abrirNovo" 
       />
     </div>
@@ -261,7 +301,7 @@ onMounted(() => {
                   {{ data.refeicao?.turno === 'almoco' ? '🌅' : '🌙' }}
                 </div>
                 <div v-if="data.refeicao">
-                  <p class="font-bold text-slate-800">{{ data.refeicao.data }}</p>
+                  <p class="font-bold text-slate-800">{{ data.refeicao.data ? data.refeicao.data.split('-').reverse().join('/') : '-' }}</p>
                   <p class="text-[10px] text-slate-500 uppercase font-black tracking-tighter">{{ data.refeicao.turno }}</p>
                 </div>
               </div>
@@ -359,7 +399,7 @@ onMounted(() => {
             <template #option="slotProps">
               <div class="flex items-center gap-2">
                  <span>{{ slotProps.option.turno === 'almoco' ? '🌅' : '🌙' }}</span>
-                 <span>{{ new Date(slotProps.option.data_do_cardapio).toLocaleDateString('pt-BR') }} - </span>
+                 <span>{{ slotProps.option.data_do_cardapio ? slotProps.option.data_do_cardapio.split('-').reverse().join('/') : '-' }} - </span>
                  <span class="capitalize">{{ slotProps.option.turno }}</span>
               </div>
             </template>
@@ -392,21 +432,48 @@ onMounted(() => {
               Anexar declaração ou atestado que comprove a justificativa de ausência.
             </p>
             <FileUpload
-              mode="basic"
               name="anexo"
               accept="image/*,application/pdf"
-              :maxFileSize="10485760"
-              customUpload
-              @select="onFileSelect"
-              chooseLabel="Anexar PDF ou Imagem"
-              class="!rounded-2xl w-full"
-              severity="secondary"
-            />
-            <small class="text-slate-400">Aceito: PDF ou imagem. Tamanho máximo: 10MB.</small>
-            <div v-if="novaJustificativa.anexo" class="flex items-center gap-2 p-2 bg-emerald-50 rounded-lg border border-emerald-200">
-              <i class="pi pi-check-circle text-emerald-600"></i>
-              <span class="text-sm text-emerald-700">{{ novaJustificativa.anexo.name }}</span>
-            </div>
+              :maxFileSize="10000000"
+              @select="onSelectedFiles"
+              class="!rounded-2xl"
+            >
+              <template #header="{ chooseCallback, clearCallback, files }">
+                <div class="flex flex-wrap justify-between items-center flex-1 gap-4">
+                  <div class="flex gap-2">
+                    <Button @click="chooseCallback()" icon="pi pi-images" rounded variant="outlined" severity="secondary"></Button>
+                    <Button @click="onClearTemplatingFile(clearCallback)" icon="pi pi-times" rounded variant="outlined" severity="danger" :disabled="!files || files.length === 0"></Button>
+                  </div>
+                  <ProgressBar :value="totalSizePercent" :showValue="false" class="md:w-40 h-1 w-full md:ml-auto">
+                    <span class="whitespace-nowrap">{{ formatSize(totalSize) }} / 10Mb</span>
+                  </ProgressBar>
+                </div>
+              </template>
+              <template #content="{ files, removeFileCallback }">
+                <div class="flex flex-col gap-4 pt-4">
+                  <div v-if="files.length > 0">
+                    <div class="flex flex-wrap gap-4">
+                      <div v-for="(file, index) of files" :key="file.name + file.type + file.size" class="p-4 rounded-2xl flex flex-col border border-slate-200 items-center gap-3 bg-slate-50">
+                        <div>
+                          <i v-if="file.type.includes('pdf')" class="pi pi-file-pdf text-4xl text-red-500"></i>
+                          <img v-else role="presentation" :alt="file.name" :src="file.objectURL" width="100" class="rounded-lg shadow-sm" />
+                        </div>
+                        <span class="font-bold text-xs text-ellipsis max-w-40 whitespace-nowrap overflow-hidden text-slate-700">{{ file.name }}</span>
+                        <div class="text-[10px] font-black text-slate-400 uppercase">{{ formatSize(file.size) }}</div>
+                        <Badge value="Pendente" severity="warn" class="!text-[10px]" />
+                        <Button icon="pi pi-times" @click="onRemoveTemplatingFile(file, removeFileCallback, index)" variant="outlined" rounded severity="danger" size="small" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </template>
+              <template #empty>
+                <div class="flex items-center justify-center flex-col py-6">
+                  <i class="pi pi-cloud-upload !border-2 !border-dashed !border-slate-300 !rounded-full !p-6 !text-3xl !text-slate-300" />
+                  <p class="mt-4 mb-0 text-sm text-slate-500 font-medium text-center">Arraste e solte o atestado aqui ou clique em "Escolher".</p>
+                </div>
+              </template>
+            </FileUpload>
           </div>
 
           <!-- Quantidade de dias -->

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { FilterMatchMode } from '@primevue/core/api'
 import { useToast } from 'primevue/usetoast'
 import { adminBolsistaService } from '../../services/adminBolsista'
+import PageHeader from '../../components/common/PageHeader.vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
@@ -9,6 +11,9 @@ import FileUpload from 'primevue/fileupload'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
+import Avatar from 'primevue/avatar'
 import Tabs from 'primevue/tabs'
 import TabList from 'primevue/tablist'
 import Tab from 'primevue/tab'
@@ -25,6 +30,14 @@ const displayDesligar = ref(false)
 const displayTemplates = ref(false)
 const selectedBolsista = ref<any>(null)
 const motivoDesligamento = ref('')
+
+const filtersAprovados = ref({
+  global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+})
+
+const filtersBolsistas = ref({
+  global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+})
 
 const carregarBolsistas = async () => {
   loading.value = true
@@ -86,12 +99,14 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-6">
-    <div class="flex justify-between items-center">
-      <div>
-        <h1 class="text-2xl font-bold text-slate-800">Gestão de Bolsistas</h1>
-        <p class="text-slate-500">Visualize e gerencie a lista de bolsistas aprovados e cadastrados.</p>
-      </div>
+  <div class="space-y-6 animate-fadein">
+    <PageHeader
+      title="Gestão de Bolsistas"
+      subtitle="Visualize e gerencie a lista de bolsistas aprovados e cadastrados."
+      :breadcrumbs="[{ label: 'Admin', route: '/admin' }, { label: 'Gestão de Bolsistas' }]"
+    />
+
+    <div class="flex justify-end -mt-16 mb-4 relative z-10">
       <div class="flex gap-2">
         <Button label="Modelo Excel" icon="pi pi-download" severity="info" text @click="displayTemplates = true" />
         <Button label="Importar Planilha" icon="pi pi-upload" severity="secondary" outlined @click="displayImport = true" />
@@ -99,18 +114,40 @@ onMounted(() => {
     </div>
 
     <Tabs value="0">
-      <TabList>
-        <Tab value="0">Lista de Aprovados (Importada)</Tab>
-        <Tab value="1">Usuários Bolsistas (Cadastrados)</Tab>
+      <TabList class="gap-4">
+        <Tab value="0" class="!px-6">Lista de Aprovados (Importada)</Tab>
+        <Tab value="1" class="!px-6">Usuários Bolsistas (Cadastrados)</Tab>
       </TabList>
       <TabPanels>
         <TabPanel value="0">
           <div class="card bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-            <DataTable :value="aprovados" :loading="loadingAprovados" paginator :rows="10">
-              <Column field="matricula" header="Matrícula"></Column>
+            <DataTable v-model:filters="filtersAprovados" :value="aprovados" :loading="loadingAprovados" paginator :rows="10"
+              :globalFilterFields="['matricula', 'turno']">
+              <template #header>
+                <div class="flex justify-between items-center mb-2">
+                  <span class="text-xl font-bold text-slate-700">Aprovados</span>
+                  <IconField>
+                    <InputIcon>
+                      <i class="pi pi-search" />
+                    </InputIcon>
+                    <InputText v-model="filtersAprovados['global'].value" placeholder="Buscar aprovado..." />
+                  </IconField>
+                </div>
+              </template>
+              <Column field="matricula" header="Matrícula">
+                <template #body="{ data }">
+                  <div class="flex items-center gap-3">
+                    <Avatar icon="pi pi-user" shape="circle" class="bg-primary-50 text-primary-600" />
+                    <span class="font-bold text-slate-700">{{ data.matricula }}</span>
+                  </div>
+                </template>
+              </Column>
               <Column field="turno" header="Turno">
                 <template #body="{ data }">
-                  <span class="capitalize">{{ data.turno }}</span>
+                  <Tag :severity="data.turno === 'almoco' ? 'success' : 'info'" class="!rounded-full px-3 uppercase text-[10px] font-black">
+                    <i :class="data.turno === 'almoco' ? 'pi pi-sun' : 'pi pi-moon'" class="mr-1"></i>
+                    {{ data.turno }}
+                  </Tag>
                 </template>
               </Column>
               <Column field="ativo" header="Status">
@@ -129,9 +166,40 @@ onMounted(() => {
         </TabPanel>
         <TabPanel value="1">
           <div class="card bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-            <DataTable :value="bolsistas" :loading="loading" paginator :rows="10">
-              <Column field="nome" header="Nome"></Column>
-              <Column field="matricula" header="Matrícula"></Column>
+            <DataTable v-model:filters="filtersBolsistas" :value="bolsistas" :loading="loading" paginator :rows="10"
+              :globalFilterFields="['nome', 'matricula', 'curso']">
+              <template #header>
+                <div class="flex justify-between items-center mb-2">
+                  <span class="text-xl font-bold text-slate-700">Usuários Ativos</span>
+                  <IconField>
+                    <InputIcon>
+                      <i class="pi pi-search" />
+                    </InputIcon>
+                    <InputText v-model="filtersBolsistas['global'].value" placeholder="Buscar bolsista..." />
+                  </IconField>
+                </div>
+              </template>
+              <Column field="nome" header="Bolsista">
+                <template #body="{ data }">
+                  <div class="flex items-center gap-3">
+                    <Avatar
+                      v-if="data.foto"
+                      :image="data.foto"
+                      shape="circle"
+                    />
+                    <Avatar
+                      v-else
+                      icon="pi pi-user"
+                      shape="circle"
+                      class="bg-primary-50 text-primary-600"
+                    />
+                    <div class="flex flex-col">
+                      <span class="font-bold text-slate-700">{{ data.nome }}</span>
+                      <span class="text-[10px] text-slate-400 font-black uppercase">{{ data.matricula }}</span>
+                    </div>
+                  </div>
+                </template>
+              </Column>
               <Column field="curso" header="Curso"></Column>
               <Column field="ativo" header="Status">
                 <template #body="{ data }">

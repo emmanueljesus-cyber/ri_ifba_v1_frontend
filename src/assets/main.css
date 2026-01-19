@@ -4,19 +4,141 @@
 @tailwind utilities;
 
 :root {
-  --ifba-verde: #32a041;
+  --ifba-verde: #248c35;
   --ifba-vermelho: #e30613;
 
   /* PrimeVue 4 Aura Primary Color Overrides */
-  --p-primary-50: #eef8f0;
-  --p-primary-100: #d6eedb;
-  --p-primary-200: #aeddb7;
-  --p-primary-300: #7bc58a;
-  --p-primary-400: #49a85f;
-  --p-primary-500: #32a041; /* Verde IFBA */
-  --p-primary-600: #268133;
-  --p-primary-700: #1f662a;
-  --p-primary-800: #1a5224;
-  --p-primary-900: #15431e;
-  --p-primary-950: #0b2510;
+  --p-primary-50: #e2f0e4;
+  --p-primary-100: #b3d6b8;
+  --p-primary-200: #84bc8c;
+  --p-primary-300: #55a360;
+  --p-primary-400: #3b8d48;
+  --p-primary-500: #248c35;
+  --p-primary-600: #1e742c;
+  --p-primary-700: #175c23;
+  --p-primary-800: #10441a;
+  --p-primary-900: #092c11;
+  --p-primary-950: #041408;
+}
+
+/* Animações para melhor fluidez */
+@keyframes fadein {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadein {
+  animation: fadein 0.3s ease-out;
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(0.98); }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 4s ease-in-out infinite;
+}
+
+/* Transições suaves em botões e cards */
+.p-button {
+  transition: all 0.2s ease-in-out;
+}
+
+.p-card {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.p-card:hover {
+  transform: translateY(-2px);
+}
+
+/* Scroll suave */
+* {
+  scroll-behavior: smooth;
+}
+
+/* Melhor feedback visual em elementos interativos */
+button,
+a,
+.cursor-pointer {
+  transition: all 0.2s ease-in-out;
+}
+
+button:active,
+a:active,
+.cursor-pointer:active {
+  transform: scale(0.98);
+}
+
+
+.lato-thin {
+  font-family: "Lato", sans-serif;
+  font-weight: 100;
+  font-style: normal;
+}
+
+.lato-light {
+  font-family: "Lato", sans-serif;
+  font-weight: 300;
+  font-style: normal;
+}
+
+.lato-regular {
+  font-family: "Lato", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.lato-bold {
+  font-family: "Lato", sans-serif;
+  font-weight: 700;
+  font-style: normal;
+}
+
+.lato-black {
+  font-family: "Lato", sans-serif;
+  font-weight: 900;
+  font-style: normal;
+}
+
+.lato-thin-italic {
+  font-family: "Lato", sans-serif;
+  font-weight: 100;
+  font-style: italic;
+}
+
+.lato-light-italic {
+  font-family: "Lato", sans-serif;
+  font-weight: 300;
+  font-style: italic;
+}
+
+.lato-regular-italic {
+  font-family: "Lato", sans-serif;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.lato-bold-italic {
+  font-family: "Lato", sans-serif;
+  font-weight: 700;
+  font-style: italic;
+}
+
+.lato-black-italic {
+  font-family: "Lato", sans-serif;
+  font-weight: 900;
+  font-style: italic;
+}
+
+body {
+  font-family: "Lato", sans-serif;
 }

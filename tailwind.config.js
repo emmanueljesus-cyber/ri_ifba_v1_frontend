@@ -7,7 +7,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        'ifba-verde': '#32A041',
+        'ifba-verde': '#248c35',
         'ifba-vermelho': '#E30613',
       }
     },

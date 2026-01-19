@@ -1,7 +1,21 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { adminExtrasService, type FilaExtraAdmin, type EstatisticasExtras } from '../../services/adminExtras'
+import PageHeader from '../../components/common/PageHeader.vue'
+
+// Locale pt-BR para DatePicker
+const ptBR = {
+  firstDayOfWeek: 0,
+  dayNames: ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'],
+  dayNamesShort: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
+  dayNamesMin: ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'],
+  monthNames: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'],
+  monthNamesShort: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+  today: 'Hoje',
+  clear: 'Limpar'
+}
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
@@ -9,6 +23,7 @@ import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
+import SelectButton from 'primevue/selectbutton'
 import Card from 'primevue/card'
 import Tabs from 'primevue/tabs'
 import TabList from 'primevue/tablist'
@@ -16,8 +31,10 @@ import Tab from 'primevue/tab'
 import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
 import Calendar from 'primevue/calendar'
+import Avatar from 'primevue/avatar'
 
 const toast = useToast()
+const router = useRouter()
 
 // Estado
 const inscricoes = ref<FilaExtraAdmin[]>([])
@@ -252,10 +269,32 @@ const formatarTurno = (turno: string) => {
 }
 
 const abrirRelatorio = () => {
-  relatorioDataInicio.value = new Date()
-  relatorioDataFim.value = new Date()
-  relatorioTurno.value = null
-  displayRelatorio.value = true
+  router.push('/admin/relatorios')
+}
+
+const formatarDataHora = (dataString: string) => {
+  if (!dataString) return '-'
+  
+  // Se for apenas uma string de hora (HH:mm:ss ou HH:mm)
+  if (dataString.includes(':') && !dataString.includes('-') && !dataString.includes('T')) {
+    return dataString.substring(0, 5) // Retorna HH:mm
+  }
+
+  // Se já estiver no formato brasileiro DD/MM/YYYY HH:mm:ss
+  if (dataString.includes('/') && dataString.includes(':')) {
+    return dataString.substring(0, 16) // Retorna DD/MM/YYYY HH:mm
+  }
+
+  const data = new Date(dataString)
+  if (isNaN(data.getTime())) return dataString
+
+  return data.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 
 const exportarRelatorioExcel = async () => {
@@ -290,83 +329,75 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6 animate-fadein">
     <!-- Cabeçalho -->
-    <div class="flex justify-between items-center">
-      <div>
-        <h1 class="text-2xl font-bold text-slate-800">Fila de Extras</h1>
-        <p class="text-slate-500">Gerencie as inscrições de estudantes não-bolsistas para refeições extras.</p>
-      </div>
+    <PageHeader
+      title="Fila de Extras"
+      subtitle="Gerencie as inscrições de estudantes não-bolsistas para refeições extras."
+      :breadcrumbs="[{ label: 'Admin', route: '/admin' }, { label: 'Fila de Extras' }]"
+    />
+
+    <div class="flex justify-end -mt-16 mb-4 relative z-10">
       <Button
         label="Gerar Relatório"
         icon="pi pi-file-excel"
         severity="success"
+        class="!rounded-2xl shadow-lg shadow-primary-100"
         @click="abrirRelatorio"
       />
     </div>
 
     <!-- Seletor de Turno -->
-    <div class="flex gap-2">
-      <Button
-        :label="`🌅 Almoço (${estatisticasAlmoco.total})`"
-        :severity="turnoHojeFiltro === 'almoco' ? 'success' : 'secondary'"
-        :outlined="turnoHojeFiltro !== 'almoco'"
-        @click="turnoHojeFiltro = 'almoco'"
-        class="flex-1"
-      />
-      <Button
-        :label="`🌙 Jantar (${estatisticasJantar.total})`"
-        :severity="turnoHojeFiltro === 'jantar' ? 'info' : 'secondary'"
-        :outlined="turnoHojeFiltro !== 'jantar'"
-        @click="turnoHojeFiltro = 'jantar'"
-        class="flex-1"
-      />
+    <div class="flex flex-col gap-2">
+      <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Filtrar Turno</label>
+      <SelectButton
+        v-model="turnoHojeFiltro"
+        :options="[
+          { label: 'Almoço', value: 'almoco', icon: 'pi pi-sun', total: estatisticasAlmoco.total },
+          { label: 'Jantar', value: 'jantar', icon: 'pi pi-moon', total: estatisticasJantar.total }
+        ]"
+        optionLabel="label"
+        optionValue="value"
+        aria-labelledby="basic"
+        class="w-full"
+      >
+        <template #option="slotProps">
+          <div class="flex items-center gap-2">
+            <i :class="slotProps.option.icon"></i>
+            <span class="font-bold">{{ slotProps.option.label }} ({{ slotProps.option.total }})</span>
+          </div>
+        </template>
+      </SelectButton>
     </div>
 
     <!-- Cards de Estatísticas do Turno Selecionado -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <Card class="bg-blue-50 border-blue-200">
-        <template #content>
-          <div class="text-center">
-            <p class="text-3xl font-bold text-blue-600">{{ estatisticasHoje.total }}</p>
-            <p class="text-sm text-blue-800">Inscritos ({{ turnoHojeFiltro === 'almoco' ? 'Almoço' : 'Jantar' }})</p>
-          </div>
-        </template>
-      </Card>
-      <Card class="bg-amber-50 border-amber-200">
-        <template #content>
-          <div class="text-center">
-            <p class="text-3xl font-bold text-amber-600">{{ estatisticasHoje.aguardando }}</p>
-            <p class="text-sm text-amber-800">Aguardando</p>
-          </div>
-        </template>
-      </Card>
-      <Card class="bg-green-50 border-green-200">
-        <template #content>
-          <div class="text-center">
-            <p class="text-3xl font-bold text-green-600">{{ estatisticasHoje.confirmados }}</p>
-            <p class="text-sm text-green-800">Confirmados</p>
-          </div>
-        </template>
-      </Card>
-      <Card class="bg-red-50 border-red-200">
-        <template #content>
-          <div class="text-center">
-            <p class="text-3xl font-bold text-red-600">{{ estatisticasHojeBackend?.rejeitados || 0 }}</p>
-            <p class="text-sm text-red-800">Rejeitados (Total)</p>
-          </div>
-        </template>
-      </Card>
+      <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+        <p class="text-3xl font-black text-primary-600 lato-black">{{ estatisticasHoje.total }}</p>
+        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Inscritos ({{ turnoHojeFiltro === 'almoco' ? 'Almoço' : 'Jantar' }})</p>
+      </div>
+      <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+        <p class="text-3xl font-black text-amber-600 lato-black">{{ estatisticasHoje.aguardando }}</p>
+        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Aguardando</p>
+      </div>
+      <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+        <p class="text-3xl font-black text-primary-500 lato-black">{{ estatisticasHoje.confirmados }}</p>
+        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Confirmados</p>
+      </div>
+      <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+        <p class="text-3xl font-black text-red-600 lato-black">{{ estatisticasHojeBackend?.rejeitados || 0 }}</p>
+        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Rejeitados (Total)</p>
+      </div>
     </div>
 
     <!-- Tabs -->
     <Tabs v-model:value="tabAtiva">
-      <TabList>
-        <Tab value="0">
+      <TabList class="gap-4">
+        <Tab value="0" class="!px-6">
           <i class="pi pi-list mr-2"></i>
           Inscrições de Hoje
         </Tab>
-        <Tab value="1">
+        <Tab value="1" class="!px-6">
           <i class="pi pi-history mr-2"></i>
           Histórico
         </Tab>
@@ -409,15 +440,28 @@ onMounted(() => {
               </Column>
               <Column field="user.nome" header="Estudante" :sortable="true">
                 <template #body="{ data }">
-                  <div>
-                    <p class="font-medium">{{ data.user.nome }}</p>
-                    <p class="text-sm text-slate-500">{{ data.user.matricula }}</p>
+                  <div class="flex items-center gap-3">
+                    <Avatar
+                      v-if="data.user?.foto"
+                      :image="data.user.foto"
+                      shape="circle"
+                    />
+                    <Avatar
+                      v-else
+                      icon="pi pi-user"
+                      shape="circle"
+                      class="bg-primary-50 text-primary-600"
+                    />
+                    <div class="flex flex-col">
+                      <p class="font-bold text-slate-700 leading-tight">{{ data.user.nome }}</p>
+                      <p class="text-[10px] text-slate-400 font-black uppercase tracking-tighter">{{ data.user.matricula }}</p>
+                    </div>
                   </div>
                 </template>
               </Column>
               <Column field="inscrito_em" header="Inscrito em" :sortable="true">
                 <template #body="{ data }">
-                  {{ data.inscrito_em }}
+                  {{ formatarDataHora(data.inscrito_em) }}
                 </template>
               </Column>
               <Column field="status" header="Status" :sortable="true">
@@ -477,7 +521,7 @@ onMounted(() => {
             <div class="flex gap-4 mb-4 flex-wrap">
               <div class="flex flex-col gap-1">
                 <label class="text-sm text-slate-600">Data</label>
-                <Calendar v-model="filtroData" dateFormat="dd/mm/yy" showIcon @update:modelValue="carregarInscricoes" />
+                <Calendar v-model="filtroData" dateFormat="dd/mm/yy" showIcon :locale="ptBR" @update:modelValue="carregarInscricoes" />
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-sm text-slate-600">Turno</label>
@@ -501,21 +545,76 @@ onMounted(() => {
             >
               <Column field="user.nome" header="Estudante" :sortable="true">
                 <template #body="{ data }">
-                  <div>
-                    <p class="font-medium">{{ data.user.nome }}</p>
-                    <p class="text-sm text-slate-500">{{ data.user.matricula }}</p>
+                  <div class="flex items-center gap-3">
+                    <Avatar
+                      v-if="data.user?.foto"
+                      :image="data.user.foto"
+                      shape="circle"
+                    />
+                    <Avatar
+                      v-else
+                      icon="pi pi-user"
+                      shape="circle"
+                      class="bg-primary-50 text-primary-600"
+                    />
+                    <div class="flex flex-col">
+                      <p class="font-bold text-slate-700 leading-tight">{{ data.user.nome }}</p>
+                      <p class="text-[10px] text-slate-400 font-black uppercase tracking-tighter">{{ data.user.matricula }}</p>
+                    </div>
                   </div>
                 </template>
               </Column>
-              <Column field="refeicao.data" header="Data" :sortable="true"></Column>
-              <Column field="refeicao.turno" header="Turno">
+              <Column header="Refeição">
                 <template #body="{ data }">
-                  <Tag :value="formatarTurno(data.refeicao?.turno)" severity="info" />
+                  <div class="flex items-center gap-3" v-if="data.refeicao">
+                    <div :class="data.refeicao.turno === 'almoco' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'" class="w-10 h-10 rounded-xl flex items-center justify-center">
+                      <i :class="data.refeicao.turno === 'almoco' ? 'pi pi-sun' : 'pi pi-moon'" class="text-xl"></i>
+                    </div>
+                    <div>
+                      <p class="font-bold text-slate-800 leading-tight">{{ data.refeicao.data ? data.refeicao.data.split('-').reverse().join('/') : '-' }}</p>
+                      <p class="text-[10px] text-slate-400 font-black uppercase tracking-tighter">{{ data.refeicao.turno }}</p>
+                    </div>
+                  </div>
                 </template>
               </Column>
               <Column field="status" header="Status" :sortable="true">
                 <template #body="{ data }">
                   <Tag :value="getStatusLabel(data.status)" :severity="getStatusSeverity(data.status)" />
+                </template>
+              </Column>
+              <Column header="Ações" headerStyle="width: 8rem">
+                <template #body="{ data }">
+                  <div class="flex gap-1">
+                    <Button
+                      v-if="data.status === 'inscrito'"
+                      icon="pi pi-check"
+                      severity="success"
+                      text
+                      rounded
+                      size="small"
+                      title="Aprovar"
+                      @click="confirmar(data)"
+                    />
+                    <Button
+                      v-if="data.status === 'inscrito'"
+                      icon="pi pi-times"
+                      severity="danger"
+                      text
+                      rounded
+                      size="small"
+                      title="Rejeitar"
+                      @click="abrirDialogRejeitar(data)"
+                    />
+                    <Button
+                      icon="pi pi-trash"
+                      severity="secondary"
+                      text
+                      rounded
+                      size="small"
+                      title="Remover"
+                      @click="remover(data)"
+                    />
+                  </div>
                 </template>
               </Column>
             </DataTable>
@@ -542,67 +641,21 @@ onMounted(() => {
       </template>
     </Dialog>
 
-    <!-- Dialog: Gerar Relatório -->
-    <Dialog v-model:visible="displayRelatorio" header="Gerar Relatório de Fila de Extras" modal :style="{ width: '500px' }">
-      <div class="space-y-6 py-2">
-        <p class="text-slate-600 text-sm">
-          Configure o período e filtros para gerar o relatório de inscrições na fila de extras.
+    <!-- Dialog: Rejeitar Inscrição -->
+    <Dialog v-model:visible="displayRejeitar" header="Rejeitar Inscrição" modal :style="{ width: '400px' }">
+      <div class="space-y-4">
+        <p class="text-slate-600">
+          Você está prestes a rejeitar a inscrição de
+          <strong>{{ inscricaoSelecionada?.user?.nome }}</strong>.
         </p>
-
-        <div class="grid grid-cols-2 gap-4">
-          <div class="flex flex-col gap-1">
-            <label class="text-sm font-medium text-slate-700">Data Início</label>
-            <Calendar v-model="relatorioDataInicio" dateFormat="dd/mm/yy" showIcon />
-          </div>
-          <div class="flex flex-col gap-1">
-            <label class="text-sm font-medium text-slate-700">Data Fim</label>
-            <Calendar v-model="relatorioDataFim" dateFormat="dd/mm/yy" showIcon />
-          </div>
-        </div>
-
-        <div class="flex flex-col gap-1">
-          <label class="text-sm font-medium text-slate-700">Turno</label>
-          <Select
-            v-model="relatorioTurno"
-            :options="turnoOptions"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Todos os turnos"
-          />
-        </div>
-
-        <!-- Preview de estatísticas -->
-        <div v-if="estatisticas" class="bg-slate-50 rounded-xl p-4 border border-slate-200">
-          <h4 class="font-semibold text-slate-700 mb-3">Estatísticas do Período</h4>
-          <div class="grid grid-cols-4 gap-3 text-center">
-            <div>
-              <p class="text-xl font-bold text-slate-700">{{ estatisticas.resumo.total_inscritos }}</p>
-              <p class="text-xs text-slate-500">Total</p>
-            </div>
-            <div>
-              <p class="text-xl font-bold text-green-600">{{ estatisticas.resumo.aprovados }}</p>
-              <p class="text-xs text-green-700">Confirmados</p>
-            </div>
-            <div>
-              <p class="text-xl font-bold text-red-600">{{ estatisticas.resumo.rejeitados }}</p>
-              <p class="text-xs text-red-700">Rejeitados</p>
-            </div>
-            <div>
-              <p class="text-xl font-bold text-blue-600">{{ estatisticas.resumo.taxa_aprovacao }}</p>
-              <p class="text-xs text-blue-700">Taxa</p>
-            </div>
-          </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Motivo (opcional)</label>
+          <InputText v-model="motivoRejeicao" class="w-full" placeholder="Informe o motivo da rejeição" />
         </div>
       </div>
       <template #footer>
-        <Button label="Cancelar" severity="secondary" text @click="displayRelatorio = false" />
-        <Button
-          label="Exportar Excel"
-          icon="pi pi-file-excel"
-          severity="success"
-          :loading="loadingExport"
-          @click="exportarRelatorioExcel"
-        />
+        <Button label="Cancelar" severity="secondary" text @click="displayRejeitar = false" />
+        <Button label="Rejeitar" severity="danger" @click="confirmarRejeicao" />
       </template>
     </Dialog>
   </div>

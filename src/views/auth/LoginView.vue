@@ -5,6 +5,7 @@ import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import Divider from 'primevue/divider'
 import AuthLayout from '../../layouts/AuthLayout.vue'
 import { useAuthStore } from '../../stores/auth'
 
@@ -24,7 +25,7 @@ const handleSubmit = async () => {
   errorMessage.value = ''
   try {
     await auth.login({ ...form.value })
-    const redirect = (route.query.redirect as string) || '/'
+    const redirect = (route.query.redirect as string) || '/dashboard'
     router.push(redirect)
   } catch (err: any) {
     console.error('Erro no login:', err)
@@ -41,36 +42,117 @@ const handleSubmit = async () => {
 
 <template>
   <AuthLayout>
-    <div class="space-y-6">
-      <header class="space-y-2">
-        <h1 class="text-2xl font-bold text-slate-800">Login</h1>
-        <p class="text-slate-500">Acesse com sua matrícula e senha do sistema.</p>
+    <div class="space-y-8 animate-fadein">
+      <!-- Header -->
+      <header class="text-center lg:text-left space-y-3">
+        <h1 class="text-4xl font-black text-slate-800 lato-black tracking-tight">Login</h1>
+        <p class="text-slate-500 font-medium">Acesse sua conta para gerenciar suas refeições no IFBA.</p>
       </header>
 
-      <form class="space-y-4" @submit.prevent="handleSubmit">
-        <div class="space-y-1">
-          <label class="text-sm font-medium text-slate-700" for="matricula">Matrícula</label>
-          <InputText id="matricula" v-model="form.matricula" placeholder="Insira sua matrícula" class="w-full" required />
-        </div>
-
-        <div class="space-y-1">
-          <div class="flex items-center justify-between text-sm font-medium text-slate-700">
-            <label for="senha">Senha</label>
-            <a class="text-emerald-700 hover:underline" href="#">Esqueceu a senha?</a>
+      <!-- Login Form -->
+      <form class="space-y-5" @submit.prevent="handleSubmit">
+        <!-- Matrícula -->
+        <div class="space-y-2">
+          <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1" for="matricula">
+            Matrícula
+          </label>
+          <div class="relative group">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-600 transition-colors">
+              <i class="pi pi-user"></i>
+            </span>
+            <InputText 
+              id="matricula" 
+              v-model="form.matricula" 
+              placeholder="Ex: 2025123456" 
+              class="w-full !pl-12 !rounded-2xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all"
+              autocomplete="username"
+              required 
+            />
           </div>
-          <Password v-model="form.password" inputId="senha" :feedback="false" toggleMask class="w-full" inputClass="w-full" placeholder="Insira sua senha" required />
         </div>
 
+        <!-- Senha -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between ml-1">
+            <label class="text-xs font-black text-slate-400 uppercase tracking-widest" for="senha">
+              Senha
+            </label>
+            <a class="text-xs text-primary-600 font-bold hover:text-primary-700 transition-colors" href="#">
+              Esqueceu a senha?
+            </a>
+          </div>
+          <div class="relative group">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-600 transition-colors z-10">
+              <i class="pi pi-lock"></i>
+            </span>
+            <Password 
+              v-model="form.password" 
+              inputId="senha" 
+              :feedback="false" 
+              toggleMask 
+              class="w-full" 
+              inputClass="w-full !pl-12 !rounded-2xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all" 
+              placeholder="Digite sua senha" 
+              autocomplete="current-password"
+              required 
+            />
+          </div>
+        </div>
+
+        <!-- Error Message -->
         <div v-if="errorMessage" class="pt-2">
-          <Message severity="error" :closable="false">{{ errorMessage }}</Message>
+          <Message severity="error" icon="pi pi-exclamation-triangle" class="!rounded-2xl">{{ errorMessage }}</Message>
         </div>
 
-        <Button type="submit" label="Entrar" icon="pi pi-sign-in" class="w-full" :loading="loading" />
+        <!-- Submit Button -->
+        <div class="pt-2">
+          <Button 
+            type="submit" 
+            label="Entrar no Sistema" 
+            icon="pi pi-sign-in" 
+            class="w-full !rounded-2xl !py-4 shadow-xl shadow-primary-100 font-bold tracking-tight" 
+            :loading="loading" 
+            size="large"
+          />
+        </div>
       </form>
 
-      <div class="flex items-center gap-2 text-sm text-slate-600">
-        <span>Não tem conta?</span>
-        <RouterLink to="/cadastro" class="text-emerald-700 font-semibold hover:underline">Cadastre-se</RouterLink>
+      <!-- Divider -->
+      <div class="relative py-2">
+        <Divider align="center" class="!before:border-slate-100">
+          <span class="text-slate-300 text-[10px] font-black uppercase tracking-[0.3em] bg-white px-4">Conectar com</span>
+        </Divider>
+      </div>
+
+      <!-- SUAP Login (Em desenvolvimento) -->
+      <Button 
+        v-tooltip.top="'Em breve: Integração direta com SUAP'"
+        label="Acesso via SUAP"
+        icon="pi pi-external-link"
+        severity="secondary"
+        outlined
+        class="w-full !rounded-2xl !py-3 !border-slate-200 !text-slate-500 hover:!bg-slate-50"
+        disabled
+      />
+
+      <!-- Register Link -->
+      <div class="flex flex-col items-center justify-center gap-4 pt-4">
+        <div class="flex items-center gap-2 text-sm text-slate-500 font-medium">
+          <span>Ainda não tem acesso?</span>
+          <RouterLink to="/cadastro" class="text-primary-600 font-black hover:text-primary-700 transition-colors underline decoration-2 underline-offset-4">
+            Crie sua conta
+          </RouterLink>
+        </div>
+
+        <!-- Back to Home -->
+        <Button
+          label="Voltar para a página inicial"
+          icon="pi pi-arrow-left"
+          text
+          size="small"
+          class="!text-slate-400 hover:!text-slate-600 font-bold"
+          @click="() => router.push('/')"
+        />
       </div>
     </div>
   </AuthLayout>
