@@ -169,8 +169,8 @@ onMounted(() => {
                     class="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-100 rounded-lg transition-colors"
                     @click="router.push('/admin/relatorios'); menuPanel?.hide()"
                   >
-                    <i class="pi pi-chart-bar text-slate-600"></i>
-                    <span class="text-sm font-medium text-slate-700">Relatórios</span>
+                    <i class="pi pi-file-excel text-slate-600"></i>
+                    <span class="text-sm font-medium text-slate-700">Relatórios e Modelos</span>
                   </button>
                 </template>
 
@@ -218,7 +218,7 @@ onMounted(() => {
                 <div class="border-t border-slate-200 my-2"></div>
                 <button
                   class="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-slate-100 rounded-lg transition-colors"
-                  @click="router.push('/perfil'); menuPanel?.hide()"
+                  @click="router.push(auth.user?.perfil === 'admin' ? '/admin/perfil' : '/perfil'); menuPanel?.hide()"
                 >
                   <i class="pi pi-user text-slate-600"></i>
                   <span class="text-sm font-medium text-slate-700">Perfil</span>

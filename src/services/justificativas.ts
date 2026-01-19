@@ -45,6 +45,6 @@ export const justificativaService = {
   },
 
   async rejeitarAdmin(id: number, motivo: string): Promise<void> {
-    await api.post(`/admin/justificativas/${id}/rejeitar`, { motivo_rejeicao: motivo })
+    await api.post(`/admin/justificativas/${id}/rejeitar`, { observacao: motivo })
   }
 }

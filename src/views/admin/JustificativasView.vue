@@ -45,7 +45,8 @@ const abrirDetalhes = (justificativa: Justificativa) => {
 }
 
 const abrirAnexo = (id: number) => {
-  window.open(`${import.meta.env.VITE_API_BASE_URL}/admin/justificativas/${id}/anexo`, '_blank')
+  const url = `${import.meta.env.VITE_API_BASE_URL}/admin/justificativas/${id}/anexo`
+  window.open(url, '_blank')
 }
 
 const aprovar = async () => {

@@ -6,6 +6,16 @@ interface ApiResponse<T> {
   message: string
 }
 
+const normalizeFotoUrl = (path: string | null): string | null => {
+  if (!path || path.startsWith('http') || path.startsWith('data:')) return path
+  
+  // Limpa possíveis barras duplas no início do path
+  const cleanPath = path.startsWith('/') ? path.substring(1) : path
+  
+  const baseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1').replace('/api/v1', '')
+  return `${baseUrl}/storage/${cleanPath}`
+}
+
 const normalizePerfil = (raw: any): Perfil => ({
   id: raw.id,
   nome: raw.nome,
@@ -15,7 +25,7 @@ const normalizePerfil = (raw: any): Perfil => ({
   bolsista: !!raw.bolsista,
   curso: raw.curso ?? null,
   turno: raw.turno ?? null,
-  foto: raw.foto ?? raw.foto_url ?? null,
+  foto: normalizeFotoUrl(raw.foto ?? raw.foto_url ?? null),
   preferencia_alimentar: raw.preferencia_alimentar ?? null,
   dias_cadastrados: raw.dias_cadastrados ?? [],
   created_at: raw.created_at,

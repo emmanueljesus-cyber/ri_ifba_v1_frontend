@@ -106,9 +106,15 @@ const alterarSenha = async () => {
 const aceitouTermos = ref(false)
 const dialogTermos = ref(false)
 const fileParaUpload = ref<File | null>(null)
+const fileInput = ref<HTMLInputElement | null>(null)
 
-const abrirDialogTermos = (event: any) => {
-  const file = event.files[0]
+const dispararUpload = () => {
+  fileInput.value?.click()
+}
+
+const onFileChange = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
   if (!file) return
 
   // Validar tipo de arquivo
@@ -120,6 +126,7 @@ const abrirDialogTermos = (event: any) => {
       detail: 'Apenas arquivos JPG, PNG e GIF são permitidos',
       life: 5000
     })
+    target.value = ''
     return
   }
 
@@ -133,11 +140,20 @@ const abrirDialogTermos = (event: any) => {
       detail: `Arquivo tem ${sizeMB} MB. Tamanho máximo: 2 MB`,
       life: 5000
     })
+    target.value = ''
     return
   }
 
   fileParaUpload.value = file
-  dialogTermos.value = true
+  
+  // Verifica se já aceitou os termos nesta sessão (ou se é necessário mostrar)
+  const termosAceitosSessao = sessionStorage.getItem('ri_ifba_termos_foto_aceitos')
+  if (termosAceitosSessao === 'true') {
+    aceitouTermos.value = true
+    uploadFoto()
+  } else {
+    dialogTermos.value = true
+  }
 }
 
 const uploadFoto = async () => {
@@ -146,19 +162,23 @@ const uploadFoto = async () => {
   loading.value = true
   dialogTermos.value = false
   try {
-    perfil.value = await perfilService.atualizarFoto(fileParaUpload.value)
-    // Atualizar também no auth store
-    if (auth.user) {
-      auth.user.foto = perfil.value.foto
-    }
+    const novoPerfil = await perfilService.atualizarFoto(fileParaUpload.value)
+    perfil.value = novoPerfil
+    
+    // Armazenar consentimento na sessão para não pedir novamente na mesma navegação
+    sessionStorage.setItem('ri_ifba_termos_foto_aceitos', 'true')
+    
+    // Atualizar também no auth store usando a nova função para garantir reatividade
+    auth.updateUserData({ foto: novoPerfil.foto || undefined })
+
     toast.add({
       severity: 'success',
       summary: 'Sucesso!',
       detail: 'Foto atualizada com sucesso',
       life: 3000
     })
-    aceitouTermos.value = false
     fileParaUpload.value = null
+    if (fileInput.value) fileInput.value.value = ''
   } catch (err: any) {
     toast.add({
       severity: 'error',
@@ -178,9 +198,9 @@ const removerFoto = async () => {
     if (perfil.value) {
       perfil.value.foto = undefined
     }
-    if (auth.user) {
-      auth.user.foto = undefined
-    }
+    // Atualizar auth store de forma reativa
+    auth.updateUserData({ foto: undefined })
+    
     toast.add({
       severity: 'success',
       summary: 'Sucesso!',
@@ -232,24 +252,33 @@ onMounted(() => {
             :style="getAvatarStyle(perfil?.nome)"
           />
           <div class="flex-1 space-y-3">
-            <FileUpload
-              mode="basic"
-              accept="image/jpeg,image/png,image/jpg,image/gif"
-              :maxFileSize="2000000"
-              chooseLabel="Escolher Foto"
-              @select="abrirDialogTermos"
-              :disabled="loading"
-            />
+            <div class="flex gap-2">
+              <Button
+                label="Escolher Foto"
+                icon="pi pi-upload"
+                severity="secondary"
+                outlined
+                @click="dispararUpload"
+                :disabled="loading"
+              />
+              <input
+                ref="fileInput"
+                type="file"
+                class="hidden"
+                accept="image/jpeg,image/png,image/jpg,image/gif"
+                @change="onFileChange"
+              />
+              <Button
+                v-if="perfil?.foto"
+                label="Remover"
+                icon="pi pi-trash"
+                severity="danger"
+                text
+                @click="removerFoto"
+                :loading="loading"
+              />
+            </div>
             <p class="text-xs text-slate-500">JPG, PNG. Máximo 2MB.</p>
-            <Button
-              v-if="perfil?.foto"
-              label="Remover Foto"
-              severity="danger"
-              text
-              size="small"
-              @click="removerFoto"
-              :loading="loading"
-            />
           </div>
         </div>
       </template>
@@ -364,7 +393,7 @@ onMounted(() => {
           </div>
 
           <!-- Curso -->
-          <div class="space-y-2">
+          <div v-if="perfil?.perfil === 'estudante'" class="space-y-2">
             <label class="text-sm font-semibold text-slate-700 flex items-center gap-2">
               <i class="pi pi-book text-emerald-600"></i>
               Curso
@@ -377,7 +406,7 @@ onMounted(() => {
           </div>
 
           <!-- Turno -->
-          <div class="space-y-2">
+          <div v-if="perfil?.perfil === 'estudante'" class="space-y-2">
             <label class="text-sm font-semibold text-slate-700 flex items-center gap-2">
               <i class="pi pi-clock text-emerald-600"></i>
               Turno
@@ -397,6 +426,12 @@ onMounted(() => {
             </label>
             <div class="px-4 py-3 bg-slate-50 rounded-lg border border-slate-200">
               <Tag
+                v-if="perfil?.perfil === 'admin'"
+                value="Administrador"
+                severity="danger"
+              />
+              <Tag
+                v-else
                 :value="perfil?.bolsista ? 'Bolsista' : 'Não Bolsista'"
                 :severity="perfil?.bolsista ? 'success' : 'info'"
               />

@@ -24,8 +24,11 @@ export const filaExtrasService = {
   },
 
   async refeicoesDisponiveis(): Promise<RefeicaoDisponivel[]> {
-    const { data } = await api.get<ApiResponse<RefeicoesDisponiveisResponse>>('/estudante/fila-extras/disponiveis')
-    return data.data.refeicoes // Retorna apenas o array de refeições
+    const { data } = await api.get<ApiResponse<RefeicoesDisponiveisResponse | RefeicaoDisponivel[]>>('/estudante/fila-extras/disponiveis')
+    if (Array.isArray(data.data)) {
+      return data.data
+    }
+    return (data.data as RefeicoesDisponiveisResponse).refeicoes // Retorna apenas o array de refeições
   },
 
   async inscrever(payload: InscricaoRequest): Promise<FilaExtra> {

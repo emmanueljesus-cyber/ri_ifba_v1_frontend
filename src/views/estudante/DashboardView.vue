@@ -23,7 +23,24 @@ const errorCardapio = ref('')
 const displayQrCode = ref(false)
 
 const formatarData = (data: string) => {
-  return new Date(data).toLocaleDateString('pt-BR', {
+  if (!data) return ''
+  // Se for apenas data YYYY-MM-DD
+  if (data.length === 10 && data.includes('-')) {
+    const [year, month, day] = data.split('-').map(Number)
+    return new Date(year, month - 1, day).toLocaleDateString('pt-BR', {
+      weekday: 'long',
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    })
+  }
+  // Se for objeto data ou string completa
+  const dateObj = new Date(data)
+  // Adiciona 12 horas para evitar problemas de fuso horário se for apenas data sem hora
+  if (!data.includes('T') && !data.includes(':')) {
+     dateObj.setHours(12, 0, 0, 0)
+  }
+  return dateObj.toLocaleDateString('pt-BR', {
     weekday: 'long',
     day: '2-digit',
     month: 'long',

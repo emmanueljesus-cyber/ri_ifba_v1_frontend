@@ -51,12 +51,24 @@ export const useAuthStore = defineStore('auth', () => {
     loading.value = true
     try {
       const data = await authService.me()
+      // Normalização manual da foto para garantir consistência no store
+      if (data.foto && !data.foto.startsWith('http')) {
+         const baseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1').replace('/api/v1', '')
+         const cleanPath = data.foto.startsWith('/') ? data.foto.substring(1) : data.foto
+         data.foto = `${baseUrl}/storage/${cleanPath}`
+      }
       user.value = data
     } catch (error) {
       clearSession()
       throw error
     } finally {
       loading.value = false
+    }
+  }
+
+  function updateUserData(data: Partial<User>) {
+    if (user.value) {
+      user.value = { ...user.value, ...data }
     }
   }
 
@@ -78,6 +90,7 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     register,
     fetchMe,
-    logout
+    logout,
+    updateUserData
   }
 })

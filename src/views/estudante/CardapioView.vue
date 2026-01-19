@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useAuthStore } from '../../stores/auth'
 import { cardapioService } from '../../services/cardapio'
 import type { Cardapio } from '../../types/cardapio'
 import Button from 'primevue/button'
@@ -11,6 +12,7 @@ const cardapios = ref<Cardapio[]>([])
 const loading = ref(false)
 const error = ref('')
 const currentIndex = ref(0)
+const auth = useAuthStore()
 
 const carregarCardapio = async () => {
   loading.value = true
@@ -20,7 +22,7 @@ const carregarCardapio = async () => {
     cardapios.value = data
     
     // Encontrar o de hoje se possível
-    const hoje = new Date().toISOString().split('T')[0]
+    const hoje = new Date().toLocaleDateString('sv-SE') // Formato YYYY-MM-DD local
     const indexHoje = cardapios.value.findIndex(c => c.data_do_cardapio === hoje)
     if (indexHoje !== -1) {
       currentIndex.value = indexHoje
@@ -45,7 +47,9 @@ const anterior = () => {
 }
 
 const formatarDataExtenso = (data: string) => {
-  return new Date(data).toLocaleDateString('pt-BR', {
+  if (!data) return ''
+  const [year, month, day] = data.split('-').map(Number)
+  return new Date(year, month - 1, day).toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: 'long',
     year: 'numeric'
@@ -184,7 +188,7 @@ onMounted(carregarCardapio)
         <!-- Rodapé do Card -->
         <div class="mt-10 flex justify-between items-center pt-2">
           <span class="text-slate-600 text-[10px] font-bold tracking-widest uppercase">RI - IFBA</span>
-          <div class="flex gap-4">
+          <div v-if="auth.isAdmin" class="flex gap-4">
              <button class="p-1 hover:text-emerald-400 transition-colors">
                <i class="pi pi-pencil text-slate-700 text-sm"></i>
              </button>

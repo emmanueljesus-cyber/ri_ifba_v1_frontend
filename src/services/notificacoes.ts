@@ -23,10 +23,10 @@ export const notificacoesService = {
   },
 
   async marcarComoLida(id: number): Promise<void> {
-    await api.post(`/estudante/notificacoes/${id}/ler`)
+    await api.patch(`/estudante/notificacoes/${id}/ler`)
   },
 
   async marcarTodasComoLidas(): Promise<void> {
-    await api.post('/estudante/notificacoes/ler-todas')
+    await api.patch('/estudante/notificacoes/marcar-todas-lidas')
   }
 }

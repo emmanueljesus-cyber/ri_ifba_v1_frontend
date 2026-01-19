@@ -27,6 +27,19 @@ export const relatorioService = {
     const { data } = await api.get('/admin/relatorios/presencas', {
       params: { data_inicio: dataInicio, data_fim: dataFim, turno }
     })
+    return data
+  },
+
+  async dashboard(params: any = {}) {
+    const { data } = await api.get('/admin/dashboard', { params })
     return data.data
+  },
+
+  async exportarGeral(dataInicio: string, dataFim: string, turno?: string, formato: string = 'xlsx') {
+    const response = await api.get('/admin/relatorios/exportar', {
+      params: { data_inicio: dataInicio, data_fim: dataFim, turno, formato },
+      responseType: 'blob'
+    })
+    return response.data
   }
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { cardapioService } from '../../services/cardapio'
 import DataTable from 'primevue/datatable'
@@ -41,7 +41,15 @@ const carregarCardapios = async () => {
   loading.value = true
   try {
     const data = await cardapioService.listarAdmin()
-    cardapios.value = data.sort((a, b) => new Date(b.data_do_cardapio).getTime() - new Date(a.data_do_cardapio).getTime())
+    cardapios.value = (data || []).map(c => ({
+      ...c,
+      // Normalização de datas para evitar problemas de fuso horário na visualização
+      _dataObj: c.data_do_cardapio ? new Date(c.data_do_cardapio + 'T12:00:00') : null
+    })).sort((a, b) => {
+      const dateA = a._dataObj ? a._dataObj.getTime() : 0
+      const dateB = b._dataObj ? b._dataObj.getTime() : 0
+      return dateB - dateA
+    })
   } catch (err) {
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar cardápios' })
   } finally {
@@ -86,7 +94,7 @@ const abrirNovoComData = (dataString: string) => {
 const editarCardapio = (cardapio: any) => {
   cardapioForm.value = { 
     ...cardapio, 
-    data_do_cardapio: new Date(cardapio.data_do_cardapio),
+    data_do_cardapio: cardapio.data_do_cardapio ? new Date(cardapio.data_do_cardapio + 'T12:00:00') : null,
     turnos: cardapio.turnos || ['almoco', 'jantar']
   }
   displayDialog.value = true
@@ -99,10 +107,17 @@ const salvarCardapio = async () => {
   }
 
   try {
-    // Formata a data para YYYY-MM-DD
+    // Ajustar a data para o fuso horário local antes de converter para ISO string
+    // O DatePicker retorna um objeto Date. Usamos o formato YYYY-MM-DD
+    const date = cardapioForm.value.data_do_cardapio
+    const ano = date.getFullYear()
+    const mes = String(date.getMonth() + 1).padStart(2, '0')
+    const dia = String(date.getDate()).padStart(2, '0')
+    const dataFormatada = `${ano}-${mes}-${dia}`
+
     const payload = {
       ...cardapioForm.value,
-      data_do_cardapio: cardapioForm.value.data_do_cardapio.toISOString().split('T')[0]
+      data_do_cardapio: dataFormatada
     }
     await cardapioService.salvarAdmin(payload)
     toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Cardápio salvo com sucesso' })
@@ -160,6 +175,7 @@ const diasCalendario = computed(() => {
   // Dias do mês
   for (let d = 1; d <= ultimoDia.getDate(); d++) {
     const dataString = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    // Buscar cardápio ignorando fuso horário
     const cardapio = cardapios.value.find(c => c.data_do_cardapio === dataString)
     dias.push({ dia: d, cardapio, dataString })
   }
@@ -178,8 +194,8 @@ const diasCalendario = computed(() => {
       <div class="flex gap-2">
         <SelectButton v-model="viewMode" :options="[{label: 'Lista', value: 'list'}, {label: 'Cards', value: 'cards'}, {label: 'Mensal', value: 'calendar'}]" optionLabel="label" optionValue="value" class="mr-4" />
         <Button label="Modelos Excel" icon="pi pi-download" severity="info" text @click="displayTemplates = true" />
-        <Button label="Importar Cardápio" icon="pi pi-upload" severity="secondary" outlined @click="displayImport = true" />
-        <Button label="Novo Cardápio" icon="pi pi-plus" severity="success" @click="abrirNovo" />
+        <Button label="Importar" icon="pi pi-upload" severity="secondary" outlined @click="displayImport = true" />
+        <Button label="Novo" icon="pi pi-plus" severity="success" @click="abrirNovo" />
       </div>
     </div>
 
@@ -187,7 +203,7 @@ const diasCalendario = computed(() => {
       <DataTable :value="cardapios" :loading="loading" paginator :rows="10">
         <Column field="data_do_cardapio" header="Data">
           <template #body="{ data }">
-            {{ new Date(data.data_do_cardapio).toLocaleDateString('pt-BR') }}
+            {{ data._dataObj ? data._dataObj.toLocaleDateString('pt-BR') : '-' }}
           </template>
         </Column>
         <Column field="prato_principal_ptn01" header="Prato Principal"></Column>
@@ -247,7 +263,7 @@ const diasCalendario = computed(() => {
       <div v-for="card in cardapios" :key="card.id" class="bg-slate-800 rounded-[2rem] p-6 text-white shadow-xl border border-slate-700 relative overflow-hidden group">
         <div class="flex justify-between items-start mb-6">
           <span class="text-xs font-black uppercase tracking-[0.2em] text-slate-400">
-            {{ new Date(card.data_do_cardapio).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }) }}
+            {{ card._dataObj ? card._dataObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }) : '-' }}
           </span>
           <div class="flex gap-1">
              <Tag v-for="t in card.turnos" :key="t" :value="t" :severity="t === 'almoco' ? 'success' : 'info'" class="!text-[9px] uppercase !px-2" />
@@ -259,19 +275,31 @@ const diasCalendario = computed(() => {
         <div class="space-y-3 mb-6">
           <div class="flex items-center gap-3 py-2 border-b border-white/5">
              <i class="pi pi-circle-fill text-[8px] text-emerald-500"></i>
-             <span class="text-sm font-medium opacity-90">{{ card.acompanhamento_01 }}</span>
+             <div class="flex flex-col">
+                <span class="text-[10px] uppercase font-black text-slate-500">Principal 01</span>
+                <span class="text-sm font-medium opacity-90">{{ card.prato_principal_ptn01 }}</span>
+             </div>
           </div>
-          <div v-if="card.acompanhamento_02" class="flex items-center gap-3 py-2 border-b border-white/5">
+          <div v-if="card.prato_principal_ptn02" class="flex items-center gap-3 py-2 border-b border-white/5">
              <i class="pi pi-circle-fill text-[8px] text-emerald-500"></i>
-             <span class="text-sm font-medium opacity-90">{{ card.acompanhamento_02 }}</span>
+             <div class="flex flex-col">
+                <span class="text-[10px] uppercase font-black text-slate-500">Principal 02</span>
+                <span class="text-sm font-medium opacity-90">{{ card.prato_principal_ptn02 }}</span>
+             </div>
           </div>
-          <div class="flex items-center gap-3 py-2 border-b border-white/5">
+          <div v-if="card.acompanhamento_01" class="flex items-center gap-3 py-2 border-b border-white/5">
              <i class="pi pi-circle-fill text-[8px] text-emerald-500"></i>
-             <span class="text-sm font-medium opacity-90">{{ card.prato_principal_ptn02 }}</span>
+             <div class="flex flex-col">
+                <span class="text-[10px] uppercase font-black text-slate-500">Acomp. 01</span>
+                <span class="text-sm font-medium opacity-90">{{ card.acompanhamento_01 }}</span>
+             </div>
           </div>
-          <div class="flex items-center gap-3 py-2">
+          <div v-if="card.sobremesa" class="flex items-center gap-3 py-2">
              <i class="pi pi-circle-fill text-[8px] text-emerald-500"></i>
-             <span class="text-sm font-medium opacity-90">{{ card.sobremesa }}</span>
+             <div class="flex flex-col">
+                <span class="text-[10px] uppercase font-black text-slate-500">Sobremesa</span>
+                <span class="text-sm font-medium opacity-90">{{ card.sobremesa }}</span>
+             </div>
           </div>
         </div>
 

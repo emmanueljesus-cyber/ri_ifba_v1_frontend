@@ -89,6 +89,11 @@ const router = createRouter({
           path: 'relatorios',
           name: 'admin-relatorios',
           component: () => import('../views/admin/RelatoriosView.vue')
+        },
+        {
+          path: 'perfil',
+          name: 'admin-perfil',
+          component: () => import('../views/estudante/PerfilView.vue')
         }
       ]
     }

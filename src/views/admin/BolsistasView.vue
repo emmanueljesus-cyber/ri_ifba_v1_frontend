@@ -29,7 +29,8 @@ const motivoDesligamento = ref('')
 const carregarBolsistas = async () => {
   loading.value = true
   try {
-    bolsistas.value = await adminBolsistaService.listarTodos()
+    const data = await adminBolsistaService.listarTodos()
+    bolsistas.value = Array.isArray(data) ? data : (data?.data || [])
   } catch (err) {
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar usuários bolsistas' })
   } finally {
@@ -40,7 +41,8 @@ const carregarBolsistas = async () => {
 const carregarAprovados = async () => {
   loadingAprovados.value = true
   try {
-    aprovados.value = await adminBolsistaService.listarAprovados()
+    const data = await adminBolsistaService.listarAprovados()
+    aprovados.value = Array.isArray(data) ? data : (data?.data || [])
   } catch (err) {
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar lista de aprovados' })
   } finally {
@@ -73,7 +75,8 @@ const confirmarDesligamento = async () => {
 }
 
 const downloadTemplate = () => {
-  window.open(`${import.meta.env.VITE_API_BASE_URL}/admin/bolsistas/template`, '_blank')
+  const url = `${import.meta.env.VITE_API_BASE_URL}/admin/bolsistas/template`
+  window.open(url, '_blank')
 }
 
 onMounted(() => {
