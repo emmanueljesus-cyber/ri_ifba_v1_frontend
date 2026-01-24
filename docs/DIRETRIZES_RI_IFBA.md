@@ -16,7 +16,7 @@ Este documento define os padrões de desenvolvimento para o frontend do sistema 
 O projeto utiliza uma paleta de verdes sóbrios, alinhada à identidade do IFBA.
 - `primary`: Variáveis `--p-primary-X` no `main.css`. Use as classes Tailwind `text-primary-600`, `bg-primary-50`, etc.
 - `surface`: Cores de fundo e superfícies (cinzas do Slate).
-- `ifba-verde`: `#248c35` (cor principal da marca).
+- `ifba-verde`: `#6ee7b7` (cor principal solicitada).
 
 ### Tipografia
 - Fonte principal: **Lato**.

@@ -44,7 +44,8 @@ const carregarPerfil = async () => {
         matricula: auth.user.matricula,
         email: auth.user.email || '',
         curso: auth.user.curso ?? undefined,
-        turno: (auth.user.turno as any) ?? undefined,
+        turno_refeicao: (auth.user.turno_refeicao as any) ?? undefined,
+        turno_aula: (auth.user.turno_aula as any) ?? undefined,
         bolsista: !!auth.user.bolsista,
         foto: auth.user.foto ?? undefined,
         perfil: auth.user.perfil
@@ -410,11 +411,23 @@ onMounted(() => {
           <div v-if="perfil?.perfil === 'estudante'" class="space-y-2">
             <label class="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 ml-1">
               <i class="pi pi-clock text-primary-600"></i>
-              Turno
+              {{ perfil?.bolsista ? 'Refeicao' : 'Turno de Aula' }}
             </label>
             <div class="px-4 py-3 bg-slate-50/50 rounded-2xl border border-slate-100">
-              <p class="text-slate-900 font-medium capitalize">
-                {{ perfil?.turno || '-' }}
+              <p class="text-slate-900 font-medium flex items-center gap-2">
+                <!-- Icone baseado no turno -->
+                <i :class="{
+                  'pi pi-sun text-amber-500': perfil?.turno_refeicao === 'almoco' || perfil?.turno_aula === 'matutino',
+                  'pi pi-cloud text-blue-500': perfil?.turno_aula === 'vespertino',
+                  'pi pi-moon text-indigo-500': perfil?.turno_refeicao === 'jantar' || perfil?.turno_aula === 'noturno'
+                }"></i>
+                <!-- Texto do turno -->
+                <span class="capitalize">
+                  {{ perfil?.bolsista ? (perfil?.turno_refeicao === 'almoco' ? 'Almoco' : 'Jantar') :
+                     (perfil?.turno_aula === 'matutino' ? 'Matutino' :
+                      perfil?.turno_aula === 'vespertino' ? 'Vespertino' :
+                      perfil?.turno_aula === 'noturno' ? 'Noturno' : '-') }}
+                </span>
               </p>
             </div>
           </div>

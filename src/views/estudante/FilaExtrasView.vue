@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { FilterMatchMode } from '@primevue/core/api'
 import { useFilaExtrasStore } from '../../stores/filaExtras'
 import { useToast } from 'primevue/usetoast'
 import PageHeader from '../../components/common/PageHeader.vue'
@@ -11,9 +12,16 @@ import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 import Message from 'primevue/message'
 import Skeleton from 'primevue/skeleton'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
+import InputText from 'primevue/inputtext'
 
 const filaStore = useFilaExtrasStore()
 const toast = useToast()
+
+const filters = ref({
+  global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+})
 
 const dialogInscricao = ref(false)
 const refeicaoSelecionada = ref<any>(null)
@@ -28,7 +36,7 @@ const formatarData = (data: string) => {
 }
 
 const formatarTurno = (turno: string) => {
-  return turno === 'almoco' ? '🌅 Almoço' : '🌙 Jantar'
+  return turno === 'almoco' ? 'Almoco' : 'Jantar'
 }
 
 const abrirDialogInscricao = (refeicao: any) => {
@@ -201,20 +209,31 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div v-else class="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-sm">
+      <div v-else class="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-sm p-4">
         <DataTable
+          v-model:filters="filters"
           :value="filaStore.refeicoesDisponiveis"
           :rows="10"
           :paginator="filaStore.refeicoesDisponiveis.length > 10"
+          :globalFilterFields="['data_do_cardapio', 'turno']"
           class="p-datatable-sm"
           responsiveLayout="stack"
           breakpoint="768px"
         >
+          <template #header>
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-sm font-black text-slate-400 uppercase tracking-widest">Vagas Disponíveis</span>
+              <IconField iconPosition="left">
+                <InputIcon class="pi pi-search" />
+                <InputText v-model="filters['global'].value" placeholder="Filtrar..." class="!rounded-xl" />
+              </IconField>
+            </div>
+          </template>
           <Column header="Refeição">
             <template #body="{ data }">
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-lg">
-                  {{ data.turno === 'almoco' ? '🌅' : '🌙' }}
+                  <i :class="data.turno === 'almoco' ? 'pi pi-sun text-amber-500' : 'pi pi-moon text-indigo-500'"></i>
                 </div>
                 <div>
                   <p class="font-bold text-slate-800">{{ formatarData(data.data) }}</p>

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { FilterMatchMode } from '@primevue/core/api'
 import { useToast } from 'primevue/usetoast'
 import { adminBolsistaService } from '../../services/adminBolsista'
+import { useAvatar } from '../../composables/useAvatar'
 import PageHeader from '../../components/common/PageHeader.vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -14,13 +15,11 @@ import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import Avatar from 'primevue/avatar'
-import Tabs from 'primevue/tabs'
-import TabList from 'primevue/tablist'
-import Tab from 'primevue/tab'
-import TabPanels from 'primevue/tabpanels'
-import TabPanel from 'primevue/tabpanel'
+import SelectButton from 'primevue/selectbutton'
+import Select from 'primevue/select'
 
 const toast = useToast()
+const { getInitials, getAvatarStyle } = useAvatar()
 const bolsistas = ref<any[]>([])
 const aprovados = ref<any[]>([])
 const loading = ref(false)
@@ -31,18 +30,51 @@ const displayTemplates = ref(false)
 const selectedBolsista = ref<any>(null)
 const motivoDesligamento = ref('')
 
+const activeTab = ref('aprovados')
+const tabOptions = [
+  { label: 'Lista de Aprovados (Importada)', value: 'aprovados' },
+  { label: 'Usuários Bolsistas (Cadastrados)', value: 'cadastrados' }
+]
+
+const statusOptions = ref([
+  { label: 'Todos', value: null },
+  { label: 'Ativo', value: true },
+  { label: 'Inativo', value: false }
+])
+
+const turnoOptionsAprovados = ref([
+  { label: 'Todos Turnos', value: null },
+  { label: 'Almoço', value: 'almoco' },
+  { label: 'Jantar', value: 'jantar' }
+])
+
+const turnoOptionsCadastrados = ref([
+  { label: 'Todos Turnos', value: null },
+  { label: 'Matutino', value: 'matutino' },
+  { label: 'Vespertino', value: 'vespertino' },
+  { label: 'Noturno', value: 'noturno' }
+])
+
 const filtersAprovados = ref({
-  global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+  global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+  ativo: { value: null, matchMode: FilterMatchMode.EQUALS },
+  turno_refeicao: { value: null, matchMode: FilterMatchMode.EQUALS }
 })
 
 const filtersBolsistas = ref({
-  global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+  global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+  ativo: { value: null, matchMode: FilterMatchMode.EQUALS },
+  turno_refeicao: { value: null, matchMode: FilterMatchMode.EQUALS }
 })
 
 const carregarBolsistas = async () => {
   loading.value = true
   try {
-    const data = await adminBolsistaService.listarTodos()
+    const params = {
+      ativo: filtersBolsistas.value.ativo.value,
+      turno_refeicao: filtersBolsistas.value.turno_refeicao.value
+    }
+    const data = await adminBolsistaService.listarTodos(params)
     bolsistas.value = Array.isArray(data) ? data : (data?.data || [])
   } catch (err) {
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar usuários bolsistas' })
@@ -54,7 +86,11 @@ const carregarBolsistas = async () => {
 const carregarAprovados = async () => {
   loadingAprovados.value = true
   try {
-    const data = await adminBolsistaService.listarAprovados()
+    const params = {
+      ativo: filtersAprovados.value.ativo.value,
+      turno_refeicao: filtersAprovados.value.turno_refeicao.value
+    }
+    const data = await adminBolsistaService.listarAprovados(params)
     aprovados.value = Array.isArray(data) ? data : (data?.data || [])
   } catch (err) {
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar lista de aprovados' })
@@ -62,6 +98,14 @@ const carregarAprovados = async () => {
     loadingAprovados.value = false
   }
 }
+
+watch([() => filtersAprovados.value.ativo.value, () => filtersAprovados.value.turno_refeicao.value], () => {
+  carregarAprovados()
+})
+
+watch([() => filtersBolsistas.value.ativo.value, () => filtersBolsistas.value.turno_refeicao.value], () => {
+  carregarBolsistas()
+})
 
 const onUpload = async (event: any) => {
   try {
@@ -106,119 +150,135 @@ onMounted(() => {
       :breadcrumbs="[{ label: 'Admin', route: '/admin' }, { label: 'Gestão de Bolsistas' }]"
     />
 
-    <div class="flex justify-end -mt-16 mb-4 relative z-10">
+    <div class="flex justify-between items-center -mt-16 mb-4 relative z-10">
+      <SelectButton v-model="activeTab" :options="tabOptions" optionLabel="label" optionValue="value" aria-labelledby="basic" />
       <div class="flex gap-2">
         <Button label="Modelo Excel" icon="pi pi-download" severity="info" text @click="displayTemplates = true" />
         <Button label="Importar Planilha" icon="pi pi-upload" severity="secondary" outlined @click="displayImport = true" />
       </div>
     </div>
 
-    <Tabs value="0">
-      <TabList class="gap-4">
-        <Tab value="0" class="!px-6">Lista de Aprovados (Importada)</Tab>
-        <Tab value="1" class="!px-6">Usuários Bolsistas (Cadastrados)</Tab>
-      </TabList>
-      <TabPanels>
-        <TabPanel value="0">
-          <div class="card bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-            <DataTable v-model:filters="filtersAprovados" :value="aprovados" :loading="loadingAprovados" paginator :rows="10"
-              :globalFilterFields="['matricula', 'turno']">
-              <template #header>
-                <div class="flex justify-between items-center mb-2">
-                  <span class="text-xl font-bold text-slate-700">Aprovados</span>
-                  <IconField>
-                    <InputIcon>
-                      <i class="pi pi-search" />
-                    </InputIcon>
-                    <InputText v-model="filtersAprovados['global'].value" placeholder="Buscar aprovado..." />
-                  </IconField>
+    <div v-if="activeTab === 'aprovados'" class="animate-fadein">
+      <div class="card bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+        <DataTable v-model:filters="filtersAprovados" :value="aprovados" :loading="loadingAprovados" paginator :rows="10"
+          :globalFilterFields="['matricula', 'nome', 'turno']" filterDisplay="menu">
+          <template #header>
+            <div class="flex justify-between items-center mb-2 gap-4">
+              <span class="text-xl font-bold text-slate-700">Aprovados</span>
+              <div class="flex gap-3 items-center">
+                <Select v-model="filtersAprovados['turno'].value" :options="turnoOptionsAprovados" optionLabel="label" optionValue="value" placeholder="Turno" class="w-40" />
+                <Select v-model="filtersAprovados['ativo'].value" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Status" class="w-40" />
+                <IconField>
+                  <InputIcon>
+                    <i class="pi pi-search" />
+                  </InputIcon>
+                  <InputText v-model="filtersAprovados['global'].value" placeholder="Buscar..." />
+                </IconField>
+              </div>
+            </div>
+          </template>
+          <Column field="matricula" header="Matrícula">
+            <template #body="{ data }">
+              <div class="flex items-center gap-3">
+                <Avatar icon="pi pi-user" shape="circle" :style="getAvatarStyle(data.matricula)" />
+                <span class="font-bold text-slate-700">{{ data.matricula }}</span>
+              </div>
+            </template>
+          </Column>
+          <Column field="nome" header="Nome">
+            <template #body="{ data }">
+              <span class="text-slate-600 font-medium">{{ data.nome || 'Não informado' }}</span>
+            </template>
+          </Column>
+          <Column field="turno_refeicao" header="Turno">
+            <template #body="{ data }">
+              <Tag :severity="data.turno_refeicao === 'almoco' ? 'success' : 'info'" class="!rounded-full px-3 uppercase text-[10px] font-black">
+                <i :class="data.turno_refeicao === 'almoco' ? 'pi pi-sun' : 'pi pi-moon'" class="mr-1"></i>
+                {{ data.turno_refeicao }}
+              </Tag>
+            </template>
+          </Column>
+          <Column field="ativo" header="Status">
+            <template #body="{ data }">
+              <Tag :value="data.ativo ? 'Ativa' : 'Inativa'" :severity="data.ativo ? 'success' : 'danger'" />
+            </template>
+          </Column>
+          <Column header="Ações">
+            <template #body="{ data }">
+               <Button v-if="data.ativo" icon="pi pi-times-circle" outlined rounded severity="danger" title="Desativar Bolsista" @click="adminBolsistaService.desativarAprovado(data.id); carregarAprovados()" />
+               <Button v-else icon="pi pi-check-circle" outlined rounded severity="success" title="Reativar Matrícula" @click="adminBolsistaService.reativarAprovado(data.id); carregarAprovados()" />
+            </template>
+          </Column>
+        </DataTable>
+      </div>
+    </div>
+
+    <div v-if="activeTab === 'cadastrados'" class="animate-fadein">
+      <div class="card bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+        <DataTable v-model:filters="filtersBolsistas" :value="bolsistas" :loading="loading" paginator :rows="10"
+          :globalFilterFields="['nome', 'matricula', 'curso']">
+          <template #header>
+            <div class="flex justify-between items-center mb-2 gap-4">
+              <span class="text-xl font-bold text-slate-700">Usuários Ativos</span>
+              <div class="flex gap-3 items-center">
+                <Select v-model="filtersBolsistas['turno_refeicao'].value" :options="turnoOptionsAprovados" optionLabel="label" optionValue="value" placeholder="Refeição" class="w-40" />
+                <Select v-model="filtersBolsistas['ativo'].value" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Status" class="w-40" />
+                <IconField>
+                  <InputIcon>
+                    <i class="pi pi-search" />
+                  </InputIcon>
+                  <InputText v-model="filtersBolsistas['global'].value" placeholder="Buscar bolsista..." />
+                </IconField>
+              </div>
+            </div>
+          </template>
+          <Column field="nome" header="Bolsista">
+            <template #body="{ data }">
+              <div class="flex items-center gap-3">
+                <Avatar
+                  v-if="data.foto"
+                  :image="data.foto"
+                  shape="circle"
+                />
+                <Avatar
+                  v-else
+                  :label="getInitials(data.nome)"
+                  shape="circle"
+                  :style="getAvatarStyle(data.nome)"
+                />
+                <div class="flex flex-col">
+                  <span class="font-bold text-slate-700">{{ data.nome }}</span>
+                  <span class="text-[10px] text-slate-400 font-black uppercase">{{ data.matricula }}</span>
                 </div>
-              </template>
-              <Column field="matricula" header="Matrícula">
-                <template #body="{ data }">
-                  <div class="flex items-center gap-3">
-                    <Avatar icon="pi pi-user" shape="circle" class="bg-primary-50 text-primary-600" />
-                    <span class="font-bold text-slate-700">{{ data.matricula }}</span>
-                  </div>
-                </template>
-              </Column>
-              <Column field="turno" header="Turno">
-                <template #body="{ data }">
-                  <Tag :severity="data.turno === 'almoco' ? 'success' : 'info'" class="!rounded-full px-3 uppercase text-[10px] font-black">
-                    <i :class="data.turno === 'almoco' ? 'pi pi-sun' : 'pi pi-moon'" class="mr-1"></i>
-                    {{ data.turno }}
-                  </Tag>
-                </template>
-              </Column>
-              <Column field="ativo" header="Status">
-                <template #body="{ data }">
-                  <Tag :value="data.ativo ? 'Ativa' : 'Inativa'" :severity="data.ativo ? 'success' : 'danger'" />
-                </template>
-              </Column>
-              <Column header="Ações">
-                <template #body="{ data }">
-                   <Button v-if="data.ativo" icon="pi pi-times-circle" outlined rounded severity="danger" title="Desativar Matrícula" @click="adminBolsistaService.desativarAprovado(data.id); carregarAprovados()" />
-                   <Button v-else icon="pi pi-check-circle" outlined rounded severity="success" title="Reativar Matrícula" @click="adminBolsistaService.reativarAprovado(data.id); carregarAprovados()" />
-                </template>
-              </Column>
-            </DataTable>
-          </div>
-        </TabPanel>
-        <TabPanel value="1">
-          <div class="card bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-            <DataTable v-model:filters="filtersBolsistas" :value="bolsistas" :loading="loading" paginator :rows="10"
-              :globalFilterFields="['nome', 'matricula', 'curso']">
-              <template #header>
-                <div class="flex justify-between items-center mb-2">
-                  <span class="text-xl font-bold text-slate-700">Usuários Ativos</span>
-                  <IconField>
-                    <InputIcon>
-                      <i class="pi pi-search" />
-                    </InputIcon>
-                    <InputText v-model="filtersBolsistas['global'].value" placeholder="Buscar bolsista..." />
-                  </IconField>
-                </div>
-              </template>
-              <Column field="nome" header="Bolsista">
-                <template #body="{ data }">
-                  <div class="flex items-center gap-3">
-                    <Avatar
-                      v-if="data.foto"
-                      :image="data.foto"
-                      shape="circle"
-                    />
-                    <Avatar
-                      v-else
-                      icon="pi pi-user"
-                      shape="circle"
-                      class="bg-primary-50 text-primary-600"
-                    />
-                    <div class="flex flex-col">
-                      <span class="font-bold text-slate-700">{{ data.nome }}</span>
-                      <span class="text-[10px] text-slate-400 font-black uppercase">{{ data.matricula }}</span>
-                    </div>
-                  </div>
-                </template>
-              </Column>
-              <Column field="curso" header="Curso"></Column>
-              <Column field="ativo" header="Status">
-                <template #body="{ data }">
-                  <Tag :value="data.ativo ? 'Ativo' : 'Inativo'" :severity="data.ativo ? 'success' : 'danger'" />
-                </template>
-              </Column>
-              <Column header="Ações">
-                <template #body="{ data }">
-                  <div class="flex gap-2">
-                    <Button v-if="data.ativo" icon="pi pi-user-minus" outlined rounded severity="danger" @click="selectedBolsista = data; displayDesligar = true" />
-                    <Button v-else icon="pi pi-user-plus" outlined rounded severity="success" @click="adminBolsistaService.reativar(data.id); carregarBolsistas()" />
-                  </div>
-                </template>
-              </Column>
-            </DataTable>
-          </div>
-        </TabPanel>
-      </TabPanels>
-    </Tabs>
+              </div>
+            </template>
+          </Column>
+          <Column field="curso" header="Curso"></Column>
+          <Column field="turno_refeicao" header="Refeição">
+            <template #body="{ data }">
+              <Tag v-if="data.turno_refeicao" :severity="data.turno_refeicao === 'almoco' ? 'success' : 'info'" class="!rounded-full px-3 uppercase text-[10px] font-black">
+                <i :class="data.turno_refeicao === 'almoco' ? 'pi pi-sun' : 'pi pi-moon'" class="mr-1"></i>
+                {{ data.turno_refeicao }}
+              </Tag>
+              <span v-else class="text-slate-400 text-xs italic">Não informado</span>
+            </template>
+          </Column>
+          <Column field="ativo" header="Status">
+            <template #body="{ data }">
+              <Tag :value="data.ativo ? 'Ativo' : 'Inativo'" :severity="data.ativo ? 'success' : 'danger'" />
+            </template>
+          </Column>
+          <Column header="Ações">
+            <template #body="{ data }">
+              <div class="flex gap-2">
+                <Button v-if="data.ativo" icon="pi pi-user-minus" outlined rounded severity="danger" @click="selectedBolsista = data; displayDesligar = true" />
+                <Button v-else icon="pi pi-user-plus" outlined rounded severity="success" @click="adminBolsistaService.reativar(data.id); carregarBolsistas()" />
+              </div>
+            </template>
+          </Column>
+        </DataTable>
+      </div>
+    </div>
 
     <!-- Dialog Importação -->
     <Dialog v-model:visible="displayImport" header="Importar Bolsistas" :style="{ width: '450px' }" modal>

@@ -8,7 +8,8 @@ export interface User {
   perfil: PerfilUsuario
   bolsista?: boolean
   curso?: string | null
-  turno?: string | null
+  turno_refeicao?: string | null
+  turno_aula?: string | null
   foto?: string | null
 }
 
@@ -25,6 +26,7 @@ export interface RegisterRequest {
   password_confirmation: string
   curso?: string | null
   turno?: string | null
+  turno_aula?: string | null
   perfil?: PerfilUsuario
 }
 

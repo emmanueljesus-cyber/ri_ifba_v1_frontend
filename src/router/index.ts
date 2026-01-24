@@ -62,6 +62,11 @@ const router = createRouter({
           name: 'justificativas',
           component: () => import('../views/estudante/JustificativasView.vue'),
           meta: { bolsistaOnly: true }
+        },
+        {
+          path: 'cardapio',
+          name: 'dashboard-cardapio',
+          component: () => import('../views/estudante/CardapioView.vue')
         }
       ]
     },
@@ -87,6 +92,11 @@ const router = createRouter({
           component: () => import('../views/admin/PresencasView.vue')
         },
         {
+          path: 'extras',
+          name: 'admin-extras',
+          component: () => import('../views/admin/ExtrasView.vue')
+        },
+        {
           path: 'bolsistas',
           name: 'admin-bolsistas',
           component: () => import('../views/admin/BolsistasView.vue')
@@ -100,11 +110,6 @@ const router = createRouter({
           path: 'relatorios',
           name: 'admin-relatorios',
           component: () => import('../views/admin/RelatoriosView.vue')
-        },
-        {
-          path: 'extras',
-          name: 'admin-extras',
-          component: () => import('../views/admin/ExtrasView.vue')
         },
         {
           path: 'perfil',
@@ -125,6 +130,10 @@ router.beforeEach(async (to, _from, next) => {
       await auth.fetchMe()
     } catch (err) {
       console.error('Erro ao recuperar sessão', err)
+      // Se falhou ao buscar o "me", a sessão provavelmente é inválida
+      if (to.meta.requiresAuth) {
+        return next({ name: 'login', query: { redirect: to.fullPath } })
+      }
     }
   }
 
@@ -143,14 +152,14 @@ router.beforeEach(async (to, _from, next) => {
     return next({ name: 'dashboard' })
   }
 
-  // Redirect authenticated users from public pages (except home) to dashboard
-  if (to.meta.public && auth.isAuthenticated && to.name !== 'home') {
+  // Redirect authenticated users from auth pages or home to dashboard (unless explicitly accessing public cardapio)
+  if (auth.isAuthenticated && (to.name === 'login' || to.name === 'register' || to.name === 'home')) {
     return next({ name: auth.user?.perfil === 'admin' ? 'admin-dashboard' : 'dashboard' })
   }
 
-  // Redirect authenticated users from home to dashboard
-  if (to.name === 'home' && auth.isAuthenticated) {
-    return next({ name: auth.user?.perfil === 'admin' ? 'admin-dashboard' : 'dashboard' })
+  // Allow public access to cardapio even for authenticated users
+  if (to.name === 'cardapio' && to.meta.public) {
+    return next()
   }
 
   return next()

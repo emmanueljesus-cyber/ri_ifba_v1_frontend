@@ -1,13 +1,13 @@
 import api from './api'
 
 export const adminBolsistaService = {
-  async listarTodos() {
-    const { data } = await api.get('/admin/bolsistas')
+  async listarTodos(params?: any) {
+    const { data } = await api.get('/admin/bolsistas', { params })
     return data.data
   },
 
-  async listarAprovados() {
-    const { data } = await api.get('/admin/bolsistas-aprovados')
+  async listarAprovados(params?: any) {
+    const { data } = await api.get('/admin/bolsistas-aprovados', { params })
     return data.data
   },
 

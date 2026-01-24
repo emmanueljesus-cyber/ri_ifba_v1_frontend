@@ -9,6 +9,8 @@ interface ResumoDashboard {
   } | null
   metricas: {
     total_bolsistas: number
+    bolsistas_ativos: number
+    bolsistas_inativos: number
     presencas_hoje: number
     faltas_hoje: number
     justificativas_pendentes: number

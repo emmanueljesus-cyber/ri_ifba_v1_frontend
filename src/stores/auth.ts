@@ -35,11 +35,13 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function register(payload: RegisterRequest) {
+  async function register(payload: RegisterRequest, autoLogin = true) {
     loading.value = true
     try {
       const data = await authService.register(payload)
-      setSession(data)
+      if (autoLogin) {
+        setSession(data)
+      }
       return data
     } finally {
       loading.value = false

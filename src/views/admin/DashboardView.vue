@@ -1,15 +1,38 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { adminDashboardService } from '../../services/adminDashboard'
+import { adminPresencaService } from '../../services/adminPresenca'
+import { useAvatar } from '../../composables/useAvatar'
+import { useToast } from 'primevue/usetoast'
 import PageHeader from '../../components/common/PageHeader.vue'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
-import ProgressBar from 'primevue/progressbar'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import Tag from 'primevue/tag'
+import Avatar from 'primevue/avatar'
+import InputText from 'primevue/inputtext'
+import SelectButton from 'primevue/selectbutton'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
 
+const toast = useToast()
+const { getInitials, getAvatarStyle } = useAvatar()
 const resumo = ref<any>(null)
 const loading = ref(true)
+const loadingBolsistas = ref(false)
+const bolsistasHoje = ref<any[]>([])
+const turnoSelecionado = ref('almoco')
+const buscaRapida = ref('')
+const validandoToken = ref(false)
+
+const turnoOptions = [
+  { label: 'Almoço', value: 'almoco' },
+  { label: 'Jantar', value: 'jantar' }
+]
 
 const carregarDados = async () => {
+  loading.value = true
   try {
     resumo.value = await adminDashboardService.getResumo()
   } catch (err) {
@@ -19,8 +42,57 @@ const carregarDados = async () => {
   }
 }
 
+const carregarBolsistasHoje = async () => {
+  loadingBolsistas.value = true
+  try {
+    const hoje = new Date().toLocaleDateString('en-CA') // Garante data local YYYY-MM-DD
+    bolsistasHoje.value = await adminPresencaService.listarDoDia(hoje, turnoSelecionado.value)
+  } catch (err) {
+    console.error('Erro ao carregar bolsistas de hoje', err)
+  } finally {
+    loadingBolsistas.value = false
+  }
+}
+
+const validarMatriculaRapida = async () => {
+  if (!buscaRapida.value) return
+  validandoToken.value = true
+  try {
+    const hoje = new Date().toLocaleDateString('en-CA')
+    await adminPresencaService.confirmarPresenca({
+      matricula: buscaRapida.value,
+      turno: turnoSelecionado.value,
+      data: hoje
+    })
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: `Presença confirmada para ${buscaRapida.value}`, life: 3000 })
+    buscaRapida.value = ''
+    carregarBolsistasHoje()
+    carregarDados()
+  } catch (err: any) {
+    const msg = err.response?.data?.message || 'Falha ao validar'
+    toast.add({ severity: 'error', summary: 'Erro', detail: msg, life: 3000 })
+  } finally {
+    validandoToken.value = false
+  }
+}
+
+const getStatusSeverity = (status: string | null) => {
+  if (!status) return 'secondary'
+  switch (status) {
+    case 'presente': return 'success'
+    case 'falta_justificada': return 'info'
+    case 'falta_injustificada': return 'danger'
+    default: return 'secondary'
+  }
+}
+
+watch(turnoSelecionado, () => {
+  carregarBolsistasHoje()
+})
+
 onMounted(() => {
   carregarDados()
+  carregarBolsistasHoje()
 })
 </script>
 
@@ -33,18 +105,18 @@ onMounted(() => {
     />
 
     <div class="flex justify-end -mt-16 mb-4 relative z-10">
-      <Button icon="pi pi-refresh" rounded outlined @click="carregarDados" :loading="loading" severity="secondary" />
+      <Button icon="pi pi-refresh" rounded outlined @click="carregarDados(); carregarBolsistasHoje()" :loading="loading || loadingBolsistas" severity="secondary" />
     </div>
 
     <!-- Métricas Rápidas -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center gap-4">
-        <div class="p-3 bg-primary-50 rounded-2xl text-primary-600">
+        <div class="p-3 bg-emerald-50 rounded-2xl text-emerald-600">
           <i class="pi pi-users text-2xl"></i>
         </div>
         <div>
-          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Bolsistas</p>
-          <p class="text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.total_bolsistas || 0 }}</p>
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Bolsistas Ativos</p>
+          <p class="text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.bolsistas_ativos || 0 }}</p>
         </div>
       </div>
 
@@ -79,74 +151,110 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Refeição Atual -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <Card class="lg:col-span-2">
-        <template #title> Refeição em Tempo Real </template>
-        <template #content>
-          <div v-if="resumo?.refeicao_atual" class="space-y-6">
-            <div class="flex justify-between items-end">
-              <div>
-                <p class="text-slate-500 text-sm capitalize">Turno: {{ resumo.refeicao_atual.turno }}</p>
-                <p class="text-3xl font-bold text-slate-800">
-                  {{ resumo.refeicao_atual.confirmados }} / {{ resumo.refeicao_atual.capacidade }}
-                </p>
-              </div>
-              <p class="text-primary-600 font-bold">
-                {{ Math.round((resumo.refeicao_atual.confirmados / resumo.refeicao_atual.capacidade) * 100) }}% ocupado
-              </p>
-            </div>
-            <ProgressBar
-              :value="Math.round((resumo.refeicao_atual.confirmados / resumo.refeicao_atual.capacidade) * 100)"
-              :showValue="false"
-              class="h-4"
-            />
-            <div class="grid grid-cols-2 gap-4 pt-4 border-t">
-              <div class="text-center">
-                <p class="text-slate-500 text-xs uppercase tracking-wider">Vagas Restantes</p>
-                <p class="text-xl font-bold text-slate-700">{{ resumo.refeicao_atual.vagas_restantes }}</p>
-              </div>
-              <div class="text-center border-l">
-                <p class="text-slate-500 text-xs uppercase tracking-wider">Capacidade Total</p>
-                <p class="text-xl font-bold text-slate-700">{{ resumo.refeicao_atual.capacidade }}</p>
-              </div>
-            </div>
+      <!-- Bolsistas do Dia -->
+      <div class="lg:col-span-2 bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-sm">
+        <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+          <div>
+            <h3 class="text-lg font-black text-slate-700 uppercase tracking-wider">Bolsistas do Dia</h3>
+            <p class="text-xs text-slate-500 font-medium">Lista de quem tem direito à refeição hoje.</p>
           </div>
-          <div v-else class="py-12 text-center">
-            <i class="pi pi-calendar-times text-4xl text-slate-300 mb-3"></i>
-            <p class="text-slate-500">Nenhuma refeição ativa no momento.</p>
-          </div>
-        </template>
-      </Card>
+          <SelectButton v-model="turnoSelecionado" :options="turnoOptions" optionLabel="label" optionValue="value" :unselectable="false" />
+        </div>
 
-      <Card>
-        <template #title> Ações Rápidas </template>
-        <template #content>
-          <div class="flex flex-col gap-3">
-            <Button
-              label="Validar QR Code"
-              icon="pi pi-qrcode"
-              class="w-full"
-              severity="success"
-              @click="$router.push('/admin/presencas')"
-            />
-            <Button
-              label="Novo Cardápio"
-              icon="pi pi-plus"
-              class="w-full"
-              outlined
-              @click="$router.push('/admin/cardapios')"
-            />
-            <Button
-              label="Relatórios"
-              icon="pi pi-file-pdf"
-              class="w-full"
-              severity="secondary"
-              outlined
-            />
-          </div>
-        </template>
-      </Card>
+        <DataTable :value="bolsistasHoje" :loading="loadingBolsistas" paginator :rows="5" class="p-datatable-sm">
+          <template #empty>
+            <div class="flex flex-col items-center justify-center py-8 text-slate-400">
+              <i class="pi pi-users text-4xl mb-2"></i>
+              <p>Não foi possível carregar os dados.</p>
+            </div>
+          </template>
+          <Column header="Bolsista">
+            <template #body="{ data }">
+              <div class="flex items-center gap-3">
+                <Avatar :label="getInitials(data.nome)" shape="circle" class="flex-shrink-0" :style="getAvatarStyle(data.nome)" />
+                <div class="flex flex-col">
+                  <span class="font-bold text-slate-700 leading-none">{{ data.nome }}</span>
+                  <span class="text-[10px] text-slate-400 font-black uppercase tracking-tighter mt-1">{{ data.matricula }}</span>
+                </div>
+              </div>
+            </template>
+          </Column>
+          <Column field="curso" header="Curso" class="text-xs text-slate-500"></Column>
+          <Column header="Status" class="text-right">
+            <template #body="{ data }">
+              <Tag :value="data.presenca?.status || 'Pendente'" :severity="getStatusSeverity(data.presenca?.status)" class="!rounded-full px-3 uppercase text-[10px] font-black" />
+            </template>
+          </Column>
+        </DataTable>
+        
+        <div class="p-4 bg-emerald-50/50 border-t border-emerald-100 flex justify-between items-center" v-if="resumo?.refeicao_atual">
+           <span class="text-xs font-bold text-emerald-700 uppercase tracking-widest">Ocupação do {{ resumo.refeicao_atual.turno }}:</span>
+           <div class="flex items-center gap-3">
+              <span class="text-sm font-black text-emerald-800">{{ resumo.refeicao_atual.confirmados }} / {{ resumo.refeicao_atual.capacidade }}</span>
+              <div class="w-32 h-2 bg-emerald-200 rounded-full overflow-hidden">
+                 <div class="h-full bg-emerald-500" :style="{ width: Math.min(100, (resumo.refeicao_atual.confirmados / resumo.refeicao_atual.capacidade) * 100) + '%' }"></div>
+              </div>
+           </div>
+        </div>
+      </div>
+
+      <!-- Ações Rápidas -->
+      <div class="space-y-6">
+        <Card class="!rounded-[2.5rem] !border-slate-200 overflow-hidden shadow-sm">
+          <template #title>
+             <span class="text-base font-black text-slate-700 uppercase tracking-wider">Validação Rápida</span>
+          </template>
+          <template #content>
+            <div class="space-y-4">
+              <p class="text-xs text-slate-500">Digite a matrícula para confirmar presença manualmente.</p>
+              <div class="flex flex-col gap-3">
+                <IconField iconPosition="left">
+                  <InputIcon class="pi pi-user" />
+                  <InputText v-model="buscaRapida" placeholder="Matrícula..." class="w-full !rounded-xl" @keyup.enter="validarMatriculaRapida" />
+                </IconField>
+                <Button label="Validar Matrícula" icon="pi pi-check" class="w-full !rounded-xl shadow-lg shadow-emerald-100" severity="success" :loading="validandoToken" @click="validarMatriculaRapida" />
+              </div>
+              
+              <div class="relative py-2">
+                <div class="absolute inset-0 flex items-center"><span class="w-full border-t border-slate-100"></span></div>
+                <div class="relative flex justify-center text-[10px] font-black text-slate-400 uppercase"><span class="bg-white px-2">ou</span></div>
+              </div>
+              
+              <Button label="Escanear QR Code" icon="pi pi-qrcode" class="w-full !rounded-xl" severity="secondary" outlined @click="$router.push('/admin/presencas')" />
+            </div>
+          </template>
+        </Card>
+
+        <Card class="!rounded-[2.5rem] !border-slate-200 overflow-hidden shadow-sm">
+          <template #title>
+             <span class="text-base font-black text-slate-700 uppercase tracking-wider">Outras Ações</span>
+          </template>
+          <template #content>
+            <div class="flex flex-col gap-2">
+              <Button label="Gerenciar Cardápios" icon="pi pi-calendar-plus" text class="!justify-start !text-slate-600 hover:!bg-slate-50 !rounded-xl" @click="$router.push('/admin/cardapios')" />
+              <Button label="Relatórios Gerais" icon="pi pi-file-pdf" text class="!justify-start !text-slate-600 hover:!bg-slate-50 !rounded-xl" @click="$router.push('/admin/relatorios')" />
+              <Button label="Gestão de Bolsistas" icon="pi pi-users" text class="!justify-start !text-slate-600 hover:!bg-slate-50 !rounded-xl" @click="$router.push('/admin/bolsistas')" />
+            </div>
+          </template>
+        </Card>
+      </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+:deep(.p-datatable-thead > tr > th) {
+  background: transparent;
+  color: #94a3b8;
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  padding: 1rem 1.5rem;
+}
+
+:deep(.p-datatable-tbody > tr > td) {
+  padding: 1rem 1.5rem;
+}
+</style>

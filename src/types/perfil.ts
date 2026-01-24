@@ -6,7 +6,8 @@ export interface Perfil {
   perfil: 'admin' | 'estudante'
   bolsista: boolean
   curso?: string | null
-  turno?: 'matutino' | 'vespertino' | 'noturno' | null
+  turno_refeicao?: 'almoco' | 'jantar' | null
+  turno_aula?: 'matutino' | 'vespertino' | 'noturno' | null
   foto?: string | null
   preferencia_alimentar?: string | null
   restricoes_alimentares?: string[]
@@ -19,7 +20,7 @@ export interface AtualizarPerfilRequest {
   nome?: string
   email?: string
   curso?: string
-  turno?: 'matutino' | 'vespertino' | 'noturno'
+  turno?: 'almoco' | 'jantar' | 'matutino' | 'vespertino' | 'noturno'
 }
 
 export interface AlterarSenhaRequest {

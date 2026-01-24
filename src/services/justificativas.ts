@@ -35,9 +35,9 @@ export const justificativaService = {
   },
 
   // Admin methods
-  async listarTodasAdmin(): Promise<Justificativa[]> {
-    const { data } = await api.get<ApiResponse<Justificativa[]>>('/admin/justificativas')
-    return data.data
+  async listarTodasAdmin(params?: any): Promise<{ data: Justificativa[], meta: any }> {
+    const { data } = await api.get<ApiResponse<Justificativa[]>>('/admin/justificativas', { params })
+    return { data: data.data, meta: (data as any).meta }
   },
 
   async aprovarAdmin(id: number): Promise<void> {

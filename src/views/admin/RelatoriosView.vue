@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
+import { FilterMatchMode } from '@primevue/core/api'
 import { relatorioService } from '../../services/relatorios'
 import PageHeader from '../../components/common/PageHeader.vue'
 
@@ -28,11 +29,18 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import DatePicker from 'primevue/datepicker'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
+import InputText from 'primevue/inputtext'
 
 const loading = ref(false)
 const relatorio = ref<any>(null)
 const relatorioPresencas = ref<any>(null)
 const statsDashboard = ref<any>(null)
+
+const filters = ref({
+  global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+})
 
 const dataAtual = new Date()
 const mesSelecionado = ref(dataAtual.getMonth() + 1)
@@ -342,7 +350,24 @@ watch(activeTab, (newTab) => {
                 <Button label="Exportar Detalhado" icon="pi pi-download" severity="info" outlined class="!rounded-xl" @click="exportarGeral" />
               </div>
 
-              <DataTable :value="relatorioPresencas?.data || []" :loading="loading" paginator :rows="10" class="p-datatable-sm mt-4">
+              <DataTable 
+                v-model:filters="filters"
+                :value="relatorioPresencas?.data || []" 
+                :loading="loading" 
+                paginator 
+                :rows="10" 
+                class="p-datatable-sm mt-4"
+                :globalFilterFields="['nome', 'matricula', 'status', 'tipo']"
+              >
+                <template #header>
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-lg font-black text-slate-700 uppercase tracking-wider">Resultados</span>
+                        <IconField iconPosition="left">
+                            <InputIcon class="pi pi-search" />
+                            <InputText v-model="filters['global'].value" placeholder="Filtrar resultados..." class="!rounded-xl" />
+                        </IconField>
+                    </div>
+                </template>
                 <template #empty>
                   <p class="text-center p-8 text-slate-500">Nenhum registro encontrado para o período.</p>
                 </template>

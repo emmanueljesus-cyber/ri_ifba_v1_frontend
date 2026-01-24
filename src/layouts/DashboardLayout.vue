@@ -185,14 +185,14 @@ onMounted(() => {
                 <template v-else>
                   <button
                     class="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-primary-50 hover:text-primary-700 rounded-xl transition-all group"
-                    @click="router.push('/'); menuPanel?.hide()"
+                    @click="router.push('/dashboard'); menuPanel?.hide()"
                   >
                     <i class="pi pi-home text-slate-500 group-hover:text-primary-600 transition-colors"></i>
                     <span class="text-sm font-semibold text-slate-700 group-hover:text-primary-700">Dashboard</span>
                   </button>
                   <button
                     class="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-primary-50 hover:text-primary-700 rounded-xl transition-all group"
-                    @click="router.push('/cardapio'); menuPanel?.hide()"
+                    @click="router.push('/dashboard/cardapio'); menuPanel?.hide()"
                   >
                     <i class="pi pi-calendar text-slate-500 group-hover:text-primary-600 transition-colors"></i>
                     <span class="text-sm font-semibold text-slate-700 group-hover:text-primary-700">Cardápio</span>
@@ -200,7 +200,7 @@ onMounted(() => {
                   <button
                     v-if="!auth.user?.bolsista"
                     class="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-primary-50 hover:text-primary-700 rounded-xl transition-all group"
-                    @click="router.push('/fila-extras'); menuPanel?.hide()"
+                    @click="router.push('/dashboard/fila-extras'); menuPanel?.hide()"
                   >
                     <i class="pi pi-ticket text-slate-500 group-hover:text-primary-600 transition-colors"></i>
                     <span class="text-sm font-semibold text-slate-700 group-hover:text-primary-700">Fila de Extras</span>
@@ -208,14 +208,14 @@ onMounted(() => {
                   <button
                     v-if="auth.user?.bolsista"
                     class="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-primary-50 hover:text-primary-700 rounded-xl transition-all group"
-                    @click="router.push('/justificativas'); menuPanel?.hide()"
+                    @click="router.push('/dashboard/justificativas'); menuPanel?.hide()"
                   >
                     <i class="pi pi-file-edit text-slate-500 group-hover:text-primary-600 transition-colors"></i>
                     <span class="text-sm font-semibold text-slate-700 group-hover:text-primary-700">Justificativas</span>
                   </button>
                   <button
                     class="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-primary-50 hover:text-primary-700 rounded-xl transition-all group"
-                    @click="router.push('/historico'); menuPanel?.hide()"
+                    @click="router.push('/dashboard/historico'); menuPanel?.hide()"
                   >
                     <i class="pi pi-history text-slate-500 group-hover:text-primary-600 transition-colors"></i>
                     <span class="text-sm font-semibold text-slate-700 group-hover:text-primary-700">Histórico</span>
@@ -225,7 +225,7 @@ onMounted(() => {
                 <div class="border-t border-slate-200 my-2"></div>
                 <button
                   class="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-primary-50 hover:text-primary-700 rounded-xl transition-all group"
-                  @click="router.push(auth.user?.perfil === 'admin' ? '/admin/perfil' : '/perfil'); menuPanel?.hide()"
+                  @click="router.push(auth.user?.perfil === 'admin' ? '/admin/perfil' : '/dashboard/perfil'); menuPanel?.hide()"
                 >
                   <i class="pi pi-user text-slate-500 group-hover:text-primary-600 transition-colors"></i>
                   <span class="text-sm font-semibold text-slate-700 group-hover:text-primary-700">Perfil</span>

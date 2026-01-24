@@ -28,5 +28,10 @@ export const adminPresencaService = {
       params: { data, turno }
     })
     return res.data
+  },
+
+  async confirmarPresenca(payload: { matricula: string, turno: string, data: string }) {
+    const { data } = await api.post('/admin/presencas/confirmar', payload)
+    return data.data
   }
 }

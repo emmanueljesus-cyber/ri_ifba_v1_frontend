@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
+import { FilterMatchMode } from '@primevue/core/api'
 import { useToast } from 'primevue/usetoast'
 import { justificativaService } from '../../services/justificativas'
 import { cardapioService } from '../../services/cardapio'
@@ -19,10 +20,17 @@ import InputNumber from 'primevue/inputnumber'
 import Skeleton from 'primevue/skeleton'
 import ProgressBar from 'primevue/progressbar'
 import Badge from 'primevue/badge'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
+import InputText from 'primevue/inputtext'
 
 const toast = useToast()
 const justificativas = ref<Justificativa[]>([])
 const loading = ref(false)
+
+const filters = ref({
+  global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+})
 const displayDialog = ref(false)
 const displayDetails = ref(false)
 const selectedJustificativa = ref<Justificativa | null>(null)
@@ -282,8 +290,9 @@ onMounted(() => {
          <p class="text-slate-500 font-medium">Você ainda não enviou nenhuma justificativa.</p>
       </div>
 
-      <div v-else class="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-sm">
+      <div v-else class="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-sm p-4">
         <DataTable 
+          v-model:filters="filters"
           :value="justificativas" 
           :loading="loading" 
           paginator 
@@ -291,14 +300,24 @@ onMounted(() => {
           responsiveLayout="stack" 
           breakpoint="960px"
           class="p-datatable-sm"
+          :globalFilterFields="['motivo', 'tipo', 'status']"
         >
+          <template #header>
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-sm font-black text-slate-400 uppercase tracking-widest">Minhas Justificativas</span>
+              <IconField iconPosition="left">
+                <InputIcon class="pi pi-search" />
+                <InputText v-model="filters['global'].value" placeholder="Filtrar..." class="!rounded-xl" />
+              </IconField>
+            </div>
+          </template>
           <template #empty> Nenhuma justificativa encontrada. </template>
           
           <Column header="Refeição">
             <template #body="{ data }">
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-lg">
-                  {{ data.refeicao?.turno === 'almoco' ? '🌅' : '🌙' }}
+                  <i :class="data.refeicao?.turno === 'almoco' ? 'pi pi-sun text-amber-500' : 'pi pi-moon text-indigo-500'"></i>
                 </div>
                 <div v-if="data.refeicao">
                   <p class="font-bold text-slate-800">{{ data.refeicao.data ? data.refeicao.data.split('-').reverse().join('/') : '-' }}</p>
@@ -398,7 +417,7 @@ onMounted(() => {
           >
             <template #option="slotProps">
               <div class="flex items-center gap-2">
-                 <span>{{ slotProps.option.turno === 'almoco' ? '🌅' : '🌙' }}</span>
+                 <i :class="slotProps.option.turno === 'almoco' ? 'pi pi-sun text-amber-500' : 'pi pi-moon text-indigo-500'"></i>
                  <span>{{ slotProps.option.data_do_cardapio ? slotProps.option.data_do_cardapio.split('-').reverse().join('/') : '-' }} - </span>
                  <span class="capitalize">{{ slotProps.option.turno }}</span>
               </div>

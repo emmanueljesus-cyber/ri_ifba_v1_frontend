@@ -40,10 +40,13 @@ export interface Refeicao {
   data_do_cardapio?: string
   turno: 'almoco' | 'jantar'
   prato_principal: string
+  prato_principal_ptn02?: string
   acompanhamento: string
   guarnicao: string
   salada: string
   sobremesa: string
+  suco?: string
+  ovo_lacto_vegetariano?: string
   vagas_extras_disponiveis?: number
   total_inscritos?: number
 }

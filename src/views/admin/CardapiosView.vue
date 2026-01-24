@@ -1,8 +1,30 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { FilterMatchMode } from '@primevue/core/api'
 import { useToast } from 'primevue/usetoast'
 import { cardapioService } from '../../services/cardapio'
 import PageHeader from '../../components/common/PageHeader.vue'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import Button from 'primevue/button'
+import Dialog from 'primevue/dialog'
+import InputText from 'primevue/inputtext'
+import DatePicker from 'primevue/datepicker'
+import Checkbox from 'primevue/checkbox'
+import SelectButton from 'primevue/selectbutton'
+import Tag from 'primevue/tag'
+import FileUpload from 'primevue/fileupload'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
+
+const toast = useToast()
+const cardapios = ref<any[]>([])
+const loading = ref(false)
+const displayDialog = ref(false)
+const displayImport = ref(false)
+const loadingImport = ref(false)
+const displayTemplates = ref(false)
+const viewMode = ref('list') // 'list', 'cards' ou 'calendar'
 
 // Locale pt-BR para DatePicker
 const ptBR = {
@@ -15,24 +37,10 @@ const ptBR = {
   today: 'Hoje',
   clear: 'Limpar'
 }
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
-import Button from 'primevue/button'
-import Dialog from 'primevue/dialog'
-import InputText from 'primevue/inputtext'
-import DatePicker from 'primevue/datepicker'
-import Checkbox from 'primevue/checkbox'
-import SelectButton from 'primevue/selectbutton'
-import Tag from 'primevue/tag'
 
-const toast = useToast()
-const cardapios = ref<any[]>([])
-const loading = ref(false)
-const displayDialog = ref(false)
-const displayImport = ref(false)
-const loadingImport = ref(false)
-const displayTemplates = ref(false)
-const viewMode = ref('list') // 'list', 'cards' ou 'calendar'
+const filters = ref({
+  global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+})
 const cardapioForm = ref({
   id: null,
   data_do_cardapio: null as Date | null,
@@ -49,6 +57,12 @@ const cardapioForm = ref({
 })
 
 const turnosImport = ref(['almoco', 'jantar'])
+const selectedCardapios = ref<any[]>([])
+const displayDeletePeriod = ref(false)
+const periodForm = ref({
+  data_inicio: null as Date | null,
+  data_fim: null as Date | null
+})
 
 const carregarCardapios = async () => {
   loading.value = true
@@ -78,6 +92,58 @@ const excluirCardapio = async (id: number) => {
     carregarCardapios()
   } catch (err) {
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao excluir' })
+  }
+}
+
+const deletarMultiplos = async () => {
+  if (selectedCardapios.value.length === 0) return
+  if (!confirm(`Deseja realmente excluir ${selectedCardapios.value.length} cardápios selecionados?`)) return
+  
+  try {
+    const ids = selectedCardapios.value.map(c => c.id)
+    await cardapioService.deletarMultiplosAdmin(ids)
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Cardápios excluídos' })
+    selectedCardapios.value = []
+    carregarCardapios()
+  } catch (err) {
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao excluir selecionados' })
+  }
+}
+
+const deletarPorPeriodo = async () => {
+  if (!periodForm.value.data_inicio || !periodForm.value.data_fim) {
+    toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Selecione o período completo' })
+    return
+  }
+
+  const format = (d: Date) => {
+    const ano = d.getFullYear()
+    const mes = String(d.getMonth() + 1).padStart(2, '0')
+    const dia = String(d.getDate()).padStart(2, '0')
+    return `${ano}-${mes}-${dia}`
+  }
+  
+  try {
+    await cardapioService.deletarPorPeriodoAdmin(
+      format(periodForm.value.data_inicio),
+      format(periodForm.value.data_fim)
+    )
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Cardápios do período excluídos' })
+    displayDeletePeriod.value = false
+    carregarCardapios()
+  } catch (err: any) {
+    toast.add({ severity: 'error', summary: 'Erro', detail: err.response?.data?.message || 'Falha ao excluir por período' })
+  }
+}
+
+const limparTodos = async () => {
+  if (!confirm('ATENÇÃO: Isso excluirá TODOS os cardápios do sistema. Deseja continuar?')) return
+  try {
+    await cardapioService.deletarTodosAdmin()
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Todos os cardápios foram removidos' })
+    carregarCardapios()
+  } catch (err) {
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao limpar tudo' })
   }
 }
 
@@ -142,6 +208,11 @@ const salvarCardapio = async () => {
   }
 }
 
+const downloadTemplate = (tipo: string) => {
+  const url = `${import.meta.env.VITE_API_BASE_URL}/admin/${tipo}/template`
+  window.location.href = url
+}
+
 const onUpload = async (event: any) => {
   const file = event.files[0]
   if (!file) return
@@ -149,7 +220,7 @@ const onUpload = async (event: any) => {
   loadingImport.value = true
   try {
     await cardapioService.importarAdmin(file, turnosImport.value)
-    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Cardápio importado com sucesso' })
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Cardápios importados' })
     displayImport.value = false
     carregarCardapios()
   } catch (err: any) {
@@ -157,15 +228,6 @@ const onUpload = async (event: any) => {
     toast.add({ severity: 'error', summary: 'Erro', detail: errorMsg })
   } finally {
     loadingImport.value = false
-  }
-}
-
-const downloadTemplate = async (tipo: string) => {
-  try {
-    const url = `${import.meta.env.VITE_API_BASE_URL}/admin/${tipo}/template`
-    window.open(url, '_blank')
-  } catch (err) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao baixar modelo' })
   }
 }
 
@@ -223,6 +285,8 @@ const diasCalendario = computed(() => {
           </template>
         </SelectButton>
         <div class="h-6 w-px bg-slate-200 mx-1"></div>
+        <Button v-if="selectedCardapios.length > 0" :label="'Excluir (' + selectedCardapios.length + ')'" icon="pi pi-trash" severity="danger" text size="small" @click="deletarMultiplos" class="!rounded-xl" />
+        <Button label="Limpar Período" icon="pi pi-calendar-minus" severity="warning" text size="small" @click="displayDeletePeriod = true" class="!rounded-xl" />
         <Button label="Modelos" icon="pi pi-download" severity="info" text size="small" @click="displayTemplates = true" class="!rounded-xl" />
         <Button label="Importar" icon="pi pi-upload" severity="secondary" outlined size="small" @click="displayImport = true" class="!rounded-xl" />
         <Button label="Novo" icon="pi pi-plus" severity="success" size="small" @click="abrirNovo" class="!rounded-xl shadow-md shadow-emerald-100" />
@@ -230,7 +294,17 @@ const diasCalendario = computed(() => {
     </div>
 
     <div v-if="viewMode === 'list'" class="card bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-      <DataTable :value="cardapios" :loading="loading" paginator :rows="10">
+      <DataTable v-model:selection="selectedCardapios" v-model:filters="filters" :value="cardapios" :loading="loading" paginator :rows="10" dataKey="id" :globalFilterFields="['prato_principal_ptn01', 'prato_principal_ptn02', 'guarnicao', 'acompanhamento_01', 'acompanhamento_02', 'salada', 'suco', 'sobremesa']">
+        <template #header>
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-lg font-black text-slate-700 uppercase tracking-wider">Registros</span>
+            <IconField iconPosition="left">
+              <InputIcon class="pi pi-search" />
+              <InputText v-model="filters['global'].value" placeholder="Buscar no cardápio..." class="!rounded-xl" />
+            </IconField>
+          </div>
+        </template>
+        <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
         <Column field="data_do_cardapio" header="Data">
           <template #body="{ data }">
             {{ data._dataObj ? data._dataObj.toLocaleDateString('pt-BR') : '-' }}
@@ -477,6 +551,38 @@ const diasCalendario = computed(() => {
       </div>
       <template #footer>
         <Button label="Fechar" icon="pi pi-times" text @click="displayImport = false" :disabled="loadingImport" class="w-full !rounded-xl" />
+      </template>
+    </Dialog>
+
+    <!-- Dialog Limpar por Período -->
+    <Dialog v-model:visible="displayDeletePeriod" header="Limpar Cardápios por Período" :style="{ width: '95%', maxWidth: '450px' }" modal class="p-fluid !rounded-[2.5rem] overflow-hidden">
+      <div class="space-y-6 pt-4">
+        <div class="p-4 bg-amber-50 rounded-2xl border border-amber-100">
+          <p class="text-amber-800 text-sm leading-relaxed">
+            Selecione um intervalo de datas para remover permanentemente todos os cardápios cadastrados nesse período.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="field">
+            <label class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Data Início</label>
+            <DatePicker v-model="periodForm.data_inicio" dateFormat="dd/mm/yy" :locale="ptBR" showIcon class="!rounded-xl" />
+          </div>
+          <div class="field">
+            <label class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Data Fim</label>
+            <DatePicker v-model="periodForm.data_fim" dateFormat="dd/mm/yy" :locale="ptBR" showIcon class="!rounded-xl" />
+          </div>
+        </div>
+
+        <div class="pt-4 border-t border-slate-100 mt-6">
+           <Button label="Limpar Tudo (CUIDADO)" icon="pi pi-exclamation-triangle" severity="danger" text size="small" @click="limparTodos" class="w-full !rounded-xl" />
+        </div>
+      </div>
+      <template #footer>
+        <div class="flex gap-3 w-full">
+          <Button label="Cancelar" icon="pi pi-times" text @click="displayDeletePeriod = false" class="flex-1 !rounded-xl" />
+          <Button label="Excluir Período" icon="pi pi-trash" @click="deletarPorPeriodo" severity="danger" class="flex-1 !rounded-xl shadow-lg shadow-red-100" />
+        </div>
       </template>
     </Dialog>
   </div>

@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { FilterMatchMode } from '@primevue/core/api'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { adminExtrasService, type FilaExtraAdmin, type EstatisticasExtras } from '../../services/adminExtras'
+import { useAvatar } from '../../composables/useAvatar'
 import PageHeader from '../../components/common/PageHeader.vue'
 
 // Locale pt-BR para DatePicker
@@ -19,11 +21,11 @@ const ptBR = {
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
+import SelectButton from 'primevue/selectbutton'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
-import SelectButton from 'primevue/selectbutton'
 import Card from 'primevue/card'
 import Tabs from 'primevue/tabs'
 import TabList from 'primevue/tablist'
@@ -32,9 +34,12 @@ import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
 import Calendar from 'primevue/calendar'
 import Avatar from 'primevue/avatar'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
 
 const toast = useToast()
 const router = useRouter()
+const { getInitials, getAvatarStyle } = useAvatar()
 
 // Estado
 const inscricoes = ref<FilaExtraAdmin[]>([])
@@ -44,6 +49,14 @@ const estatisticas = ref<EstatisticasExtras | null>(null)
 const loading = ref(false)
 const loadingHoje = ref(false)
 const loadingEstatisticas = ref(false)
+
+const filtersHoje = ref({
+  global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+})
+
+const filtersHistorico = ref({
+  global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+})
 
 // Filtro de turno para hoje
 const turnoHojeFiltro = ref<'almoco' | 'jantar'>('almoco')
@@ -390,18 +403,30 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Tabs -->
     <Tabs v-model:value="tabAtiva">
-      <TabList class="gap-4">
-        <Tab value="0" class="!px-6">
-          <i class="pi pi-list mr-2"></i>
-          Inscrições de Hoje
-        </Tab>
-        <Tab value="1" class="!px-6">
-          <i class="pi pi-history mr-2"></i>
-          Histórico
-        </Tab>
-      </TabList>
+      <!-- Navegação de Tabs -->
+      <div class="flex bg-white/50 backdrop-blur-sm p-1 rounded-2xl border border-slate-200 w-fit mb-6">
+        <SelectButton
+          v-model="tabAtiva"
+          :options="[
+            { label: 'Inscrições de Hoje', value: '0', icon: 'pi pi-list', count: inscricoesHoje.length },
+            { label: 'Histórico', value: '1', icon: 'pi pi-history' }
+          ]"
+          optionLabel="label"
+          optionValue="value"
+          :allowEmpty="false"
+          class="custom-select-button"
+        >
+          <template #option="slotProps">
+            <div class="flex items-center gap-2 px-2">
+              <i :class="slotProps.option.icon"></i>
+              <span class="text-xs font-bold uppercase tracking-tight">{{ slotProps.option.label }}</span>
+              <span v-if="slotProps.option.count !== undefined" class="bg-emerald-100 text-emerald-700 text-[10px] font-black px-2 py-0.5 rounded-full border border-emerald-200">{{ slotProps.option.count }}</span>
+            </div>
+          </template>
+        </SelectButton>
+      </div>
+
       <TabPanels>
         <!-- Tab: Inscrições de Hoje -->
         <TabPanel value="0">
@@ -419,39 +444,50 @@ onMounted(() => {
               />
             </div>
 
-            <DataTable
-              :value="inscricoesHojeFiltradas"
-              :loading="loadingHoje"
-              v-model:selection="inscricoesSelecionadas"
-              dataKey="id"
-              paginator
-              :rows="10"
-              emptyMessage="Nenhuma inscrição para este turno"
-            >
-              <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
-              <Column field="posicao" header="Posição" :sortable="true">
-                <template #body="{ data }">
-                  <span v-if="data.posicao && data.status === 'inscrito'" class="font-bold text-lg text-emerald-600">#{{ data.posicao }}</span>
-                  <span v-else-if="data.status === 'aprovado'" class="text-sm text-green-600 font-medium">
-                    <i class="pi pi-check-circle mr-1"></i>OK
-                  </span>
-                  <span v-else class="text-slate-400">-</span>
+              <DataTable
+                v-model:filters="filtersHoje"
+                :value="inscricoesHojeFiltradas"
+                :loading="loadingHoje"
+                v-model:selection="inscricoesSelecionadas"
+                dataKey="id"
+                paginator
+                :rows="10"
+                :globalFilterFields="['user.nome', 'user.matricula']"
+                emptyMessage="Nenhuma inscrição para este turno"
+              >
+                <template #header>
+                  <div class="flex justify-between items-center mb-2">
+                    <span class="text-lg font-black text-slate-700 uppercase tracking-wider">Fila do Turno</span>
+                    <IconField iconPosition="left">
+                      <InputIcon class="pi pi-search" />
+                      <InputText v-model="filtersHoje['global'].value" placeholder="Buscar aluno..." class="!rounded-xl" />
+                    </IconField>
+                  </div>
                 </template>
-              </Column>
-              <Column field="user.nome" header="Estudante" :sortable="true">
-                <template #body="{ data }">
-                  <div class="flex items-center gap-3">
-                    <Avatar
-                      v-if="data.user?.foto"
-                      :image="data.user.foto"
-                      shape="circle"
-                    />
-                    <Avatar
-                      v-else
-                      icon="pi pi-user"
-                      shape="circle"
-                      class="bg-primary-50 text-primary-600"
-                    />
+                <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
+                <Column field="posicao" header="Posição" :sortable="true">
+                  <template #body="{ data }">
+                    <span v-if="data.posicao && data.status === 'inscrito'" class="font-bold text-lg text-emerald-600">#{{ data.posicao }}</span>
+                    <span v-else-if="data.status === 'aprovado'" class="text-sm text-green-600 font-medium">
+                      <i class="pi pi-check-circle mr-1"></i>OK
+                    </span>
+                    <span v-else class="text-slate-400">-</span>
+                  </template>
+                </Column>
+                <Column field="user.nome" header="Estudante" :sortable="true">
+                  <template #body="{ data }">
+                    <div class="flex items-center gap-3">
+                      <Avatar
+                        v-if="data.user?.foto"
+                        :image="data.user.foto"
+                        shape="circle"
+                      />
+                      <Avatar
+                        v-else
+                        :label="getInitials(data.user?.nome)"
+                        shape="circle"
+                        :style="getAvatarStyle(data.user?.nome)"
+                      />
                     <div class="flex flex-col">
                       <p class="font-bold text-slate-700 leading-tight">{{ data.user.nome }}</p>
                       <p class="text-[10px] text-slate-400 font-black uppercase tracking-tighter">{{ data.user.matricula }}</p>
@@ -476,36 +512,40 @@ onMounted(() => {
                       v-if="data.status === 'inscrito'"
                       icon="pi pi-check"
                       severity="success"
-                      text
+                      variant="outlined"
                       rounded
                       title="Confirmar"
                       @click="confirmar(data)"
+                      class="!border-emerald-200"
                     />
                     <Button
                       v-if="data.status === 'inscrito'"
                       icon="pi pi-times"
                       severity="danger"
-                      text
+                      variant="outlined"
                       rounded
                       title="Rejeitar"
                       @click="abrirDialogRejeitar(data)"
+                      class="!border-red-200"
                     />
                     <Button
                       v-if="data.status === 'aprovado'"
                       icon="pi pi-user-check"
                       severity="info"
-                      text
+                      variant="outlined"
                       rounded
                       title="Registrar Presença"
                       @click="confirmarPresenca(data)"
+                      class="!border-blue-200"
                     />
                     <Button
                       icon="pi pi-trash"
                       severity="secondary"
-                      text
+                      variant="outlined"
                       rounded
                       title="Remover"
                       @click="remover(data)"
+                      class="!border-slate-200"
                     />
                   </div>
                 </template>
@@ -537,12 +577,23 @@ onMounted(() => {
             </div>
 
             <DataTable
+              v-model:filters="filtersHistorico"
               :value="inscricoes"
               :loading="loading"
               paginator
               :rows="15"
+              :globalFilterFields="['user.nome', 'user.matricula']"
               emptyMessage="Nenhuma inscrição encontrada"
             >
+              <template #header>
+                <div class="flex justify-between items-center mb-2">
+                  <span class="text-lg font-black text-slate-700 uppercase tracking-wider">Histórico</span>
+                  <IconField iconPosition="left">
+                    <InputIcon class="pi pi-search" />
+                    <InputText v-model="filtersHistorico['global'].value" placeholder="Buscar no histórico..." class="!rounded-xl" />
+                  </IconField>
+                </div>
+              </template>
               <Column field="user.nome" header="Estudante" :sortable="true">
                 <template #body="{ data }">
                   <div class="flex items-center gap-3">
@@ -553,9 +604,9 @@ onMounted(() => {
                     />
                     <Avatar
                       v-else
-                      icon="pi pi-user"
+                      :label="getInitials(data.user?.nome)"
                       shape="circle"
-                      class="bg-primary-50 text-primary-600"
+                      :style="getAvatarStyle(data.user?.nome)"
                     />
                     <div class="flex flex-col">
                       <p class="font-bold text-slate-700 leading-tight">{{ data.user.nome }}</p>
@@ -589,30 +640,33 @@ onMounted(() => {
                       v-if="data.status === 'inscrito'"
                       icon="pi pi-check"
                       severity="success"
-                      text
+                      variant="outlined"
                       rounded
                       size="small"
                       title="Aprovar"
                       @click="confirmar(data)"
+                      class="!border-emerald-200"
                     />
                     <Button
                       v-if="data.status === 'inscrito'"
                       icon="pi pi-times"
                       severity="danger"
-                      text
+                      variant="outlined"
                       rounded
                       size="small"
                       title="Rejeitar"
                       @click="abrirDialogRejeitar(data)"
+                      class="!border-red-200"
                     />
                     <Button
                       icon="pi pi-trash"
                       severity="secondary"
-                      text
+                      variant="outlined"
                       rounded
                       size="small"
                       title="Remover"
                       @click="remover(data)"
+                      class="!border-slate-200"
                     />
                   </div>
                 </template>
@@ -641,22 +695,25 @@ onMounted(() => {
       </template>
     </Dialog>
 
-    <!-- Dialog: Rejeitar Inscrição -->
-    <Dialog v-model:visible="displayRejeitar" header="Rejeitar Inscrição" modal :style="{ width: '400px' }">
-      <div class="space-y-4">
-        <p class="text-slate-600">
-          Você está prestes a rejeitar a inscrição de
-          <strong>{{ inscricaoSelecionada?.user?.nome }}</strong>.
-        </p>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Motivo (opcional)</label>
-          <InputText v-model="motivoRejeicao" class="w-full" placeholder="Informe o motivo da rejeição" />
-        </div>
-      </div>
-      <template #footer>
-        <Button label="Cancelar" severity="secondary" text @click="displayRejeitar = false" />
-        <Button label="Rejeitar" severity="danger" @click="confirmarRejeicao" />
-      </template>
-    </Dialog>
   </div>
 </template>
+
+<style scoped>
+.custom-select-button :deep(.p-togglebutton) {
+  border: 0;
+  background: transparent;
+  color: #64748b;
+  font-weight: 700;
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+}
+
+.custom-select-button :deep(.p-togglebutton.p-togglebutton-selected) {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.custom-select-button :deep(.p-togglebutton:not(.p-togglebutton-selected):hover) {
+  background: #f8fafc;
+}
+</style>

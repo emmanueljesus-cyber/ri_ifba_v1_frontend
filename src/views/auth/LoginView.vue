@@ -117,13 +117,6 @@ const handleSubmit = async () => {
         </div>
       </form>
 
-      <!-- Divider -->
-      <div class="relative py-2">
-        <Divider align="center" class="!before:border-slate-100">
-          <span class="text-slate-300 text-[10px] font-black uppercase tracking-[0.3em] bg-white px-4">Conectar com</span>
-        </Divider>
-      </div>
-
       <!-- SUAP Login (Em desenvolvimento) -->
       <Button 
         v-tooltip.top="'Em breve: Integração direta com SUAP'"

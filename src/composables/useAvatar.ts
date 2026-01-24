@@ -3,18 +3,12 @@
  * Gera cores baseadas no nome do usuário para avatares sem foto
  */
 
-// Paleta de cores para avatares
+// Paleta de cores para avatares - Padronizada para a paleta IFBA
 const avatarColors = [
-  { bg: '#10B981', text: '#FFFFFF' }, // Verde Emerald
-  { bg: '#3B82F6', text: '#FFFFFF' }, // Azul
-  { bg: '#8B5CF6', text: '#FFFFFF' }, // Roxo
-  { bg: '#EC4899', text: '#FFFFFF' }, // Rosa
-  { bg: '#F59E0B', text: '#FFFFFF' }, // Âmbar
-  { bg: '#EF4444', text: '#FFFFFF' }, // Vermelho
-  { bg: '#06B6D4', text: '#FFFFFF' }, // Ciano
-  { bg: '#14B8A6', text: '#FFFFFF' }, // Teal
-  { bg: '#F97316', text: '#FFFFFF' }, // Laranja
-  { bg: '#6366F1', text: '#FFFFFF' }, // Índigo
+  { bg: '#6ee7b7', text: '#064e3b' }, // Verde Emerald (Padrão)
+  { bg: '#1e742c', text: '#FFFFFF' }, // Verde Escuro
+  { bg: '#3b8d48', text: '#FFFFFF' }, // Verde Claro
+  { bg: '#175c23', text: '#FFFFFF' }, // Verde Musgo
 ]
 
 export function useAvatar() {

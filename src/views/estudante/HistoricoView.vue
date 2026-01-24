@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { FilterMatchMode } from '@primevue/core/api'
 import { useAuthStore } from '../../stores/auth'
 import { historicoService } from '../../services/historico'
 import PageHeader from '../../components/common/PageHeader.vue'
@@ -9,12 +10,19 @@ import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import Skeleton from 'primevue/skeleton'
 import Message from 'primevue/message'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
+import InputText from 'primevue/inputtext'
 import type { HistoricoRefeicao, ResumoHistorico } from '../../types/historico'
 
 const auth = useAuthStore()
 const historico = ref<HistoricoRefeicao[]>([])
 const resumo = ref<ResumoHistorico | null>(null)
 const loading = ref(false)
+
+const filters = ref({
+  global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+})
 
 // safer: use the boolean field `bolsista` if available on the authenticated user
 const isBolsista = computed(() => !!auth.user?.bolsista)
@@ -42,7 +50,7 @@ const formatarHora = (dataString: string) => {
 }
 
 const formatarTurno = (turno: string) => {
-  return turno === 'almoco' ? '🌅 Almoço' : '🌙 Jantar'
+  return turno === 'almoco' ? 'Almoco' : 'Jantar'
 }
 
 const carregarDados = async () => {
@@ -137,40 +145,52 @@ onMounted(() => {
         </div>
       </div>
 
-      <div v-else class="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-sm">
+      <div v-else class="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-sm p-4">
         <DataTable
+          v-model:filters="filters"
           :value="historico"
           :rows="10"
           :paginator="historico.length > 10"
+          :globalFilterFields="['data', 'turno', 'prato_principal']"
           stripedRows
           class="p-datatable-sm"
           responsiveLayout="stack"
           breakpoint="768px"
         >
-          <Column header="Data / Turno">
+          <template #header>
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-sm font-black text-slate-400 uppercase tracking-widest">Histórico de Refeições</span>
+              <IconField iconPosition="left">
+                <InputIcon class="pi pi-search" />
+                <InputText v-model="filters['global'].value" placeholder="Filtrar histórico..." class="!rounded-xl" />
+              </IconField>
+            </div>
+          </template>
+          <Column header="Data" field="data">
             <template #body="{ data }">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-lg">
-                  {{ data.turno === 'almoco' ? '🌅' : '🌙' }}
-                </div>
-                <div>
-                  <p class="font-bold text-slate-800">{{ formatarData(data.data) }}</p>
-                  <p class="text-[10px] text-slate-500 uppercase font-black tracking-tight capitalize">{{ data.turno }}</p>
-                </div>
+              <span class="font-semibold text-slate-700">{{ formatarData(data.data) }}</span>
+            </template>
+          </Column>
+
+          <Column header="Turno" field="turno">
+            <template #body="{ data }">
+              <div class="flex items-center gap-2">
+                <i :class="data.turno === 'almoco' ? 'pi pi-sun text-amber-500' : 'pi pi-moon text-indigo-500'"></i>
+                <span class="capitalize font-medium">{{ data.turno === 'almoco' ? 'Almoço' : 'Jantar' }}</span>
               </div>
             </template>
           </Column>
 
-          <Column header="Refeição Consumida" class="font-medium text-slate-700">
-             <template #body="{ data }">
-                <span class="text-sm">{{ data.prato_principal || 'Refeição RI' }}</span>
-             </template>
+          <Column header="Refeição" field="prato_principal">
+            <template #body="{ data }">
+              <span class="text-sm text-slate-600">{{ data.prato_principal || 'Refeição RI' }}</span>
+            </template>
           </Column>
 
-          <Column header="Status">
+          <Column header="Status" field="presente">
             <template #body="{ data }">
               <Tag
-                :value="data.presente ? 'Confirmada' : 'Não Compareceu'"
+                :value="data.presente ? 'Presente' : 'Ausente'"
                 :severity="data.presente ? 'success' : 'danger'"
                 class="!rounded-full px-3 uppercase text-[10px] font-black"
               />
@@ -180,8 +200,8 @@ onMounted(() => {
           <Column header="Hora de Entrada">
             <template #body="{ data }">
               <div v-if="data.confirmado_em" class="flex items-center gap-2 text-slate-600">
-                 <i class="pi pi-clock text-xs"></i>
-                 <span class="text-xs font-bold">{{ formatarHora(data.confirmado_em) }}</span>
+                <i class="pi pi-clock text-xs"></i>
+                <span class="text-xs font-medium">{{ formatarHora(data.confirmado_em) }}</span>
               </div>
               <span v-else class="text-slate-300 text-xs">-</span>
             </template>

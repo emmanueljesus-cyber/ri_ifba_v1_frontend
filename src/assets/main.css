@@ -1,24 +1,26 @@
-@import 'primeicons/primeicons.css';
+@import "primeicons/primeicons.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --ifba-verde: #248c35;
+  --ifba-verde: #32a041;
   --ifba-vermelho: #e30613;
 
   /* PrimeVue 4 Aura Primary Color Overrides */
-  --p-primary-50: #e2f0e4;
-  --p-primary-100: #b3d6b8;
-  --p-primary-200: #84bc8c;
-  --p-primary-300: #55a360;
-  --p-primary-400: #3b8d48;
-  --p-primary-500: #248c35;
-  --p-primary-600: #1e742c;
-  --p-primary-700: #175c23;
-  --p-primary-800: #10441a;
-  --p-primary-900: #092c11;
-  --p-primary-950: #041408;
+  --p-primary-50: #eef8f0;
+  --p-primary-100: #d6eedb;
+  --p-primary-200: #aeddb7;
+  --p-primary-300: #7bc58a;
+  --p-primary-400: #49a85f;
+  --p-primary-500: #32a041;
+  /* Verde IFBA */
+  --p-primary-600: #268133;
+  --p-primary-700: #1f662a;
+  --p-primary-800: #1a5224;
+  --p-primary-900: #15431e;
+  --p-primary-950: #0b2510;
 }
 
 /* Animações para melhor fluidez */
@@ -36,15 +38,6 @@
 
 .animate-fadein {
   animation: fadein 0.3s ease-out;
-}
-
-@keyframes pulse-slow {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.9; transform: scale(0.98); }
-}
-
-.animate-pulse-slow {
-  animation: pulse-slow 4s ease-in-out infinite;
 }
 
 /* Transições suaves em botões e cards */

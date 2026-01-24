@@ -3,6 +3,7 @@ import { ref, onMounted, watch } from 'vue'
 import { FilterMatchMode } from '@primevue/core/api'
 import { useToast } from 'primevue/usetoast'
 import { adminPresencaService } from '../../services/adminPresenca'
+import { useAvatar } from '../../composables/useAvatar'
 import PageHeader from '../../components/common/PageHeader.vue'
 
 // Locale pt-BR para DatePicker
@@ -30,6 +31,7 @@ import InputIcon from 'primevue/inputicon'
 import Avatar from 'primevue/avatar'
 
 const toast = useToast()
+const { getInitials, getAvatarStyle } = useAvatar()
 const tokenManual = ref('')
 const buscaTermo = ref('')
 const resultadosBusca = ref<any[]>([])
@@ -254,9 +256,10 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
                   />
                   <Avatar
                     v-else
-                    icon="pi pi-user"
+                    :label="getInitials(data.nome)"
                     shape="circle"
-                    class="bg-primary-50 text-primary-600 flex-shrink-0"
+                    class="flex-shrink-0"
+                    :style="getAvatarStyle(data.nome)"
                   />
                   <div class="flex flex-col">
                     <span class="font-bold text-slate-700">{{ data.nome }}</span>
@@ -355,10 +358,10 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
                       />
                       <Avatar
                         v-else
-                        icon="pi pi-user"
+                        :label="getInitials(data.nome)"
                         shape="circle"
                         size="small"
-                        class="bg-primary-50 text-primary-600"
+                        :style="getAvatarStyle(data.nome)"
                       />
                       <div class="flex flex-col">
                         <span class="text-xs font-bold text-slate-700">{{ data.nome }}</span>

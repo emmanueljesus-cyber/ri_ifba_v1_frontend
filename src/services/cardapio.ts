@@ -8,12 +8,19 @@ interface ApiResponse<T> {
 
 export const cardapioService = {
   async hoje(): Promise<CardapioDia> {
-    const { data } = await api.get<ApiResponse<CardapioDia>>('/estudante/cardapio/hoje')
-    return data.data
+    // Laravel Resource retorna { data: { id, data, almoco, jantar, ... } }
+    const response = await api.get('/cardapio/hoje')
+    // Retorna o objeto completo, não apenas response.data.data (que é só a data string)
+    return response.data
   },
 
-  async semanal(): Promise<Cardapio[]> {
-    const { data: response } = await api.get<ApiResponse<Cardapio[]>>('/cardapio/semanal')
+  async semanal(params?: { turno?: string, data?: string }): Promise<Cardapio[]> {
+    const { data: response } = await api.get<ApiResponse<Cardapio[]>>('/cardapio/semanal', { params })
+    return response.data
+  },
+
+  async mensal(params?: { turno?: string, per_page?: number }): Promise<Cardapio[]> {
+    const { data: response } = await api.get<ApiResponse<Cardapio[]>>('/cardapio/mensal', { params })
     return response.data
   },
 
@@ -40,11 +47,26 @@ export const cardapioService = {
     await api.delete(`/admin/cardapios/${id}`)
   },
 
+  async deletarTodosAdmin(): Promise<void> {
+    await api.delete('/admin/cardapios')
+  },
+
+  async deletarMultiplosAdmin(ids: number[]): Promise<void> {
+    await api.post('/admin/cardapios/delete-multiple', { ids })
+  },
+
+  async deletarPorPeriodoAdmin(dataInicio: string, dataFim: string): Promise<void> {
+    await api.post('/admin/cardapios/delete-by-date', {
+      data_inicio: dataInicio,
+      data_fim: dataFim
+    })
+  },
+
   async importarAdmin(arquivo: File, turnos: string[] = ['almoco', 'jantar']): Promise<any> {
     const formData = new FormData()
     formData.append('file', arquivo)
     turnos.forEach(t => formData.append('turno[]', t))
-    
+
     const { data } = await api.post('/admin/cardapios/import', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })

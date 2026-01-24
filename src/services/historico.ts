@@ -17,14 +17,16 @@ interface ApiResponse<T> {
 
 export const historicoService = {
   async listar(filtros?: FiltrosHistorico): Promise<{ data: HistoricoRefeicao[], meta?: any }> {
-    const { data } = await api.get<ApiResponse<HistoricoRefeicao[]>>('/estudante/historico', {
+    const response = await api.get('/estudante/historico', {
       params: filtros
     })
-    return { data: data.data, meta: data.meta }
+    // A resposta já vem como { data: [...], meta: {...} }
+    return { data: response.data.data || response.data, meta: response.data.meta }
   },
 
   async resumo(): Promise<ResumoHistorico> {
-    const { data } = await api.get<ApiResponse<ResumoHistorico>>('/estudante/historico/resumo')
-    return data.data
+    const response = await api.get('/estudante/historico/resumo')
+    // A resposta vem como { data: {...}, message: '...' }
+    return response.data.data || response.data
   }
 }
