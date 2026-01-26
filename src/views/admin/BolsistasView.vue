@@ -70,13 +70,17 @@ const filtersBolsistas = ref({
 const carregarBolsistas = async () => {
   loading.value = true
   try {
-    const params = {
-      ativo: filtersBolsistas.value.ativo.value,
-      turno_refeicao: filtersBolsistas.value.turno_refeicao.value
+    const params: any = {}
+    if (filtersBolsistas.value.ativo.value !== null) {
+      params.ativo = filtersBolsistas.value.ativo.value
+    }
+    if (filtersBolsistas.value.turno_refeicao.value) {
+      params.turno_refeicao = filtersBolsistas.value.turno_refeicao.value
     }
     const data = await adminBolsistaService.listarTodos(params)
-    bolsistas.value = Array.isArray(data) ? data : (data?.data || [])
-  } catch (err) {
+    bolsistas.value = Array.isArray(data) ? data : (data?.data || data || [])
+  } catch (err: any) {
+    console.error('Erro ao carregar bolsistas:', err)
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar usuários bolsistas' })
   } finally {
     loading.value = false
@@ -86,13 +90,17 @@ const carregarBolsistas = async () => {
 const carregarAprovados = async () => {
   loadingAprovados.value = true
   try {
-    const params = {
-      ativo: filtersAprovados.value.ativo.value,
-      turno_refeicao: filtersAprovados.value.turno_refeicao.value
+    const params: any = {}
+    if (filtersAprovados.value.ativo.value !== null) {
+      params.ativo = filtersAprovados.value.ativo.value
+    }
+    if (filtersAprovados.value.turno_refeicao.value) {
+      params.turno_refeicao = filtersAprovados.value.turno_refeicao.value
     }
     const data = await adminBolsistaService.listarAprovados(params)
-    aprovados.value = Array.isArray(data) ? data : (data?.data || [])
-  } catch (err) {
+    aprovados.value = Array.isArray(data) ? data : (data?.data || data || [])
+  } catch (err: any) {
+    console.error('Erro ao carregar aprovados:', err)
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar lista de aprovados' })
   } finally {
     loadingAprovados.value = false

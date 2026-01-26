@@ -1,3 +1,19 @@
+                          <img v-else role="presentation" :alt="file.name" :src="(file as any).objectURL || URL.createObjectURL(file)" width="100" class="rounded-lg shadow-sm" />
+    const mensagemErro = err?.response?.data?.message || err?.message || 'Falha ao enviar justificativa'
+    refeicoesDisponiveis.value = data.map(c => ({
+      id: c.id,
+      cardapio_id: c.id,
+      data_do_cardapio: c.data_do_cardapio,
+      turno: c.turno,
+      prato_principal: c.prato_principal_ptn01,
+      prato_principal_ptn02: c.prato_principal_ptn02 || '',
+      acompanhamento: c.acompanhamento_01,
+      guarnicao: c.guarnicao,
+      salada: c.salada,
+      sobremesa: c.sobremesa,
+      suco: c.suco,
+      ovo_lacto_vegetariano: c.ovo_lacto_vegetariano || ''
+    }))
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import { FilterMatchMode } from '@primevue/core/api'

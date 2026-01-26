@@ -1,4 +1,4 @@
-OS DE<script setup lang="ts">
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { FilterMatchMode } from '@primevue/core/api'
@@ -13,9 +13,11 @@ import Textarea from 'primevue/textarea'
 import Avatar from 'primevue/avatar'
 import InputText from 'primevue/inputtext'
 import { useAvatar } from '../../composables/useAvatar'
+import { useErrorMessage } from '../../composables/useErrorMessage'
 
 const toast = useToast()
 const { getInitials, getAvatarStyle } = useAvatar()
+const { extractErrorMessage } = useErrorMessage()
 const solicitacoes = ref([])
 const loading = ref(false)
 const displayRejeicao = ref(false)
@@ -33,7 +35,7 @@ const carregarSolicitacoes = async () => {
     const { data } = await api.get('/admin/solicitacoes-mudanca-dias?status=pendente')
     solicitacoes.value = data.data || []
   } catch (err) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar solicitações' })
+    toast.add({ severity: 'error', summary: 'Erro', detail: extractErrorMessage(err, 'Falha ao carregar solicitações') })
   } finally {
     loading.value = false
   }
@@ -48,7 +50,7 @@ const aprovar = async (id: number) => {
     toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Mudança aprovada com sucesso' })
     carregarSolicitacoes()
   } catch (err) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Erro ao aprovar solicitação' })
+    toast.add({ severity: 'error', summary: 'Erro', detail: extractErrorMessage(err, 'Erro ao aprovar solicitação') })
   } finally {
     processando.value = false
   }
@@ -75,7 +77,7 @@ const rejeitar = async () => {
     displayRejeicao.value = false
     carregarSolicitacoes()
   } catch (err) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Erro ao rejeitar solicitação' })
+    toast.add({ severity: 'error', summary: 'Erro', detail: extractErrorMessage(err, 'Erro ao rejeitar solicitação') })
   } finally {
     processando.value = false
   }

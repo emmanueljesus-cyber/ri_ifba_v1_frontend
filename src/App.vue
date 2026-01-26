@@ -3,7 +3,7 @@ import Toast from 'primevue/toast'
 </script>
 
 <template>
-  <Toast />
+  <Toast :life="8000" />
   <router-view />
 </template>
 

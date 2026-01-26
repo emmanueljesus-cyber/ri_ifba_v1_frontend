@@ -4,6 +4,7 @@ import { FilterMatchMode } from '@primevue/core/api'
 import { useToast } from 'primevue/usetoast'
 import { adminPresencaService } from '../../services/adminPresenca'
 import { useAvatar } from '../../composables/useAvatar'
+import { useErrorMessage } from '../../composables/useErrorMessage'
 import PageHeader from '../../components/common/PageHeader.vue'
 
 // Locale pt-BR para DatePicker
@@ -24,14 +25,12 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import DatePicker from 'primevue/datepicker'
-import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
-import IconField from 'primevue/iconfield'
-import InputIcon from 'primevue/inputicon'
 import Avatar from 'primevue/avatar'
 
 const toast = useToast()
 const { getInitials, getAvatarStyle } = useAvatar()
+const { extractErrorMessage } = useErrorMessage()
 const tokenManual = ref('')
 const buscaTermo = ref('')
 const resultadosBusca = ref<any[]>([])
@@ -66,13 +65,24 @@ const turnos: Array<{label: string, value: TurnoType}> = [
 
 const getTurnoAtual = (): string => turnoFiltro.value || 'almoco'
 
+const semRefeicao = ref(false)
+const mensagemSemRefeicao = ref('')
+
 const carregarListaDia = async () => {
   loadingDia.value = true
+  semRefeicao.value = false
+  mensagemSemRefeicao.value = ''
   try {
     const dataIso = dataFiltro.value.toISOString().split('T')[0]
     listaDia.value = await adminPresencaService.listarDoDia(dataIso, getTurnoAtual())
-  } catch (err) {
+  } catch (err: any) {
     console.error('Erro ao carregar lista do dia', err)
+    const errorMsg = extractErrorMessage(err, '')
+    if (errorMsg.toLowerCase().includes('refeição') || errorMsg.toLowerCase().includes('refeicao')) {
+      semRefeicao.value = true
+      mensagemSemRefeicao.value = 'Não há refeição cadastrada para este dia e turno. Cadastre o cardápio primeiro.'
+      listaDia.value = []
+    }
   } finally {
     loadingDia.value = false
   }
@@ -152,15 +162,44 @@ const confirmarPresencaManual = async (userId: number) => {
   try {
     const dataIso = dataFiltro.value.toISOString().split('T')[0]
     await adminPresencaService.confirmarPorId(userId, dataIso, turnoFiltro.value)
-    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Presença confirmada manualmente' })
-    carregarListaDia()
+
+    // Atualizar status localmente imediatamente
+    const aluno = listaDia.value.find((a: any) => a.id === userId || a.user_id === userId)
+    if (aluno) {
+      aluno.status_presenca = 'presente'
+      aluno.presente = true
+      if (aluno.presenca_atual) {
+        aluno.presenca_atual.status_da_presenca = 'presente'
+      } else {
+        aluno.presenca_atual = { status_da_presenca: 'presente' }
+      }
+    }
+
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Presença confirmada!' })
     resultadosBusca.value = resultadosBusca.value.filter(a => a.id !== userId)
+
+    // Recarregar lista do servidor em background
+    carregarListaDia()
   } catch (err: any) {
-    toast.add({ 
-      severity: 'error', 
-      summary: 'Erro', 
-      detail: err.response?.data?.message || 'Falha ao confirmar' 
-    })
+    const errorMsg = extractErrorMessage(err, 'Falha ao confirmar')
+
+    // Se já foi confirmada, atualizar o status local e mostrar info
+    if (errorMsg.toLowerCase().includes('já') || errorMsg.toLowerCase().includes('confirmada')) {
+      const aluno = listaDia.value.find((a: any) => a.id === userId || a.user_id === userId)
+      if (aluno) {
+        aluno.status_presenca = 'presente'
+        aluno.presente = true
+        if (aluno.presenca_atual) {
+          aluno.presenca_atual.status_da_presenca = 'presente'
+        } else {
+          aluno.presenca_atual = { status_da_presenca: 'presente' }
+        }
+      }
+      toast.add({ severity: 'info', summary: 'Info', detail: 'Presença já estava confirmada' })
+      carregarListaDia()
+    } else {
+      toast.add({ severity: 'error', summary: 'Erro', detail: errorMsg })
+    }
   }
 }
 
@@ -168,17 +207,32 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
   try {
     const dataIso = dataFiltro.value.toISOString().split('T')[0]
     await adminPresencaService.marcarFalta(userId, dataIso, getTurnoAtual(), justificada)
+
+    // Atualizar status localmente imediatamente
+    const aluno = listaDia.value.find((a: any) => a.id === userId || a.user_id === userId)
+    if (aluno) {
+      aluno.status_presenca = justificada ? 'falta_justificada' : 'falta_injustificada'
+      aluno.presente = false
+      if (aluno.presenca_atual) {
+        aluno.presenca_atual.status_da_presenca = justificada ? 'falta_justificada' : 'falta_injustificada'
+      } else {
+        aluno.presenca_atual = { status_da_presenca: justificada ? 'falta_justificada' : 'falta_injustificada' }
+      }
+    }
+
     toast.add({
       severity: justificada ? 'info' : 'warn',
       summary: 'Sucesso',
       detail: justificada ? 'Falta justificada registrada' : 'Falta injustificada registrada'
     })
+
+    // Recarregar lista do servidor em background
     carregarListaDia()
   } catch (err: any) {
-    toast.add({ 
-      severity: 'error', 
+    toast.add({
+      severity: 'error',
       summary: 'Erro', 
-      detail: err.response?.data?.message || 'Falha ao registrar falta' 
+      detail: extractErrorMessage(err, 'Falha ao registrar falta')
     })
   }
 }
@@ -240,7 +294,20 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
                 </div>
               </div>
             </template>
-            <template #empty> <p class="text-center p-4">Nenhum bolsista para este dia/turno.</p> </template>
+            <template #empty>
+              <div v-if="semRefeicao" class="text-center p-6">
+                <i class="pi pi-calendar-times text-4xl text-orange-400 mb-3"></i>
+                <p class="text-orange-600 font-semibold">{{ mensagemSemRefeicao }}</p>
+                <Button
+                  label="Ir para Cardápios"
+                  icon="pi pi-arrow-right"
+                  class="mt-4 !rounded-xl"
+                  severity="warning"
+                  @click="$router.push('/admin/cardapios')"
+                />
+              </div>
+              <p v-else class="text-center p-4">Nenhum bolsista para este dia/turno.</p>
+            </template>
             <Column header="Aluno" sortable field="nome">
               <template #body="{ data }">
                 <div class="flex items-center gap-3">
