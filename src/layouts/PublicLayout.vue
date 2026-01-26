@@ -13,8 +13,8 @@ const goToLogin = () => {
 
 <template>
   <div class="min-h-screen bg-slate-50 flex flex-col">
-    <!-- Header/Navbar -->
-    <nav class="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-50">
+    <!-- Header/Navbar - Apenas para usuários NÃO autenticados -->
+    <nav v-if="!auth.isAuthenticated" class="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-50">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between h-16">
           <!-- Logo/Title -->
@@ -31,8 +31,8 @@ const goToLogin = () => {
           </div>
 
           <!-- Actions -->
-          <div v-if="!auth.isAuthenticated" class="flex items-center gap-3">
-            <Button 
+          <div class="flex items-center gap-3">
+            <Button
               label="Entrar" 
               icon="pi pi-sign-in" 
               @click="goToLogin"
@@ -45,19 +45,6 @@ const goToLogin = () => {
               @click="() => router.push('/cadastro')"
               severity="success"
               class="!rounded-xl hidden sm:flex"
-            />
-          </div>
-          <div v-else class="flex items-center gap-3">
-            <div class="hidden sm:block text-right">
-              <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Bem-vindo(a)</p>
-              <p class="text-sm font-bold text-slate-700">{{ auth.user?.nome }}</p>
-            </div>
-            <Button 
-              label="Meu Painel" 
-              icon="pi pi-th-large" 
-              @click="() => router.push('/dashboard')"
-              class="!rounded-xl shadow-md shadow-primary-100"
-              severity="success"
             />
           </div>
         </div>

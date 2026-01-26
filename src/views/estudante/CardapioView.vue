@@ -2,23 +2,25 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { cardapioService } from '../../services/cardapio'
 import PublicLayout from '../../layouts/PublicLayout.vue'
-import type { CardapioDia } from '../../types/cardapio'
+import PageHeader from '../../components/common/PageHeader.vue'
+import { useAuthStore } from '../../stores/auth'
 import Skeleton from 'primevue/skeleton'
-import Tag from 'primevue/tag'
 import SelectButton from 'primevue/selectbutton'
 
+const auth = useAuthStore()
+const isLoggedIn = computed(() => auth.isAuthenticated)
+
 const cardapios = ref<any[]>([])
-const cardapioHoje = ref<CardapioDia | null>(null)
+const cardapioHoje = ref<any>(null)
 const loading = ref(false)
 const loadingHoje = ref(false)
 const error = ref('')
 
 const activeTab = ref('semanal')
-const turnoFiltro = ref<string | null>(null) // null = Todos, 'almoco', 'jantar'
-const dataReferencia = ref(new Date()) // Data para controle da semana/mês
+const turnoFiltro = ref<string>('almoco')
+const dataReferencia = ref(new Date())
 
 const turnoOptions = [
-  { label: 'Todos', value: null },
   { label: 'Almoço', value: 'almoco' },
   { label: 'Jantar', value: 'jantar' }
 ]
@@ -27,34 +29,15 @@ const carregarCardapioSemanal = async () => {
   loading.value = true
   error.value = ''
   try {
-    // Pegar início da semana (segunda-feira)
     const d = new Date(dataReferencia.value)
     const day = d.getDay()
     const diff = d.getDate() - day + (day === 0 ? -6 : 1)
     const segunda = new Date(d.setDate(diff)).toISOString().split('T')[0]
 
-    const data = await cardapioService.semanal({ 
-      turno: turnoFiltro.value ?? undefined,
-      data: segunda
-    })
+    const data = await cardapioService.semanal({ data: segunda })
     cardapios.value = data
   } catch (err: any) {
     error.value = err?.response?.data?.message || 'Erro ao carregar o cardápio semanal'
-  } finally {
-    loading.value = false
-  }
-}
-
-const carregarCardapioMensal = async () => {
-  loading.value = true
-  try {
-    const data = await cardapioService.mensal({ 
-      turno: turnoFiltro.value ?? undefined,
-      per_page: 50 // Pegar o mês todo
-    })
-    cardapios.value = data
-  } catch (err) {
-    console.error('Erro ao carregar cardápio mensal', err)
   } finally {
     loading.value = false
   }
@@ -76,13 +59,6 @@ const carregarCardapioHoje = async () => {
   }
 }
 
-const alternarAba = (tab: string) => {
-  activeTab.value = tab
-  if (tab === 'semanal') carregarCardapioSemanal()
-  if (tab === 'mensal') carregarCardapioMensal()
-  if (tab === 'hoje') carregarCardapioHoje()
-}
-
 const mudarSemana = (direcao: number) => {
   const novaData = new Date(dataReferencia.value)
   novaData.setDate(novaData.getDate() + (direcao * 7))
@@ -93,7 +69,6 @@ const mudarSemana = (direcao: number) => {
 const getDiasSemana = computed(() => {
   const d = new Date(dataReferencia.value)
   const day = d.getDay()
-  // diff para segunda-feira
   const diff = d.getDate() - day + (day === 0 ? -6 : 1)
   const segunda = new Date(d.setDate(diff))
   
@@ -101,14 +76,15 @@ const getDiasSemana = computed(() => {
     const data = new Date(segunda)
     data.setDate(segunda.getDate() + i)
     
-    // Formatar YYYY-MM-DD manualmente para evitar timezone shift
     const ano = data.getFullYear()
     const mes = String(data.getMonth() + 1).padStart(2, '0')
     const dia = String(data.getDate()).padStart(2, '0')
     const dataIso = `${ano}-${mes}-${dia}`
 
+    const weekdayNames = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta']
+
     return {
-      label: data.toLocaleDateString('pt-BR', { weekday: 'long' }).split('-')[0],
+      label: weekdayNames[i],
       dia: data.getDate(),
       dataIso: dataIso
     }
@@ -124,339 +100,899 @@ const getIntervaloSemana = computed(() => {
   
   if (!primeira || !ultima) return ''
   
-  const mesNome = new Date(dataReferencia.value).toLocaleDateString('pt-BR', { month: 'long' })
+  const mesNome = new Date(dataReferencia.value).toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase()
   const ano = new Date(dataReferencia.value).getFullYear()
   
-  return `${primeira.dia} a ${ultima.dia} de ${mesNome} de ${ano}`
+  return `${primeira.dia} A ${ultima.dia} DE ${mesNome} DE ${ano}`
 })
 
+// Retorna o cardápio de um dia específico pelo turno selecionado
 const getCardapioDoDia = (dataIso: string) => {
-  return cardapios.value.filter(c => c.data_do_cardapio === dataIso)
+  return cardapios.value.find(c =>
+    c.data_do_cardapio === dataIso && c.turno === turnoFiltro.value
+  )
 }
 
-const getItensFormatados = (dataIso: string) => {
-  const cardapiosDia = getCardapioDoDia(dataIso)
-  if (cardapiosDia.length === 0) return []
+// Retorna os itens formatados por categoria para exibição em grid
+const getItensCategorizados = (cardapio: any) => {
+  if (!cardapio) return []
 
-  const itens: any[] = []
+  const itens = []
 
-  // Almoço
-  const almoco = cardapiosDia.find(c => c.turno === 'almoco')
-  if (almoco) {
-    if (almoco.prato_principal_ptn01) itens.push({ label: almoco.prato_principal_ptn01, tipo: 'proteina_almoco' })
-    if (almoco.prato_principal_ptn02) itens.push({ label: almoco.prato_principal_ptn02, tipo: 'proteina_almoco' })
-    if (almoco.guarnicao) itens.push({ label: almoco.guarnicao, tipo: 'guarnicao' })
-    if (almoco.salada) itens.push({ label: almoco.salada, tipo: 'proteina_almoco' }) // Verde na imagem
-    if (almoco.acompanhamento_01) itens.push({ label: almoco.acompanhamento_01, tipo: 'normal' })
-    if (almoco.acompanhamento_02) itens.push({ label: almoco.acompanhamento_02, tipo: 'normal' })
-    if (almoco.sobremesa) itens.push({ label: almoco.sobremesa, tipo: 'sobremesa' })
-    if (almoco.suco) itens.push({ label: almoco.suco, tipo: 'jantar_suco' }) // Azul na imagem
-    if (almoco.ovo_lacto_vegetariano) itens.push({ label: almoco.ovo_lacto_vegetariano, tipo: 'veg_almoco' })
+  // Proteína 1
+  if (cardapio.prato_principal_ptn01) {
+    itens.push({ valor: cardapio.prato_principal_ptn01, tipo: 'proteina' })
   }
 
-  // Jantar (se não for repetido ou se for diferente)
-  const jantar = cardapiosDia.find(c => c.turno === 'jantar')
-  if (jantar) {
-    // Na imagem, parece que o jantar tem itens azuis e roxos
-    if (jantar.prato_principal_ptn01 && (!almoco || jantar.prato_principal_ptn01 !== almoco.prato_principal_ptn01)) 
-      itens.push({ label: jantar.prato_principal_ptn01, tipo: 'jantar_suco' })
-    
-    if (jantar.ovo_lacto_vegetariano && (!almoco || jantar.ovo_lacto_vegetariano !== almoco.ovo_lacto_vegetariano))
-      itens.push({ label: jantar.ovo_lacto_vegetariano, tipo: 'veg_jantar' })
+  // Proteína 2
+  if (cardapio.prato_principal_ptn02) {
+    itens.push({ valor: cardapio.prato_principal_ptn02, tipo: 'proteina' })
+  }
+
+  // Vegetariano
+  if (cardapio.ovo_lacto_vegetariano) {
+    itens.push({ valor: cardapio.ovo_lacto_vegetariano, tipo: 'vegetariano' })
+  }
+
+  // Guarnição
+  if (cardapio.guarnicao) {
+    itens.push({ valor: cardapio.guarnicao, tipo: 'guarnicao' })
+  }
+
+  // Salada
+  if (cardapio.salada) {
+    itens.push({ valor: cardapio.salada, tipo: 'salada' })
+  }
+
+  // Acompanhamento 1 (Arroz)
+  if (cardapio.acompanhamento_01) {
+    itens.push({ valor: cardapio.acompanhamento_01, tipo: 'arroz' })
+  }
+
+  // Acompanhamento 2 (Feijão)
+  if (cardapio.acompanhamento_02) {
+    itens.push({ valor: cardapio.acompanhamento_02, tipo: 'feijao' })
+  }
+
+  // Sobremesa
+  if (cardapio.sobremesa) {
+    itens.push({ valor: cardapio.sobremesa, tipo: 'sobremesa' })
+  }
+
+  // Suco
+  if (cardapio.suco) {
+    itens.push({ valor: `Suco de ${cardapio.suco}`, tipo: 'suco' })
   }
 
   return itens
 }
 
+const getCorBorda = (tipo: string) => {
+  const cores: Record<string, string> = {
+    'proteina': 'border-l-blue-500 bg-blue-50',
+    'vegetariano': 'border-l-pink-500 bg-pink-50',
+    'guarnicao': 'border-l-amber-500 bg-amber-50',
+    'salada': 'border-l-emerald-500 bg-emerald-50',
+    'arroz': 'border-l-slate-400 bg-slate-50',
+    'feijao': 'border-l-slate-400 bg-slate-50',
+    'sobremesa': 'border-l-red-400 bg-red-50',
+    'suco': 'border-l-purple-500 bg-purple-50'
+  }
+  return cores[tipo] || 'border-l-slate-300 bg-slate-50'
+}
+
 watch([turnoFiltro, dataReferencia], () => {
   if (activeTab.value === 'semanal') carregarCardapioSemanal()
-  if (activeTab.value === 'mensal') carregarCardapioMensal()
+})
+
+// Recarregar dados quando muda a aba
+watch(activeTab, (newTab) => {
+  if (newTab === 'semanal') carregarCardapioSemanal()
+  if (newTab === 'hoje') carregarCardapioHoje()
 })
 
 onMounted(() => {
   carregarCardapioSemanal()
   carregarCardapioHoje()
 })
-
-const getCorEstilo = (tipo: string) => {
-  const cores: any = {
-    'proteina_almoco': 'bg-emerald-50 border-emerald-500 text-emerald-700',
-    'jantar_suco': 'bg-blue-50 border-blue-500 text-blue-700',
-    'guarnicao': 'bg-orange-50 border-orange-500 text-orange-700',
-    'sobremesa': 'bg-red-50 border-red-500 text-red-700',
-    'veg_almoco': 'bg-pink-50 border-pink-500 text-pink-700',
-    'veg_jantar': 'bg-purple-50 border-purple-500 text-purple-700'
-  }
-  return cores[tipo] || 'bg-slate-50 border-slate-300 text-slate-700'
-}
 </script>
 
 <template>
-  <PublicLayout>
-    <div class="max-w-7xl mx-auto space-y-6 animate-fadein pb-20">
-      <!-- Sistema de Abas Estilo Imagem -->
-      <div class="flex justify-center sm:justify-start gap-4 mb-8">
-        <button 
-          v-for="tab in ['hoje', 'semanal', 'mensal']" 
-          :key="tab"
-          @click="alternarAba(tab)"
-          class="flex items-center gap-2 px-6 py-2 rounded-full font-bold transition-all border-b-2"
-          :class="activeTab === tab ? 'text-primary-600 border-primary-500 bg-primary-50/50' : 'text-slate-400 border-transparent hover:text-slate-600'"
-        >
-          <i :class="tab === 'hoje' ? 'pi pi-calendar' : (tab === 'semanal' ? 'pi pi-calendar-plus' : 'pi pi-calendar-minus')"></i>
-          <span class="capitalize">{{ tab }}</span>
-        </button>
-      </div>
+  <!-- Layout para usuário NÃO logado -->
+  <PublicLayout v-if="!isLoggedIn">
+    <div class="menu-container max-w-7xl mx-auto space-y-6 animate-fadein pb-20">
 
-      <!-- Card Principal -->
-      <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-200 overflow-hidden">
-        <!-- Header do Card -->
-        <div class="p-8 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div class="flex items-center gap-3 text-slate-700">
-            <i class="pi pi-building text-2xl text-primary-500"></i>
-            <span class="text-xl font-bold tracking-tight">Campus Salvador</span>
-          </div>
-
-          <div class="flex items-center gap-6 bg-slate-50 px-6 py-3 rounded-2xl border border-slate-100">
-            <button @click="mudarSemana(-1)" class="p-2 hover:bg-white rounded-full transition-colors text-slate-400 hover:text-primary-600">
-              <i class="pi pi-chevron-left text-xl"></i>
-            </button>
-            <span class="text-sm font-black text-slate-500 uppercase tracking-widest min-w-[250px] text-center">
-              {{ getIntervaloSemana }}
-            </span>
-            <button @click="mudarSemana(1)" class="p-2 hover:bg-white rounded-full transition-colors text-slate-400 hover:text-primary-600">
-              <i class="pi pi-chevron-right text-xl"></i>
-            </button>
-          </div>
+      <!-- Header Público -->
+      <div class="flex flex-col md:flex-row items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+        <div class="flex items-center gap-3">
+          <i class="pi pi-building text-2xl text-primary-600"></i>
+          <span class="text-xl font-black text-slate-800">Campus Salvador</span>
         </div>
-
-        <!-- Filtro de Turnos Centralizado -->
-        <div class="p-6 flex justify-center bg-slate-50/30">
-          <SelectButton 
-            v-model="turnoFiltro" 
-            :options="turnoOptions" 
-            optionLabel="label" 
-            optionValue="value" 
-            :unselectable="false"
-            class="custom-selectbutton-dark"
+        <!-- Sistema de Abas -->
+        <div class="flex justify-center gap-2">
+          <SelectButton
+              v-model="activeTab"
+              :options="[{ label: 'Hoje', value: 'hoje' }, { label: 'Semanal', value: 'semanal' }]"
+              optionLabel="label"
+              optionValue="value"
+              :allowEmpty="false"
+              class="tab-selector"
           />
         </div>
 
-        <!-- Conteúdo Principal (Grid Semanal) -->
-        <div class="p-4 overflow-x-auto">
-          <div v-if="activeTab === 'semanal'" class="min-w-[1000px]">
-            <div v-if="loading" class="grid grid-cols-5 gap-4">
-              <Skeleton v-for="i in 5" :key="i" height="400px" border-radius="1.5rem" />
-            </div>
-            <div v-else class="grid grid-cols-5 gap-5">
-              <!-- Colunas de Dias -->
-              <div v-for="dia in getDiasSemana" :key="dia.dataIso" class="space-y-3">
-                <!-- Header do Dia -->
-                <div class="bg-gradient-to-br from-slate-50 to-slate-100 p-5 rounded-2xl border-2 border-slate-200 text-center shadow-sm hover:shadow-md transition-shadow">
-                  <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{{ dia.label }}</p>
-                  <p class="text-3xl font-black text-slate-700 leading-none">{{ dia.dia }}</p>
+        <div class="flex items-center gap-4">
+          <button @click="mudarSemana(-1)" class="nav-btn">
+            <i class="pi pi-chevron-left"></i>
+          </button>
+          <span class="text-sm font-black text-slate-600 uppercase tracking-wider min-w-[280px] text-center">
+            {{ getIntervaloSemana }}
+          </span>
+          <button @click="mudarSemana(1)" class="nav-btn">
+            <i class="pi pi-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Seletor de Turno -->
+      <div class="flex justify-center">
+        <SelectButton
+          v-model="turnoFiltro"
+          :options="turnoOptions"
+          optionLabel="label"
+          optionValue="value"
+          :allowEmpty="false"
+        />
+      </div>
+
+      <!-- Grid Semanal (Público) -->
+      <div v-if="activeTab === 'semanal'" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div v-if="loading" class="p-8">
+          <div class="grid grid-cols-5 gap-4">
+            <Skeleton v-for="i in 5" :key="i" height="400px" border-radius="1rem" />
+          </div>
+        </div>
+
+        <div v-else class="overflow-x-auto">
+          <div class="min-w-[900px] p-6">
+            <div class="grid grid-cols-5 gap-4">
+              <div v-for="dia in getDiasSemana" :key="dia.dataIso" class="flex flex-col gap-3">
+                <div class="day-header">
+                  <span class="day-label">{{ dia.label }}</span>
+                  <span class="day-number">{{ dia.dia }}</span>
                 </div>
 
-                <!-- Itens do Cardápio -->
-                <div class="space-y-2.5">
-                  <div 
-                    v-for="(item, idx) in getItensFormatados(dia.dataIso)" 
-                    :key="idx"
-                    class="group p-3.5 border-l-[5px] rounded-xl shadow-sm text-xs font-bold leading-snug transition-all hover:scale-[1.03] hover:shadow-md cursor-default"
-                    :class="getCorEstilo(item.tipo)"
-                  >
-                    <span class="block">{{ item.label }}</span>
-                  </div>
-                  
-                  <div v-if="getItensFormatados(dia.dataIso).length === 0" class="py-12 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/30 hover:bg-slate-50/50 transition-colors">
-                    <i class="pi pi-calendar-times text-slate-200 text-3xl mb-2 block"></i>
-                    <p class="text-[9px] font-black text-slate-300 uppercase tracking-[0.15em]">Sem Cardápio</p>
+                <div class="flex flex-col gap-2">
+                  <template v-if="getCardapioDoDia(dia.dataIso)">
+                    <div
+                      v-for="(item, idx) in getItensCategorizados(getCardapioDoDia(dia.dataIso))"
+                      :key="idx"
+                      class="menu-item-card"
+                      :class="getCorBorda(item.tipo)"
+                    >
+                      {{ item.valor }}
+                    </div>
+                  </template>
+                  <div v-else class="no-menu-day">
+                    <i class="pi pi-calendar-times text-slate-300 text-xl mb-2"></i>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase">Sem cardápio</span>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-
-          <!-- Aba Hoje (Simples) -->
-          <div v-if="activeTab === 'hoje'" class="max-w-5xl mx-auto py-10">
-             <div v-if="loadingHoje" class="grid md:grid-cols-2 gap-6">
-                <Skeleton height="350px" border-radius="2rem" />
-                <Skeleton height="350px" border-radius="2rem" />
-             </div>
-             <div v-else-if="!cardapioHoje || (!cardapioHoje.almoco && !cardapioHoje.jantar)" class="text-center py-16">
-                <div class="mb-6">
-                   <i class="pi pi-calendar-times text-6xl text-slate-200"></i>
-                </div>
-                <h3 class="text-2xl font-bold text-slate-700 mb-2">Nenhum cardápio para hoje</h3>
-                <p class="text-slate-500 mb-6">Confira o cardápio semanal para ver outras opções</p>
-                <button 
-                   @click="activeTab = 'semanal'; carregarCardapioSemanal()"
-                   class="px-6 py-3 bg-primary-600 text-white rounded-2xl font-bold hover:bg-primary-700 transition-colors"
-                >
-                   Ver Cardápio Semanal
-                </button>
-             </div>
-             <div v-else class="grid md:grid-cols-2 gap-8">
-                <!-- Almoço -->
-                <div v-if="cardapioHoje.almoco" class="group relative overflow-hidden p-8 rounded-[2.5rem] border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-green-50 hover:shadow-2xl hover:scale-[1.02] transition-all duration-300">
-                   <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full -mr-16 -mt-16"></div>
-                   <div class="relative z-10">
-                      <div class="flex items-center gap-3 mb-6">
-                         <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 text-white flex items-center justify-center shadow-lg shadow-emerald-200">
-                            <i class="pi pi-sun text-3xl"></i>
-                         </div>
-                         <div>
-                            <h3 class="text-3xl font-black text-emerald-800 tracking-tight">Almoço</h3>
-                            <p class="text-xs font-bold text-emerald-600 uppercase tracking-wider">11:00 - 14:00</p>
-                         </div>
-                      </div>
-                      <div class="space-y-3">
-                         <div class="bg-white p-5 rounded-2xl shadow-sm border border-emerald-100 hover:shadow-md transition-shadow">
-                            <p class="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                               <i class="pi pi-star-fill"></i> Prato Principal
-                            </p>
-                            <p class="text-lg font-black text-emerald-900 leading-tight">{{ cardapioHoje.almoco.prato_principal }}</p>
-                         </div>
-                         <div class="bg-white p-4 rounded-2xl shadow-sm border border-emerald-100 hover:shadow-md transition-shadow">
-                            <p class="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-2">Acompanhamentos</p>
-                            <p class="text-sm font-semibold text-emerald-700">{{ cardapioHoje.almoco.acompanhamento }}</p>
-                         </div>
-                         <div class="grid grid-cols-2 gap-3">
-                            <div class="bg-white p-4 rounded-2xl shadow-sm border border-emerald-100">
-                               <p class="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-1">Guarnição</p>
-                               <p class="text-xs font-bold text-emerald-700">{{ cardapioHoje.almoco.guarnicao }}</p>
-                            </div>
-                            <div class="bg-white p-4 rounded-2xl shadow-sm border border-emerald-100">
-                               <p class="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-1">Salada</p>
-                               <p class="text-xs font-bold text-emerald-700">{{ cardapioHoje.almoco.salada }}</p>
-                            </div>
-                         </div>
-                         <div v-if="cardapioHoje.almoco.sobremesa || cardapioHoje.almoco.suco" class="flex gap-3">
-                            <div v-if="cardapioHoje.almoco.sobremesa" class="flex-1 bg-gradient-to-br from-red-50 to-pink-50 p-4 rounded-2xl shadow-sm border border-red-100">
-                               <p class="text-[9px] font-black text-red-400 uppercase tracking-widest mb-1">Sobremesa</p>
-                               <p class="text-xs font-bold text-red-700">{{ cardapioHoje.almoco.sobremesa }}</p>
-                            </div>
-                            <div v-if="cardapioHoje.almoco.suco" class="flex-1 bg-gradient-to-br from-blue-50 to-cyan-50 p-4 rounded-2xl shadow-sm border border-blue-100">
-                               <p class="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">Suco</p>
-                               <p class="text-xs font-bold text-blue-700">{{ cardapioHoje.almoco.suco }}</p>
-                            </div>
-                         </div>
-                      </div>
-                   </div>
-                </div>
-
-                <!-- Jantar -->
-                <div v-if="cardapioHoje.jantar" class="group relative overflow-hidden p-8 rounded-[2.5rem] border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 hover:shadow-2xl hover:scale-[1.02] transition-all duration-300">
-                   <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full -mr-16 -mt-16"></div>
-                   <div class="relative z-10">
-                      <div class="flex items-center gap-3 mb-6">
-                         <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-blue-200">
-                            <i class="pi pi-moon text-3xl"></i>
-                         </div>
-                         <div>
-                            <h3 class="text-3xl font-black text-blue-800 tracking-tight">Jantar</h3>
-                            <p class="text-xs font-bold text-blue-600 uppercase tracking-wider">18:00 - 20:30</p>
-                         </div>
-                      </div>
-                      <div class="space-y-3">
-                         <div class="bg-white p-5 rounded-2xl shadow-sm border border-blue-100 hover:shadow-md transition-shadow">
-                            <p class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                               <i class="pi pi-star-fill"></i> Prato Principal
-                            </p>
-                            <p class="text-lg font-black text-blue-900 leading-tight">{{ cardapioHoje.jantar.prato_principal }}</p>
-                         </div>
-                         <div class="bg-white p-4 rounded-2xl shadow-sm border border-blue-100 hover:shadow-md transition-shadow">
-                            <p class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-2">Acompanhamentos</p>
-                            <p class="text-sm font-semibold text-blue-700">{{ cardapioHoje.jantar.acompanhamento }}</p>
-                         </div>
-                         <div class="grid grid-cols-2 gap-3">
-                            <div class="bg-white p-4 rounded-2xl shadow-sm border border-blue-100">
-                               <p class="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">Guarnição</p>
-                               <p class="text-xs font-bold text-blue-700">{{ cardapioHoje.jantar.guarnicao }}</p>
-                            </div>
-                            <div class="bg-white p-4 rounded-2xl shadow-sm border border-blue-100">
-                               <p class="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">Salada</p>
-                               <p class="text-xs font-bold text-blue-700">{{ cardapioHoje.jantar.salada }}</p>
-                            </div>
-                         </div>
-                         <div v-if="cardapioHoje.jantar.sobremesa || cardapioHoje.jantar.suco" class="flex gap-3">
-                            <div v-if="cardapioHoje.jantar.sobremesa" class="flex-1 bg-gradient-to-br from-red-50 to-pink-50 p-4 rounded-2xl shadow-sm border border-red-100">
-                               <p class="text-[9px] font-black text-red-400 uppercase tracking-widest mb-1">Sobremesa</p>
-                               <p class="text-xs font-bold text-red-700">{{ cardapioHoje.jantar.sobremesa }}</p>
-                            </div>
-                            <div v-if="cardapioHoje.jantar.suco" class="flex-1 bg-gradient-to-br from-blue-50 to-cyan-50 p-4 rounded-2xl shadow-sm border border-blue-100">
-                               <p class="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">Suco</p>
-                               <p class="text-xs font-bold text-blue-700">{{ cardapioHoje.jantar.suco }}</p>
-                            </div>
-                         </div>
-                      </div>
-                   </div>
-                </div>
-             </div>
-          </div>
-
-          <!-- Aba Mensal (Lista) -->
-          <div v-if="activeTab === 'mensal'" class="p-4">
-             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div v-for="c in cardapios" :key="c.id" class="p-6 bg-white border border-slate-200 rounded-3xl shadow-sm hover:shadow-md transition-all">
-                   <div class="flex justify-between items-center mb-4">
-                      <span class="text-sm font-black text-slate-700">{{ new Date(c.data_do_cardapio).toLocaleDateString() }}</span>
-                      <Tag :value="c.turno" :severity="c.turno === 'almoco' ? 'success' : 'info'" class="!rounded-full px-3 uppercase text-[10px] font-black" />
-                   </div>
-                   <p class="font-black text-slate-800 leading-tight">{{ c.prato_principal_ptn01 }}</p>
-                   <p class="text-xs text-slate-400 mt-2 font-medium">{{ c.acompanhamento_01 }}, {{ c.guarnicao }}</p>
-                </div>
-             </div>
-          </div>
         </div>
 
-        <!-- Rodapé com Legenda -->
-        <div class="p-8 bg-slate-50/50 border-t border-slate-100">
-          <div class="flex flex-wrap justify-center gap-6">
-            <div class="flex items-center gap-2">
-              <div class="w-4 h-4 rounded-md bg-emerald-500"></div>
-              <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Salada / Proteína Almoço</span>
+        <!-- Legenda -->
+        <div class="legend-bar">
+          <div class="legend-item">
+            <span class="legend-dot bg-blue-500"></span>
+            <span>Proteína</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-dot bg-pink-500"></span>
+            <span>Vegetariano</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-dot bg-amber-500"></span>
+            <span>Guarnição</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-dot bg-emerald-500"></span>
+            <span>Salada</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-dot bg-slate-400"></span>
+            <span>Arroz/Feijão</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-dot bg-red-400"></span>
+            <span>Sobremesa</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-dot bg-purple-500"></span>
+            <span>Suco</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Aba Hoje (Público) -->
+      <div v-if="activeTab === 'hoje'" class="max-w-5xl mx-auto py-6">
+        <div v-if="loadingHoje" class="grid md:grid-cols-2 gap-6">
+          <Skeleton height="400px" border-radius="1rem" />
+          <Skeleton height="400px" border-radius="1rem" />
+        </div>
+        <div v-else-if="!cardapioHoje || (!cardapioHoje.almoco && !cardapioHoje.jantar)" class="text-center py-16 bg-white rounded-2xl border border-slate-200">
+          <div class="mb-6">
+            <i class="pi pi-calendar-times text-6xl text-slate-200"></i>
+          </div>
+          <h3 class="text-2xl font-bold text-slate-700 mb-2">Nenhum cardápio para hoje</h3>
+          <p class="text-slate-500 mb-6">Confira o cardápio semanal para ver outras opções</p>
+          <button
+            @click="activeTab = 'semanal'"
+            class="px-6 py-3 bg-primary-600 text-white rounded-xl font-bold hover:bg-primary-700 transition-colors"
+          >
+            Ver Cardápio Semanal
+          </button>
+        </div>
+        <div v-else class="grid md:grid-cols-2 gap-8">
+          <!-- Almoço -->
+          <div v-if="cardapioHoje.almoco" class="today-card almoco-card">
+            <div class="today-card-header">
+              <div class="today-icon almoco-icon">
+                <i class="pi pi-sun text-2xl"></i>
+              </div>
+              <div>
+                <h3 class="text-2xl font-black">Almoço</h3>
+                <p class="text-xs font-bold opacity-80">11:00 - 14:00</p>
+              </div>
             </div>
-            <div class="flex items-center gap-2">
-              <div class="w-4 h-4 rounded-md bg-blue-500"></div>
-              <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Jantar / Suco</span>
+            <div class="today-card-content">
+              <div class="today-item main">
+                <span class="today-label">Prato Principal</span>
+                <span class="today-value">{{ cardapioHoje.prato_principal_ptn01 }}</span>
+                <span v-if="cardapioHoje.prato_principal_ptn02" class="today-value text-slate-500">{{ cardapioHoje.prato_principal_ptn02 }}</span>
+              </div>
+              <div v-if="cardapioHoje.ovo_lacto_vegetariano" class="today-item vegetarian">
+                <span class="today-label"><i class="pi pi-heart text-pink-500 mr-1"></i>Opção Vegetariana</span>
+                <span class="today-value">{{ cardapioHoje.ovo_lacto_vegetariano }}</span>
+              </div>
+              <div class="today-item">
+                <span class="today-label">Acompanhamentos</span>
+                <span class="today-value">{{ cardapioHoje.acompanhamento_01 }}</span>
+                <span v-if="cardapioHoje.acompanhamento_02" class="today-value text-slate-500">{{ cardapioHoje.acompanhamento_02 }}</span>
+              </div>
+              <div class="today-row">
+                <div class="today-item small" v-if="cardapioHoje.guarnicao">
+                  <span class="today-label">Guarnição</span>
+                  <span class="today-value">{{ cardapioHoje.guarnicao }}</span>
+                </div>
+                <div class="today-item small" v-if="cardapioHoje.salada">
+                  <span class="today-label">Salada</span>
+                  <span class="today-value">{{ cardapioHoje.salada }}</span>
+                </div>
+              </div>
+              <div class="today-row" v-if="cardapioHoje.sobremesa || cardapioHoje.suco">
+                <div class="today-item small dessert" v-if="cardapioHoje.sobremesa">
+                  <span class="today-label">Sobremesa</span>
+                  <span class="today-value">{{ cardapioHoje.sobremesa }}</span>
+                </div>
+                <div class="today-item small drink" v-if="cardapioHoje.suco">
+                  <span class="today-label">Suco</span>
+                  <span class="today-value">{{ cardapioHoje.suco }}</span>
+                </div>
+              </div>
             </div>
-            <div class="flex items-center gap-2">
-              <div class="w-4 h-4 rounded-md bg-orange-500"></div>
-              <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Guarnição</span>
+          </div>
+          <!-- Jantar -->
+          <div v-if="cardapioHoje.jantar" class="today-card jantar-card">
+            <div class="today-card-header">
+              <div class="today-icon jantar-icon">
+                <i class="pi pi-moon text-2xl"></i>
+              </div>
+              <div>
+                <h3 class="text-2xl font-black">Jantar</h3>
+                <p class="text-xs font-bold opacity-80">18:00 - 20:30</p>
+              </div>
             </div>
-            <div class="flex items-center gap-2">
-              <div class="w-4 h-4 rounded-md bg-red-500"></div>
-              <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Sobremesa</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <div class="w-4 h-4 rounded-md bg-pink-500"></div>
-              <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Vegetariano Almoço</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <div class="w-4 h-4 rounded-md bg-purple-500"></div>
-              <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Vegetariano Jantar</span>
+            <div class="today-card-content">
+              <div class="today-item main">
+                <span class="today-label">Prato Principal</span>
+                <span class="today-value">{{ cardapioHoje.prato_principal_ptn01 }}</span>
+                <span v-if="cardapioHoje.prato_principal_ptn02" class="today-value text-slate-500">{{ cardapioHoje.prato_principal_ptn02 }}</span>
+              </div>
+              <div v-if="cardapioHoje.ovo_lacto_vegetariano" class="today-item vegetarian">
+                <span class="today-label"><i class="pi pi-heart text-pink-500 mr-1"></i>Opção Vegetariana</span>
+                <span class="today-value">{{ cardapioHoje.ovo_lacto_vegetariano }}</span>
+              </div>
+              <div class="today-item">
+                <span class="today-label">Acompanhamentos</span>
+                <span class="today-value">{{ cardapioHoje.acompanhamento_01 }}</span>
+                <span v-if="cardapioHoje.acompanhamento_02" class="today-value text-slate-500">{{ cardapioHoje.acompanhamento_02 }}</span>
+              </div>
+              <div class="today-row">
+                <div class="today-item small" v-if="cardapioHoje.guarnicao">
+                  <span class="today-label">Guarnição</span>
+                  <span class="today-value">{{ cardapioHoje.guarnicao }}</span>
+                </div>
+                <div class="today-item small" v-if="cardapioHoje.salada">
+                  <span class="today-label">Salada</span>
+                  <span class="today-value">{{ cardapioHoje.salada }}</span>
+                </div>
+              </div>
+              <div class="today-row" v-if="cardapioHoje.sobremesa || cardapioHoje.suco">
+                <div class="today-item small dessert" v-if="cardapioHoje.sobremesa">
+                  <span class="today-label">Sobremesa</span>
+                  <span class="today-value">{{ cardapioHoje.sobremesa }}</span>
+                </div>
+                <div class="today-item small drink" v-if="cardapioHoje.suco">
+                  <span class="today-label">Suco</span>
+                  <span class="today-value">{{ cardapioHoje.suco }}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
   </PublicLayout>
+
+  <!-- Layout para usuário LOGADO -->
+  <div v-else class="space-y-6 animate-fadein">
+    <PageHeader
+      title="Cardápio"
+      subtitle="Confira o cardápio do Restaurante Institucional"
+      :show-back-button="true"
+      :breadcrumbs="[{ label: 'Dashboard', route: '/dashboard' }, { label: 'Cardápio' }]"
+    />
+
+    <!-- Header com navegação -->
+    <div class="flex flex-col lg:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+      <div class="flex items-center gap-3">
+        <SelectButton
+            v-model="activeTab"
+            :options="[{ label: 'Hoje', value: 'hoje' }, { label: 'Semanal', value: 'semanal' }]"
+            optionLabel="label"
+            optionValue="value"
+            :allowEmpty="false"
+        />
+      </div>
+
+      <div class="flex items-center gap-3">
+        <SelectButton
+          v-model="turnoFiltro"
+          :options="turnoOptions"
+          optionLabel="label"
+          optionValue="value"
+          :allowEmpty="false"
+        />
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button @click="mudarSemana(-1)" class="nav-btn">
+          <i class="pi pi-chevron-left"></i>
+        </button>
+        <span class="text-xs font-bold text-slate-600 uppercase tracking-wider min-w-[200px] text-center">
+          {{ getIntervaloSemana }}
+        </span>
+        <button @click="mudarSemana(1)" class="nav-btn">
+          <i class="pi pi-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Grid Semanal (Logado) -->
+    <div v-if="activeTab === 'semanal'" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div v-if="loading" class="p-6">
+        <div class="grid grid-cols-5 gap-4">
+          <Skeleton v-for="i in 5" :key="i" height="350px" border-radius="0.75rem" />
+        </div>
+      </div>
+
+      <div v-else class="overflow-x-auto">
+        <div class="min-w-[900px] p-4">
+          <div class="grid grid-cols-5 gap-3">
+            <div v-for="dia in getDiasSemana" :key="dia.dataIso" class="flex flex-col gap-2">
+              <div class="day-header">
+                <span class="day-label">{{ dia.label }}</span>
+                <span class="day-number">{{ dia.dia }}</span>
+              </div>
+
+              <div class="flex flex-col gap-1.5">
+                <template v-if="getCardapioDoDia(dia.dataIso)">
+                  <div
+                    v-for="(item, idx) in getItensCategorizados(getCardapioDoDia(dia.dataIso))"
+                    :key="idx"
+                    class="menu-item-card"
+                    :class="getCorBorda(item.tipo)"
+                  >
+                    {{ item.valor }}
+                  </div>
+                </template>
+                <div v-else class="no-menu-day">
+                  <i class="pi pi-calendar-times text-slate-300 text-lg mb-1"></i>
+                  <span class="text-[9px] text-slate-400 font-bold uppercase">Sem cardápio</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Legenda -->
+      <div class="legend-bar">
+        <div class="legend-item">
+          <span class="legend-dot bg-blue-500"></span>
+          <span>Proteína</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot bg-pink-500"></span>
+          <span>Vegetariano</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot bg-amber-500"></span>
+          <span>Guarnição</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot bg-emerald-500"></span>
+          <span>Salada</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot bg-slate-400"></span>
+          <span>Arroz/Feijão</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot bg-red-400"></span>
+          <span>Sobremesa</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot bg-purple-500"></span>
+          <span>Suco</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Aba Hoje (Logado) -->
+    <div v-if="activeTab === 'hoje'" class="max-w-4xl mx-auto">
+      <div v-if="loadingHoje" class="grid md:grid-cols-2 gap-6">
+        <Skeleton height="350px" border-radius="0.75rem" />
+        <Skeleton height="350px" border-radius="0.75rem" />
+      </div>
+      <div v-else-if="!cardapioHoje || (!cardapioHoje.almoco && !cardapioHoje.jantar)" class="text-center py-12 bg-white rounded-xl border border-slate-200">
+        <i class="pi pi-calendar-times text-5xl text-slate-200 mb-4"></i>
+        <h3 class="text-xl font-bold text-slate-700 mb-2">Nenhum cardápio para hoje</h3>
+        <p class="text-slate-500 mb-4 text-sm">Confira o cardápio semanal</p>
+        <button
+          @click="activeTab = 'semanal'"
+          class="px-4 py-2 bg-primary-600 text-white rounded-lg font-semibold text-sm hover:bg-primary-700 transition-colors"
+        >
+          Ver Semanal
+        </button>
+      </div>
+      <div v-else class="grid md:grid-cols-2 gap-6">
+        <!-- Almoço -->
+        <div v-if="cardapioHoje.almoco" class="today-card almoco-card">
+          <div class="today-card-header">
+            <div class="today-icon almoco-icon">
+              <i class="pi pi-sun text-xl"></i>
+            </div>
+            <div>
+              <h3 class="text-xl font-black">Almoço</h3>
+              <p class="text-[10px] font-bold opacity-80">11:00 - 14:00</p>
+            </div>
+          </div>
+          <div class="today-card-content">
+            <div class="today-item main">
+              <span class="today-label">Prato Principal</span>
+              <span class="today-value">{{ cardapioHoje.prato_principal_ptn01 }}</span>
+              <span v-if="cardapioHoje.prato_principal_ptn02" class="today-value text-slate-500 text-sm">{{ cardapioHoje.prato_principal_ptn02 }}</span>
+            </div>
+            <div v-if="cardapioHoje.ovo_lacto_vegetariano" class="today-item vegetarian">
+              <span class="today-label"><i class="pi pi-heart text-pink-500 mr-1"></i>Vegetariana</span>
+              <span class="today-value">{{ cardapioHoje.ovo_lacto_vegetariano }}</span>
+            </div>
+            <div class="today-item">
+              <span class="today-label">Acompanhamentos</span>
+              <span class="today-value">{{ cardapioHoje.acompanhamento_01 }}</span>
+              <span v-if="cardapioHoje.acompanhamento_02" class="today-value text-slate-500 text-sm">{{ cardapioHoje.acompanhamento_02 }}</span>
+            </div>
+            <div class="today-row">
+              <div class="today-item small" v-if="cardapioHoje.guarnicao">
+                <span class="today-label">Guarnição</span>
+                <span class="today-value text-sm">{{ cardapioHoje.guarnicao }}</span>
+              </div>
+              <div class="today-item small" v-if="cardapioHoje.salada">
+                <span class="today-label">Salada</span>
+                <span class="today-value text-sm">{{ cardapioHoje.salada }}</span>
+              </div>
+            </div>
+            <div class="today-row" v-if="cardapioHoje.sobremesa || cardapioHoje.suco">
+              <div class="today-item small dessert" v-if="cardapioHoje.sobremesa">
+                <span class="today-label">Sobremesa</span>
+                <span class="today-value text-sm">{{ cardapioHoje.sobremesa }}</span>
+              </div>
+              <div class="today-item small drink" v-if="cardapioHoje.suco">
+                <span class="today-label">Suco</span>
+                <span class="today-value text-sm">{{ cardapioHoje.suco }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Jantar -->
+        <div v-if="cardapioHoje.jantar" class="today-card jantar-card">
+          <div class="today-card-header">
+            <div class="today-icon jantar-icon">
+              <i class="pi pi-moon text-xl"></i>
+            </div>
+            <div>
+              <h3 class="text-xl font-black">Jantar</h3>
+              <p class="text-[10px] font-bold opacity-80">18:00 - 20:30</p>
+            </div>
+          </div>
+          <div class="today-card-content">
+            <div class="today-item main">
+              <span class="today-label">Prato Principal</span>
+              <span class="today-value">{{ cardapioHoje.prato_principal_ptn01 }}</span>
+              <span v-if="cardapioHoje.prato_principal_ptn02" class="today-value text-slate-500 text-sm">{{ cardapioHoje.prato_principal_ptn02 }}</span>
+            </div>
+            <div v-if="cardapioHoje.ovo_lacto_vegetariano" class="today-item vegetarian">
+              <span class="today-label"><i class="pi pi-heart text-pink-500 mr-1"></i>Vegetariana</span>
+              <span class="today-value">{{ cardapioHoje.ovo_lacto_vegetariano }}</span>
+            </div>
+            <div class="today-item">
+              <span class="today-label">Acompanhamentos</span>
+              <span class="today-value">{{ cardapioHoje.acompanhamento_01 }}</span>
+              <span v-if="cardapioHoje.acompanhamento_02" class="today-value text-slate-500 text-sm">{{ cardapioHoje.acompanhamento_02 }}</span>
+            </div>
+            <div class="today-row">
+              <div class="today-item small" v-if="cardapioHoje.guarnicao">
+                <span class="today-label">Guarnição</span>
+                <span class="today-value text-sm">{{ cardapioHoje.guarnicao }}</span>
+              </div>
+              <div class="today-item small" v-if="cardapioHoje.salada">
+                <span class="today-label">Salada</span>
+                <span class="today-value text-sm">{{ cardapioHoje.salada }}</span>
+              </div>
+            </div>
+            <div class="today-row" v-if="cardapioHoje.sobremesa || cardapioHoje.suco">
+              <div class="today-item small dessert" v-if="cardapioHoje.sobremesa">
+                <span class="today-label">Sobremesa</span>
+                <span class="today-value text-sm">{{ cardapioHoje.sobremesa }}</span>
+              </div>
+              <div class="today-item small drink" v-if="cardapioHoje.suco">
+                <span class="today-label">Suco</span>
+                <span class="today-value text-sm">{{ cardapioHoje.suco }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <style scoped>
-:deep(.custom-selectbutton-dark .p-togglebutton.p-togglebutton-active) {
-    background-color: #1e293b !important;
-    border-color: #1e293b !important;
-    color: #ffffff !important;
+.menu-container {
+  padding: 20px;
 }
 
-:deep(.custom-selectbutton-dark .p-togglebutton) {
-    border-radius: 0.75rem;
-    padding: 0.5rem 1.5rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    font-size: 12px;
-    letter-spacing: 0.05em;
+/* Botão de navegação */
+.nav-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nav-btn:hover {
+  background: var(--p-primary-50);
+  color: var(--p-primary-500);
+  border-color: var(--p-primary-500);
+}
+
+/* Seletor de Turno - Estilo Limpo */
+:deep(.turno-selector) {
+  background: #f1f5f9;
+  border-radius: 12px;
+  padding: 4px;
+  border: 1px solid #e2e8f0;
+}
+
+:deep(.turno-selector .p-togglebutton) {
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 10px 28px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  background: transparent !important;
+  color: #64748b !important;
+  box-shadow: none !important;
+  transition: all 0.2s ease !important;
+}
+
+:deep(.turno-selector .p-togglebutton:hover:not(.p-togglebutton-checked)) {
+  background: #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+:deep(.turno-selector .p-togglebutton.p-togglebutton-checked) {
+  background: white !important;
+  color: var(--p-primary-500) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Seletor de Aba - Estilo Limpo */
+:deep(.tab-selector) {
+  background: #f1f5f9;
+  border-radius: 12px;
+  padding: 4px;
+  border: 1px solid #e2e8f0;
+}
+
+:deep(.tab-selector .p-togglebutton) {
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 8px 20px !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  background: transparent !important;
+  color: #64748b !important;
+  box-shadow: none !important;
+  transition: all 0.2s ease !important;
+}
+
+:deep(.tab-selector .p-togglebutton:hover:not(.p-togglebutton-checked)) {
+  background: #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+:deep(.tab-selector .p-togglebutton.p-togglebutton-checked) {
+  background: white !important;
+  color: var(--p-primary-500) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Header do Dia */
+.day-header {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 16px;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.day-header:hover {
+  border-color: var(--p-primary-500);
+  box-shadow: 0 4px 12px rgba(50, 160, 65, 0.1);
+}
+
+.day-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 4px;
+}
+
+.day-number {
+  display: block;
+  font-size: 2rem;
+  font-weight: 900;
+  color: #1e293b;
+  line-height: 1;
+}
+
+/* Card de Item do Menu */
+.menu-item-card {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border-left: 4px solid;
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+  transition: all 0.2s;
+  line-height: 1.3;
+}
+
+.menu-item-card:hover {
+  transform: translateX(4px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Dia sem cardápio */
+.no-menu-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  border: 2px dashed #e2e8f0;
+  border-radius: 12px;
+  background: #fafafa;
+}
+
+/* Legenda */
+.legend-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px 24px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+/* Cards de Hoje */
+.today-card {
+  border-radius: 16px;
+  overflow: hidden;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.today-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.almoco-card {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  border: 2px solid #a7f3d0;
+}
+
+.jantar-card {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border: 2px solid #bfdbfe;
+}
+
+.today-card-header {
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.almoco-card .today-card-header {
+  color: #065f46;
+}
+
+.jantar-card .today-card-header {
+  color: #1e40af;
+}
+
+.today-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.almoco-icon {
+  background: linear-gradient(135deg, var(--p-primary-400), var(--p-primary-600));
+}
+
+.jantar-icon {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.today-card-content {
+  padding: 0 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.today-item {
+  background: white;
+  padding: 14px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.today-item.main {
+  border-left: 4px solid #3b82f6;
+}
+
+.today-item.small {
+  flex: 1;
+  padding: 12px;
+}
+
+.today-item.dessert {
+  border-left: 3px solid #ec4899;
+}
+
+.today-item.drink {
+  border-left: 3px solid #8b5cf6;
+}
+
+.today-item.vegetarian {
+  border-left: 3px solid #ec4899;
+  background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%);
+}
+
+.today-row {
+  display: flex;
+  gap: 12px;
+}
+
+.today-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+.today-value {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .menu-container {
+    padding: 12px;
+  }
+
+  .today-row {
+    flex-direction: column;
+  }
+
+  .day-number {
+    font-size: 1.5rem;
+  }
+
+  .menu-item-card {
+    font-size: 11px;
+    padding: 8px 10px;
+  }
+}
+
+/* Animação */
+.animate-fadein {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

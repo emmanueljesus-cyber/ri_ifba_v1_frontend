@@ -12,8 +12,6 @@ import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 import Message from 'primevue/message'
 import Skeleton from 'primevue/skeleton'
-import IconField from 'primevue/iconfield'
-import InputIcon from 'primevue/inputicon'
 import InputText from 'primevue/inputtext'
 
 const filaStore = useFilaExtrasStore()
@@ -36,7 +34,7 @@ const formatarData = (data: string) => {
 }
 
 const formatarTurno = (turno: string) => {
-  return turno === 'almoco' ? 'Almoco' : 'Jantar'
+  return turno === 'almoco' ? 'Almoço' : 'Jantar'
 }
 
 const abrirDialogInscricao = (refeicao: any) => {
@@ -126,7 +124,7 @@ onMounted(async () => {
       </div>
 
       <div v-else-if="filaStore.minhasInscricoes.length === 0">
-        <div class="bg-white border border-dashed border-slate-300 rounded-3xl p-8 text-center">
+        <div class="bg-white border border-dashed border-slate-300 rounded-xl p-8 text-center">
            <p class="text-slate-500">Você não possui inscrições ativas no momento.</p>
         </div>
       </div>
@@ -135,7 +133,7 @@ onMounted(async () => {
         <div 
           v-for="inscricao in filaStore.minhasInscricoes" 
           :key="inscricao.id"
-          class="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
+          class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
         >
           <div class="flex justify-between items-start mb-4">
             <div>
@@ -162,7 +160,7 @@ onMounted(async () => {
             />
           </div>
           
-          <div class="bg-slate-50 rounded-2xl p-3 mb-4">
+          <div class="bg-slate-50 rounded-xl p-3 mb-4">
             <p class="text-sm text-slate-700 font-medium line-clamp-1">
               {{ inscricao.refeicao?.cardapio?.prato_principal || 'Refeição do dia' }}
             </p>
@@ -203,13 +201,13 @@ onMounted(async () => {
       </div>
 
       <div v-else-if="filaStore.refeicoesDisponiveis.length === 0">
-        <div class="bg-slate-50 border border-slate-200 rounded-3xl p-12 text-center">
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-12 text-center">
            <i class="pi pi-calendar-times text-4xl text-slate-300 mb-4"></i>
            <p class="text-slate-500 font-medium">Não há refeições disponíveis para inscrição no momento.</p>
         </div>
       </div>
 
-      <div v-else class="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-sm p-4">
+      <div v-else class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm p-4">
         <DataTable
           v-model:filters="filters"
           :value="filaStore.refeicoesDisponiveis"
@@ -223,10 +221,7 @@ onMounted(async () => {
           <template #header>
             <div class="flex justify-between items-center mb-2">
               <span class="text-sm font-black text-slate-400 uppercase tracking-widest">Vagas Disponíveis</span>
-              <IconField iconPosition="left">
-                <InputIcon class="pi pi-search" />
-                <InputText v-model="filters['global'].value" placeholder="Filtrar..." class="!rounded-xl" />
-              </IconField>
+              <InputText v-model="filters['global'].value" placeholder="Filtrar..." />
             </div>
           </template>
           <Column header="Refeição">
@@ -262,7 +257,7 @@ onMounted(async () => {
                 label="Inscrever-se"
                 icon="pi pi-plus"
                 size="small"
-                class="!rounded-2xl"
+                class="!rounded-xl"
                 severity="success"
                 @click="abrirDialogInscricao(data)"
               />
@@ -284,16 +279,16 @@ onMounted(async () => {
       header="Confirmar Inscrição"
       :style="{ width: '90%', maxWidth: '400px' }"
       :draggable="false"
-      class="!rounded-[2rem] overflow-hidden"
+      class="!rounded-xl overflow-hidden"
     >
       <div v-if="refeicaoSelecionada" class="space-y-6 py-4">
-        <div class="p-4 bg-primary-50 rounded-2xl border border-primary-100">
+        <div class="p-4 bg-primary-50 rounded-xl border border-primary-100">
            <p class="text-primary-800 text-sm leading-relaxed">
              Deseja confirmar sua inscrição para esta refeição? Sua posição será gerada por ordem de chegada na fila virtual.
            </p>
         </div>
 
-        <div class="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-100 text-sm">
+        <div class="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm">
           <div class="flex justify-between">
             <span class="text-slate-500">Data:</span>
             <span class="font-bold text-slate-800">{{ formatarData(refeicaoSelecionada.data) }}</span>

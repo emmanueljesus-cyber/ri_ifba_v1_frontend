@@ -173,7 +173,7 @@ const handleSubmit = async () => {
               id="nome" 
               v-model="form.nome" 
               placeholder="Digite seu nome completo" 
-              class="w-full !pl-12 !rounded-2xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all" 
+              class="w-full !pl-12 !rounded-xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all" 
               required 
               :disabled="ehBolsista === true"
             />
@@ -195,7 +195,7 @@ const handleSubmit = async () => {
                 v-model="form.email" 
                 type="email" 
                 placeholder="exemplo@ifba.edu.br" 
-                class="w-full !pl-12 !rounded-2xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all" 
+                class="w-full !pl-12 !rounded-xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all" 
                 autocomplete="email"
                 required 
               />
@@ -214,7 +214,7 @@ const handleSubmit = async () => {
                 id="matricula" 
                 v-model="form.matricula" 
                 placeholder="Sua matricula SUAP"
-                class="w-full !pl-12 !pr-12 !rounded-2xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all"
+                class="w-full !pl-12 !pr-12 !rounded-xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all"
                 :class="{ '!border-red-400': matriculaJaCadastrada, '!border-green-400': ehBolsista === true }"
                 required
               />
@@ -259,7 +259,7 @@ const handleSubmit = async () => {
                 id="curso" 
                 v-model="form.curso" 
                 placeholder="Nome do seu curso" 
-                class="w-full !pl-12 !rounded-2xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all"
+                class="w-full !pl-12 !rounded-xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all"
                 :disabled="ehBolsista === true"
               />
             </div>
@@ -277,7 +277,7 @@ const handleSubmit = async () => {
               optionLabel="label"
               optionValue="value" 
               placeholder="Selecione seu turno de aula"
-              class="w-full !rounded-2xl !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all"
+              class="w-full !rounded-xl !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all"
             />
             <p class="text-xs text-slate-400 ml-1">
               <i class="pi pi-info-circle mr-1"></i>
@@ -290,7 +290,7 @@ const handleSubmit = async () => {
             <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">
               Refeicao
             </label>
-            <div class="px-4 py-3.5 bg-green-50 rounded-2xl border border-green-200">
+            <div class="px-4 py-3.5 bg-green-50 rounded-xl border border-green-200">
               <p class="text-green-700 font-medium">
                 {{ dadosBolsista?.turno_refeicao === 'almoco' ? 'Almoco' : 'Jantar' }}
               </p>
@@ -318,7 +318,7 @@ const handleSubmit = async () => {
                 :feedback="true"
                 toggleMask 
                 class="w-full" 
-                inputClass="w-full !pl-12 !rounded-2xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all" 
+                inputClass="w-full !pl-12 !rounded-xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all" 
                 placeholder="Crie uma senha" 
                 autocomplete="new-password"
                 required 
@@ -340,7 +340,7 @@ const handleSubmit = async () => {
                 :feedback="false" 
                 toggleMask 
                 class="w-full" 
-                inputClass="w-full !pl-12 !rounded-2xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all" 
+                inputClass="w-full !pl-12 !rounded-xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all" 
                 placeholder="Repita a senha" 
                 autocomplete="new-password"
                 required 
@@ -351,7 +351,7 @@ const handleSubmit = async () => {
 
         <!-- Error Message -->
         <div v-if="errorMessage" class="pt-2">
-          <Message severity="error" icon="pi pi-exclamation-triangle" class="!rounded-2xl">{{ errorMessage }}</Message>
+          <Message severity="error" icon="pi pi-exclamation-triangle" class="!rounded-xl">{{ errorMessage }}</Message>
         </div>
 
         <!-- Submit Button -->
@@ -360,7 +360,7 @@ const handleSubmit = async () => {
             type="submit" 
             label="Concluir Cadastro" 
             icon="pi pi-user-plus" 
-            class="w-full !rounded-2xl !py-4 shadow-xl shadow-primary-100 font-bold tracking-tight" 
+            class="w-full !rounded-xl !py-4 shadow-lg font-bold tracking-tight" 
             :loading="loading" 
             size="large"
           />

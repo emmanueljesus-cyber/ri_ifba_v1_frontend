@@ -57,8 +57,8 @@ const quickActions = [
 
           <!-- Info Cards -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div class="flex items-center gap-4 bg-white p-5 rounded-3xl border border-slate-100 shadow-sm hover:border-primary-200 transition-colors group">
-               <div class="w-12 h-12 rounded-2xl bg-primary-50 flex items-center justify-center text-primary-600 group-hover:bg-primary-600 group-hover:text-white transition-all">
+            <div class="flex items-center gap-4 bg-white p-5 rounded-xl border border-slate-100 shadow-sm hover:border-primary-200 transition-colors group">
+               <div class="w-12 h-12 rounded-xl bg-primary-50 flex items-center justify-center text-primary-600 group-hover:bg-primary-600 group-hover:text-white transition-all">
                  <i class="pi pi-check-circle text-xl"></i>
                </div>
                <div>
@@ -66,8 +66,8 @@ const quickActions = [
                  <p class="text-sm font-bold text-slate-700">Acesso Garantido</p>
                </div>
             </div>
-            <div class="flex items-center gap-4 bg-white p-5 rounded-3xl border border-slate-100 shadow-sm hover:border-emerald-200 transition-colors group">
-               <div class="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-all">
+            <div class="flex items-center gap-4 bg-white p-5 rounded-xl border border-slate-100 shadow-sm hover:border-emerald-200 transition-colors group">
+               <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-all">
                  <i class="pi pi-ticket text-xl"></i>
                </div>
                <div>
@@ -86,7 +86,7 @@ const quickActions = [
                 iconPos="right"
                 severity="success"
                 size="large"
-                class="!rounded-2xl !px-10 !py-4 shadow-xl shadow-primary-100 hover:shadow-primary-200 transition-all font-bold"
+                class="!rounded-xl !px-10 !py-4 shadow-lg hover: transition-all font-bold"
                 @click="goToLogin"
               />
               <Button 
@@ -95,7 +95,7 @@ const quickActions = [
                 severity="secondary"
                 size="large"
                 outlined
-                class="!rounded-2xl !px-8 !py-4 font-bold !border-slate-200 hover:!bg-white"
+                class="!rounded-xl !px-8 !py-4 font-bold !border-slate-200 hover:!bg-white"
                 @click="() => router.push('/cardapio')"
               />
             </template>
@@ -105,7 +105,7 @@ const quickActions = [
                 icon="pi pi-th-large" 
                 severity="success" 
                 size="large" 
-                class="!rounded-2xl !px-10 !py-4 shadow-xl shadow-emerald-100 font-bold" 
+                class="!rounded-xl !px-10 !py-4 shadow-lg font-bold" 
                 @click="() => router.push('/dashboard')" 
               />
             </template>
@@ -135,11 +135,11 @@ const quickActions = [
           <div 
             v-for="action in quickActions" 
             :key="action.route"
-            class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all cursor-pointer group"
+            class="bg-white p-8 rounded-xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all cursor-pointer group"
             @click="() => router.push(action.route)"
           >
             <div 
-              :class="`w-16 h-16 rounded-2xl bg-${action.color}-50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`"
+              :class="`w-16 h-16 rounded-xl bg-${action.color}-50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`"
             >
               <i :class="`${action.icon} text-3xl text-${action.color}-600`"></i>
             </div>

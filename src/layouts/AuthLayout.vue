@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-    <div class="w-full max-w-6xl bg-white shadow-2xl rounded-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-2">
+    <div class="w-full max-w-6xl bg-white shadow-2xl rounded-xl overflow-hidden grid grid-cols-1 lg:grid-cols-2">
       <!-- Branding Side -->
       <div class="bg-gradient-to-br from-primary-600 to-primary-800 text-white flex flex-col items-center justify-between gap-8 p-8 lg:p-16 relative overflow-hidden">
         <!-- Elementos decorativos de fundo -->

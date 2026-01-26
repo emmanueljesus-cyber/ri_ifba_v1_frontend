@@ -121,7 +121,7 @@ onMounted(() => {
     />
 
     <div v-if="presencaHoje && presencaHoje.status !== 'presente'" class="flex justify-end -mt-16 relative z-10">
-      <Button label="Meu QR Code" icon="pi pi-qrcode" severity="success" @click="displayQrCode = true" class="!rounded-2xl shadow-lg shadow-primary-100" />
+      <Button label="Meu QR Code" icon="pi pi-qrcode" severity="success" @click="displayQrCode = true" class="!rounded-xl shadow-md" />
     </div>
 
     <!-- Dialog QR Code -->
@@ -147,7 +147,7 @@ onMounted(() => {
     <!-- Grid de Cards -->
     <div class="grid gap-6">
       <!-- Card: Cardápio do Dia (Visual Refinado) -->
-      <Card class="overflow-hidden !rounded-3xl border border-slate-200 shadow-sm">
+      <Card class="overflow-hidden !rounded-xl border border-slate-200 shadow-sm">
         <template #title>
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
@@ -168,7 +168,7 @@ onMounted(() => {
 
           <div v-else-if="cardapio" class="grid sm:grid-cols-2 gap-4">
             <!-- Almoço -->
-            <div v-if="cardapio.almoco" class="p-5 bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border border-amber-200 shadow-sm">
+            <div v-if="cardapio.almoco" class="p-5 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-200 shadow-sm">
               <div class="flex items-center gap-3 mb-4 pb-3 border-b border-amber-200">
                 <div class="w-10 h-10 rounded-xl bg-amber-600 flex items-center justify-center">
                   <i class="pi pi-sun text-white text-lg"></i>
@@ -256,8 +256,8 @@ onMounted(() => {
               </div>
             </div>
 
-            <!-- Jantar -->
-            <div v-if="cardapio.jantar" class="p-5 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl border border-indigo-200 shadow-sm">
+            <!-- Jantar-->
+            <div v-if="cardapio.jantar" class="p-5 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border border-indigo-200 shadow-sm">
               <div class="flex items-center gap-3 mb-4 pb-3 border-b border-indigo-200">
                 <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center">
                   <i class="pi pi-moon text-white text-lg"></i>
@@ -377,7 +377,7 @@ onMounted(() => {
 
 
       <!-- Card: Minhas Inscrições (Fila Extra) - APENAS PARA NÃO-BOLSISTAS -->
-      <Card v-if="isNaoBolsista" class="!rounded-3xl border border-slate-200 shadow-sm">
+      <Card v-if="isNaoBolsista" class="!rounded-xl border border-slate-200 shadow-sm">
         <template #title>
           <div class="flex items-center gap-2">
             <i class="pi pi-ticket text-primary-600"></i>
@@ -408,7 +408,7 @@ onMounted(() => {
             <div
               v-for="inscricao in minhasInscricoes.slice(0, 2)"
               :key="inscricao.id"
-              class="p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-primary-200 transition-colors"
+              class="p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-primary-200 transition-colors"
             >
               <div class="flex items-start justify-between">
                 <div>
@@ -454,10 +454,10 @@ onMounted(() => {
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <!-- Ações para TODOS os estudantes -->
       <div
-        class="group cursor-pointer p-4 rounded-3xl bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-primary-300 transition-all flex items-center gap-4"
+        class="group cursor-pointer p-4 rounded-xl bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-primary-300 transition-all flex items-center gap-4"
         @click="router.push('/dashboard/cardapio')"
       >
-        <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-inner transition-transform group-hover:scale-110 bg-primary-600">
+        <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-inner transition-transform group-hover:scale-110 bg-primary-600">
           <i class="pi pi-calendar text-xl"></i>
         </div>
         <div class="flex-1">
@@ -469,10 +469,10 @@ onMounted(() => {
       <!-- Ação: Fila de Extras - APENAS para NÃO-BOLSISTAS -->
       <div
         v-if="isNaoBolsista"
-        class="group cursor-pointer p-4 rounded-3xl bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-primary-300 transition-all flex items-center gap-4"
+        class="group cursor-pointer p-4 rounded-xl bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-primary-300 transition-all flex items-center gap-4"
         @click="router.push('/dashboard/fila-extras')"
       >
-        <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-inner transition-transform group-hover:scale-110 bg-primary-700">
+        <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-inner transition-transform group-hover:scale-110 bg-primary-700">
           <i class="pi pi-ticket text-xl"></i>
         </div>
         <div class="flex-1">
@@ -484,10 +484,10 @@ onMounted(() => {
       <!-- Ação: Justificativas - APENAS para BOLSISTAS -->
       <div
         v-if="isBolsista"
-        class="group cursor-pointer p-4 rounded-3xl bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-primary-300 transition-all flex items-center gap-4"
+        class="group cursor-pointer p-4 rounded-xl bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-primary-300 transition-all flex items-center gap-4"
         @click="router.push('/dashboard/justificativas')"
       >
-        <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-inner transition-transform group-hover:scale-110 bg-amber-600">
+        <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-inner transition-transform group-hover:scale-110 bg-amber-600">
           <i class="pi pi-file-edit text-xl"></i>
         </div>
         <div class="flex-1">
@@ -498,10 +498,10 @@ onMounted(() => {
 
       <!-- Ações para TODOS os estudantes -->
       <div
-        class="group cursor-pointer p-4 rounded-3xl bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-primary-300 transition-all flex items-center gap-4"
+        class="group cursor-pointer p-4 rounded-xl bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-primary-300 transition-all flex items-center gap-4"
         @click="router.push('/dashboard/historico')"
       >
-        <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-inner transition-transform group-hover:scale-110 bg-slate-700">
+        <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-inner transition-transform group-hover:scale-110 bg-slate-700">
           <i class="pi pi-history text-xl"></i>
         </div>
         <div class="flex-1">
@@ -511,10 +511,10 @@ onMounted(() => {
       </div>
 
       <div
-        class="group cursor-pointer p-4 rounded-3xl bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-primary-300 transition-all flex items-center gap-4"
+        class="group cursor-pointer p-4 rounded-xl bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-primary-300 transition-all flex items-center gap-4"
         @click="router.push('/dashboard/perfil')"
       >
-        <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-inner transition-transform group-hover:scale-110 bg-slate-800">
+        <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-inner transition-transform group-hover:scale-110 bg-slate-800">
           <i class="pi pi-user text-xl"></i>
         </div>
         <div class="flex-1">

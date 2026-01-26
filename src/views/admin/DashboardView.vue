@@ -110,8 +110,8 @@ onMounted(() => {
 
     <!-- Métricas Rápidas -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center gap-4">
-        <div class="p-3 bg-emerald-50 rounded-2xl text-emerald-600">
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+        <div class="p-3 bg-emerald-50 rounded-xl text-emerald-600">
           <i class="pi pi-users text-2xl"></i>
         </div>
         <div>
@@ -120,8 +120,8 @@ onMounted(() => {
         </div>
       </div>
 
-      <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center gap-4">
-        <div class="p-3 bg-blue-50 rounded-2xl text-blue-600">
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+        <div class="p-3 bg-blue-50 rounded-xl text-blue-600">
           <i class="pi pi-check-circle text-2xl"></i>
         </div>
         <div>
@@ -130,8 +130,8 @@ onMounted(() => {
         </div>
       </div>
 
-      <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center gap-4">
-        <div class="p-3 bg-orange-50 rounded-2xl text-orange-600">
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+        <div class="p-3 bg-orange-50 rounded-xl text-orange-600">
           <i class="pi pi-file-edit text-2xl"></i>
         </div>
         <div>
@@ -140,8 +140,8 @@ onMounted(() => {
         </div>
       </div>
 
-      <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center gap-4">
-        <div class="p-3 bg-red-50 rounded-2xl text-red-600">
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+        <div class="p-3 bg-red-50 rounded-xl text-red-600">
           <i class="pi pi-times-circle text-2xl"></i>
         </div>
         <div>
@@ -153,7 +153,7 @@ onMounted(() => {
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Bolsistas do Dia -->
-      <div class="lg:col-span-2 bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-sm">
+      <div class="lg:col-span-2 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
         <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
           <div>
             <h3 class="text-lg font-black text-slate-700 uppercase tracking-wider">Bolsistas do Dia</h3>
@@ -201,7 +201,7 @@ onMounted(() => {
 
       <!-- Ações Rápidas -->
       <div class="space-y-6">
-        <Card class="!rounded-[2.5rem] !border-slate-200 overflow-hidden shadow-sm">
+        <Card class="!rounded-xl !border-slate-200 overflow-hidden shadow-sm">
           <template #title>
              <span class="text-base font-black text-slate-700 uppercase tracking-wider">Validação Rápida</span>
           </template>
@@ -213,7 +213,7 @@ onMounted(() => {
                   <InputIcon class="pi pi-user" />
                   <InputText v-model="buscaRapida" placeholder="Matrícula..." class="w-full !rounded-xl" @keyup.enter="validarMatriculaRapida" />
                 </IconField>
-                <Button label="Validar Matrícula" icon="pi pi-check" class="w-full !rounded-xl shadow-lg shadow-emerald-100" severity="success" :loading="validandoToken" @click="validarMatriculaRapida" />
+                <Button label="Validar Matrícula" icon="pi pi-check" class="w-full !rounded-xl shadow-md" severity="success" :loading="validandoToken" @click="validarMatriculaRapida" />
               </div>
               
               <div class="relative py-2">
@@ -226,7 +226,7 @@ onMounted(() => {
           </template>
         </Card>
 
-        <Card class="!rounded-[2.5rem] !border-slate-200 overflow-hidden shadow-sm">
+        <Card class="!rounded-xl !border-slate-200 overflow-hidden shadow-sm">
           <template #title>
              <span class="text-base font-black text-slate-700 uppercase tracking-wider">Outras Ações</span>
           </template>

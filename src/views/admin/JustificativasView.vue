@@ -144,6 +144,7 @@ onMounted(() => {
     <PageHeader
       title="Gerenciar Justificativas"
       subtitle="Analise e decida sobre as justificativas dos alunos."
+      :show-back-button="true"
       :breadcrumbs="[{ label: 'Admin', route: '/admin' }, { label: 'Justificativas' }]"
     />
 
@@ -151,7 +152,7 @@ onMounted(() => {
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div 
         @click="filters.status.value = 'pendente'"
-        class="bg-amber-50 border-2 border-amber-200 rounded-[2rem] p-6 shadow-sm flex flex-col items-center justify-center transition-all hover:shadow-md cursor-pointer"
+        class="bg-amber-50 border-2 border-amber-200 rounded-xl p-6 shadow-sm flex flex-col items-center justify-center transition-all hover:shadow-md cursor-pointer"
         :class="{'ring-4 ring-amber-200': filters.status.value === 'pendente'}"
       >
         <span class="text-4xl font-black text-amber-600 mb-1 leading-none">{{ stats?.pendentes || 0 }}</span>
@@ -163,7 +164,7 @@ onMounted(() => {
 
       <div 
         @click="filters.status.value = 'aprovada'"
-        class="bg-emerald-50 border-2 border-emerald-200 rounded-[2rem] p-6 shadow-sm flex flex-col items-center justify-center transition-all hover:shadow-md cursor-pointer"
+        class="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-6 shadow-sm flex flex-col items-center justify-center transition-all hover:shadow-md cursor-pointer"
         :class="{'ring-4 ring-emerald-200': filters.status.value === 'aprovada'}"
       >
         <span class="text-4xl font-black text-emerald-600 mb-1 leading-none">{{ stats?.aprovadas || 0 }}</span>
@@ -175,7 +176,7 @@ onMounted(() => {
 
       <div 
         @click="filters.status.value = 'rejeitada'"
-        class="bg-red-50 border-2 border-red-200 rounded-[2rem] p-6 shadow-sm flex flex-col items-center justify-center transition-all hover:shadow-md cursor-pointer"
+        class="bg-red-50 border-2 border-red-200 rounded-xl p-6 shadow-sm flex flex-col items-center justify-center transition-all hover:shadow-md cursor-pointer"
         :class="{'ring-4 ring-red-200': filters.status.value === 'rejeitada'}"
       >
         <span class="text-4xl font-black text-red-600 mb-1 leading-none">{{ stats?.rejeitadas || 0 }}</span>
@@ -187,7 +188,7 @@ onMounted(() => {
     </div>
 
     <!-- Barra de Filtros -->
-    <div class="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm flex flex-wrap items-end gap-4">
+    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-wrap items-end gap-4">
       <div class="flex flex-col gap-1.5">
         <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Status</label>
         <Select v-model="filters.status.value" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Status" class="w-44 !rounded-xl" />
@@ -202,25 +203,22 @@ onMounted(() => {
       
       <div class="flex flex-col gap-1.5">
         <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Pesquisa</label>
-        <IconField iconPosition="left">
-          <InputIcon class="pi pi-search" />
-          <InputText v-model="filters.global.value" placeholder="Buscar aluno ou motivo..." class="!rounded-xl w-64" />
-        </IconField>
+        <InputText v-model="filters.global.value" placeholder="Buscar aluno ou motivo..." class="!rounded-xl w-64" />
       </div>
     </div>
 
     <!-- Lista de Justificativas -->
     <div class="space-y-4">
       <div v-if="loading" class="space-y-4">
-        <div v-for="i in 3" :key="i" class="h-48 bg-slate-100 animate-pulse rounded-3xl border border-slate-200"></div>
+        <div v-for="i in 3" :key="i" class="h-48 bg-slate-100 animate-pulse rounded-xl border border-slate-200"></div>
       </div>
 
-      <div v-else-if="justificativas.length === 0" class="py-20 text-center bg-white rounded-[2.5rem] border-2 border-dashed border-slate-200">
+      <div v-else-if="justificativas.length === 0" class="py-20 text-center bg-white rounded-xl border-2 border-dashed border-slate-200">
         <i class="pi pi-file-edit text-5xl text-slate-200 mb-4"></i>
         <p class="text-slate-500 font-medium">Nenhuma justificativa encontrada com os filtros selecionados.</p>
       </div>
 
-      <div v-for="just in justificativas" :key="just.id" class="bg-white border border-slate-200 rounded-[2rem] p-6 shadow-sm transition-all hover:shadow-md hover:border-primary-200 relative overflow-hidden group">
+      <div v-for="just in justificativas" :key="just.id" class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm transition-all hover:shadow-md hover:border-primary-200 relative overflow-hidden group">
         <!-- Badge de Status no topo direito -->
         <div class="absolute top-6 right-6 flex items-center gap-3">
           <div v-if="just.status_justificativa === 'pendente'" class="flex gap-2">
@@ -279,7 +277,7 @@ onMounted(() => {
       header="Analisar Justificativa" 
       :style="{ width: '90%', maxWidth: '500px' }" 
       modal
-      class="!rounded-[2.5rem] overflow-hidden"
+      class="!rounded-xl overflow-hidden"
     >
       <div v-if="selectedJustificativa" class="space-y-6 py-4">
         <div class="flex items-center justify-between px-1">
@@ -293,12 +291,12 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
           <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Motivo do Aluno:</p>
           <p class="text-slate-800 text-sm leading-relaxed">{{ selectedJustificativa.motivo }}</p>
         </div>
 
-        <div v-if="selectedJustificativa.tem_anexo" class="flex justify-center p-4 border-2 border-dashed border-slate-200 rounded-2xl">
+        <div v-if="selectedJustificativa.tem_anexo" class="flex justify-center p-4 border-2 border-dashed border-slate-200 rounded-xl">
           <Button 
             label="Visualizar Documento" 
             icon="pi pi-external-link" 
@@ -315,7 +313,7 @@ onMounted(() => {
               v-model="motivoRejeicao" 
               rows="3" 
               placeholder="Descreva o motivo caso vá rejeitar..." 
-              class="w-full !rounded-2xl" 
+              class="w-full !rounded-xl" 
             />
           </div>
           <div class="flex gap-3 pt-2">
@@ -323,7 +321,7 @@ onMounted(() => {
             <Button label="Aprovar" icon="pi pi-check" severity="success" @click="aprovar" :loading="loadingAction" class="flex-1 !rounded-xl" />
           </div>
         </div>
-        <div v-else class="bg-blue-50 p-4 rounded-2xl border border-blue-100 text-center">
+        <div v-else class="bg-blue-50 p-4 rounded-xl border border-blue-100 text-center">
           <p class="text-blue-700 text-sm font-medium italic">Esta justificativa já foi {{ selectedJustificativa.status_justificativa }}.</p>
         </div>
       </div>

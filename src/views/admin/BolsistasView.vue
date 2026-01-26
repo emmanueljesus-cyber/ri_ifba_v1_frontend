@@ -147,6 +147,7 @@ onMounted(() => {
     <PageHeader
       title="Gestão de Bolsistas"
       subtitle="Visualize e gerencie a lista de bolsistas aprovados e cadastrados."
+      :show-back-button="true"
       :breadcrumbs="[{ label: 'Admin', route: '/admin' }, { label: 'Gestão de Bolsistas' }]"
     />
 
@@ -163,17 +164,12 @@ onMounted(() => {
         <DataTable v-model:filters="filtersAprovados" :value="aprovados" :loading="loadingAprovados" paginator :rows="10"
           :globalFilterFields="['matricula', 'nome', 'turno']" filterDisplay="menu">
           <template #header>
-            <div class="flex justify-between items-center mb-2 gap-4">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-2 gap-4">
               <span class="text-xl font-bold text-slate-700">Aprovados</span>
-              <div class="flex gap-3 items-center">
-                <Select v-model="filtersAprovados['turno'].value" :options="turnoOptionsAprovados" optionLabel="label" optionValue="value" placeholder="Turno" class="w-40" />
-                <Select v-model="filtersAprovados['ativo'].value" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Status" class="w-40" />
-                <IconField>
-                  <InputIcon>
-                    <i class="pi pi-search" />
-                  </InputIcon>
-                  <InputText v-model="filtersAprovados['global'].value" placeholder="Buscar..." />
-                </IconField>
+              <div class="flex gap-3 items-center w-full md:w-auto">
+                <Select v-model="filtersAprovados['turno_refeicao'].value" :options="turnoOptionsAprovados" optionLabel="label" optionValue="value" placeholder="Turno" class="flex-1 md:w-40" />
+                <Select v-model="filtersAprovados['ativo'].value" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Status" class="flex-1 md:w-40" />
+                <InputText v-model="filtersAprovados['global'].value" placeholder="Buscar..." class="flex-1 md:w-60 !rounded-xl" />
               </div>
             </div>
           </template>
@@ -205,8 +201,10 @@ onMounted(() => {
           </Column>
           <Column header="Ações">
             <template #body="{ data }">
-               <Button v-if="data.ativo" icon="pi pi-times-circle" outlined rounded severity="danger" title="Desativar Bolsista" @click="adminBolsistaService.desativarAprovado(data.id); carregarAprovados()" />
-               <Button v-else icon="pi pi-check-circle" outlined rounded severity="success" title="Reativar Matrícula" @click="adminBolsistaService.reativarAprovado(data.id); carregarAprovados()" />
+               <div class="flex gap-2">
+                 <Button v-if="data.ativo" icon="pi pi-times-circle" outlined severity="danger" class="!rounded-lg" title="Desativar Bolsista" @click="adminBolsistaService.desativarAprovado(data.id); carregarAprovados()" />
+                 <Button v-else icon="pi pi-check-circle" outlined severity="success" class="!rounded-lg" title="Reativar Matrícula" @click="adminBolsistaService.reativarAprovado(data.id); carregarAprovados()" />
+               </div>
             </template>
           </Column>
         </DataTable>
@@ -218,17 +216,12 @@ onMounted(() => {
         <DataTable v-model:filters="filtersBolsistas" :value="bolsistas" :loading="loading" paginator :rows="10"
           :globalFilterFields="['nome', 'matricula', 'curso']">
           <template #header>
-            <div class="flex justify-between items-center mb-2 gap-4">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-2 gap-4">
               <span class="text-xl font-bold text-slate-700">Usuários Ativos</span>
-              <div class="flex gap-3 items-center">
-                <Select v-model="filtersBolsistas['turno_refeicao'].value" :options="turnoOptionsAprovados" optionLabel="label" optionValue="value" placeholder="Refeição" class="w-40" />
-                <Select v-model="filtersBolsistas['ativo'].value" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Status" class="w-40" />
-                <IconField>
-                  <InputIcon>
-                    <i class="pi pi-search" />
-                  </InputIcon>
-                  <InputText v-model="filtersBolsistas['global'].value" placeholder="Buscar bolsista..." />
-                </IconField>
+              <div class="flex gap-3 items-center w-full md:w-auto">
+                <Select v-model="filtersBolsistas['turno_refeicao'].value" :options="turnoOptionsAprovados" optionLabel="label" optionValue="value" placeholder="Refeição" class="flex-1 md:w-40" />
+                <Select v-model="filtersBolsistas['ativo'].value" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Status" class="flex-1 md:w-40" />
+                <InputText v-model="filtersBolsistas['global'].value" placeholder="Buscar bolsista..." class="flex-1 md:w-60 !rounded-xl" />
               </div>
             </div>
           </template>
@@ -271,8 +264,8 @@ onMounted(() => {
           <Column header="Ações">
             <template #body="{ data }">
               <div class="flex gap-2">
-                <Button v-if="data.ativo" icon="pi pi-user-minus" outlined rounded severity="danger" @click="selectedBolsista = data; displayDesligar = true" />
-                <Button v-else icon="pi pi-user-plus" outlined rounded severity="success" @click="adminBolsistaService.reativar(data.id); carregarBolsistas()" />
+                <Button v-if="data.ativo" icon="pi pi-user-minus" outlined severity="danger" class="!rounded-lg" @click="selectedBolsista = data; displayDesligar = true" />
+                <Button v-else icon="pi pi-user-plus" outlined severity="success" class="!rounded-lg" @click="adminBolsistaService.reativar(data.id); carregarBolsistas()" />
               </div>
             </template>
           </Column>
@@ -304,7 +297,7 @@ onMounted(() => {
     </Dialog>
 
     <!-- Dialog Modelos -->
-    <Dialog v-model:visible="displayTemplates" header="Modelos de Planilha" :style="{ width: '400px' }" modal class="!rounded-[2rem]">
+    <Dialog v-model:visible="displayTemplates" header="Modelos de Planilha" :style="{ width: '400px' }" modal class="!rounded-xl">
       <div class="space-y-6 py-4">
         <p class="text-sm text-slate-600">Baixe os modelos oficiais para importação de bolsistas no sistema.</p>
         
@@ -312,7 +305,7 @@ onMounted(() => {
            <Button label="Modelo de Bolsistas (.xlsx)" icon="pi pi-file-excel" severity="emerald" outlined class="!rounded-xl text-left" @click="downloadTemplate" />
         </div>
         
-        <div class="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
+        <div class="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
            <p class="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1">Nota:</p>
            <p class="text-xs text-emerald-700">A planilha deve conter as colunas: Matrícula, Nome, Curso, Turno e Dias da Semana (0-6).</p>
         </div>

@@ -20,17 +20,10 @@ import Button from 'primevue/button'
 import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
 import ProgressSpinner from 'primevue/progressspinner'
-import Tabs from 'primevue/tabs'
-import TabList from 'primevue/tablist'
-import Tab from 'primevue/tab'
-import TabPanels from 'primevue/tabpanels'
-import TabPanel from 'primevue/tabpanel'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import DatePicker from 'primevue/datepicker'
-import IconField from 'primevue/iconfield'
-import InputIcon from 'primevue/inputicon'
 import InputText from 'primevue/inputtext'
 
 const loading = ref(false)
@@ -78,10 +71,9 @@ const carregarPresencas = async () => {
   try {
     const inicio = filtroDataInicio.value.toISOString().split('T')[0]
     const fim = filtroDataFim.value.toISOString().split('T')[0]
-    const turno = filtroTurno.value === 'todos' ? undefined : filtroTurno.value
-    
-    const res = await relatorioService.presencas(inicio, fim, turno)
-    relatorioPresencas.value = res
+    const turno = filtroTurno.value === 'todos' ? '' : filtroTurno.value
+
+    relatorioPresencas.value = await relatorioService.presencas(inicio, fim, turno || undefined)
   } catch (error) {
     console.error('Erro ao carregar presenças:', error)
   } finally {
@@ -125,9 +117,9 @@ const exportarGeral = async () => {
   try {
     const inicio = filtroDataInicio.value.toISOString().split('T')[0]
     const fim = filtroDataFim.value.toISOString().split('T')[0]
-    const turno = filtroTurno.value === 'todos' ? undefined : filtroTurno.value
-    
-    const blob = await relatorioService.exportarGeral(inicio, fim, turno)
+    const turno = filtroTurno.value === 'todos' ? '' : filtroTurno.value
+
+    const blob = await relatorioService.exportarGeral(inicio, fim, turno || undefined)
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
@@ -138,24 +130,6 @@ const exportarGeral = async () => {
   } catch (error) {
     console.error('Erro ao exportar geral:', error)
   }
-}
-
-const getStatusSeverity = (status: string) => {
-  if (!status) return 'secondary'
-  switch (status.toLowerCase()) {
-    case 'presente': return 'success'
-    case 'falta_injustificada':
-    case 'ausente': return 'danger'
-    case 'falta_justificada':
-    case 'justificado': return 'info'
-    case 'cancelado': return 'warn'
-    default: return 'secondary'
-  }
-}
-
-const getStatusLabel = (status: string) => {
-  if (!status) return ''
-  return status.replace('_', ' ').toUpperCase()
 }
 
 onMounted(() => {
@@ -197,11 +171,18 @@ const categorias = [
   { key: 'n_frequenta', label: 'Ñ Frequenta', color: 'bg-slate-50 text-slate-700' }
 ]
 
-const activeTab = ref('0')
+const activeTab = ref('geral')
+
+const tabOptions = [
+  { label: 'Geral Mensal', value: 'geral', icon: 'pi pi-chart-bar' },
+  { label: 'Presenças', value: 'presencas', icon: 'pi pi-users' },
+  { label: 'Extras', value: 'extras', icon: 'pi pi-user-plus' },
+  { label: 'Modelos', value: 'modelos', icon: 'pi pi-download' }
+]
 
 watch(activeTab, (newTab) => {
-  if (newTab === '0') carregarRelatorio()
-  if (newTab === '1') {
+  if (newTab === 'geral') carregarRelatorio()
+  if (newTab === 'presencas' || newTab === 'extras') {
     carregarPresencas()
     carregarDashboard()
   }
@@ -213,20 +194,33 @@ watch(activeTab, (newTab) => {
     <PageHeader 
       title="Relatórios e Modelos" 
       subtitle="Acompanhamento de consumo e ferramentas de importação"
+      :show-back-button="true"
       :breadcrumbs="[{ label: 'Admin', route: '/admin' }, { label: 'Relatórios' }]"
     />
 
-    <Tabs v-model:value="activeTab">
-      <TabList class="gap-4">
-        <Tab value="0" class="!px-6">Geral Mensal</Tab>
-        <Tab value="1" class="!px-6">Presenças e Extras</Tab>
-        <Tab value="2" class="!px-6">Modelos de Importação</Tab>
-      </TabList>
-      <TabPanels>
-        <!-- ABA 0: RELATÓRIO GERAL MENSAL -->
-        <TabPanel value="0">
-          <Card class="!rounded-3xl border border-slate-200 shadow-sm overflow-hidden mt-4">
-            <template #content>
+    <!-- Seletor de Aba usando SelectButton -->
+    <div class="flex justify-center mb-6">
+      <SelectButton
+        v-model="activeTab"
+        :options="tabOptions"
+        optionLabel="label"
+        optionValue="value"
+        :allowEmpty="false"
+        class="tab-select-button"
+      >
+        <template #option="slotProps">
+          <div class="flex items-center gap-2 px-2">
+            <i :class="slotProps.option.icon"></i>
+            <span class="font-bold">{{ slotProps.option.label }}</span>
+          </div>
+        </template>
+      </SelectButton>
+    </div>
+
+    <!-- ABA: RELATÓRIO GERAL MENSAL -->
+    <div v-if="activeTab === 'geral'">
+      <Card class="!rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <template #content>
               <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
                 <div class="flex gap-2 items-center">
                   <Select v-model="mesSelecionado" :options="meses" optionLabel="label" optionValue="value" class="w-40" @change="carregarRelatorio" />
@@ -244,19 +238,19 @@ watch(activeTab, (newTab) => {
               <div v-else-if="relatorio" class="overflow-x-auto">
                 <!-- Resumo Rápido -->
                 <div v-if="statsDashboard" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                   <div class="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
+                   <div class="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
                       <p class="text-[10px] font-black text-emerald-600 uppercase">Presentes</p>
                       <p class="text-2xl font-black text-emerald-700">{{ statsDashboard.resumo?.total_presentes || 0 }}</p>
                    </div>
-                   <div class="p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                   <div class="p-4 bg-blue-50 rounded-xl border border-blue-100">
                       <p class="text-[10px] font-black text-blue-600 uppercase">Extras</p>
                       <p class="text-2xl font-black text-blue-700">{{ statsDashboard.extras?.total || 0 }}</p>
                    </div>
-                   <div class="p-4 bg-red-50 rounded-2xl border border-red-100">
+                   <div class="p-4 bg-red-50 rounded-xl border border-red-100">
                       <p class="text-[10px] font-black text-red-600 uppercase">Faltas</p>
                       <p class="text-2xl font-black text-red-700">{{ statsDashboard.resumo?.total_faltas || 0 }}</p>
                    </div>
-                   <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                   <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
                       <p class="text-[10px] font-black text-slate-600 uppercase">Aproveitamento</p>
                       <p class="text-2xl font-black text-slate-700">{{ statsDashboard.taxa_presenca?.porcentagem || '0%' }}</p>
                    </div>
@@ -269,7 +263,7 @@ watch(activeTab, (newTab) => {
                         <th class="p-4 text-left font-black uppercase tracking-widest text-xs border border-slate-700 w-48">
                           {{ relatorio.mes_ano }}
                         </th>
-                        <th v-for="(semana, index) in relatorio.semanas" :key="index" class="p-4 text-center font-black uppercase tracking-widest text-xs border border-slate-700">
+                        <th v-for="(_, index) in relatorio.semanas" :key="index" class="p-4 text-center font-black uppercase tracking-widest text-xs border border-slate-700">
                           Semana {{ index + 1 }}
                         </th>
                         <th class="p-4 text-center font-black uppercase tracking-widest text-xs border border-slate-700 bg-slate-700">
@@ -300,7 +294,7 @@ watch(activeTab, (newTab) => {
                     </tbody>
                   </table>
 
-                  <div class="mt-8 p-6 bg-slate-50 rounded-3xl border border-slate-200 grid grid-cols-2 md:grid-cols-4 gap-6">
+                  <div class="mt-8 p-6 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-2 md:grid-cols-4 gap-6">
                       <div>
                           <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Mês de Referência</p>
                           <p class="text-xl font-black text-slate-800 capitalize">{{ relatorio.mes_texto }}</p>
@@ -318,25 +312,26 @@ watch(activeTab, (newTab) => {
               </div>
             </template>
           </Card>
-        </TabPanel>
+        </div>
 
-        <!-- ABA 1: RELATÓRIO DE PRESENÇAS E EXTRAS -->
-        <TabPanel value="1">
-          <Card class="!rounded-3xl border border-slate-200 shadow-sm overflow-hidden mt-4">
+        <!-- ABA: RELATÓRIO DE PRESENÇAS -->
+        <div v-else-if="activeTab === 'presencas'">
+          <Card class="!rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <template #content>
+              <!-- Filtros -->
               <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
                 <div class="flex flex-wrap gap-4 items-end">
                   <div class="flex flex-col gap-1">
-                    <label class="text-[10px] font-black uppercase text-slate-400">Início</label>
-                    <DatePicker v-model="filtroDataInicio" dateFormat="dd/mm/yy" class="w-32" :locale="ptBR" />
+                    <label class="text-[10px] font-bold uppercase text-slate-500">Início</label>
+                    <DatePicker v-model="filtroDataInicio" dateFormat="dd/mm/yy" class="w-36" :locale="ptBR" showIcon />
                   </div>
                   <div class="flex flex-col gap-1">
-                    <label class="text-[10px] font-black uppercase text-slate-400">Fim</label>
-                    <DatePicker v-model="filtroDataFim" dateFormat="dd/mm/yy" class="w-32" :locale="ptBR" />
+                    <label class="text-[10px] font-bold uppercase text-slate-500">Fim</label>
+                    <DatePicker v-model="filtroDataFim" dateFormat="dd/mm/yy" class="w-36" :locale="ptBR" showIcon />
                   </div>
                   <div class="flex flex-col gap-1">
-                    <label class="text-[10px] font-black uppercase text-slate-400 ml-1">Turno</label>
-                    <SelectButton 
+                    <label class="text-[10px] font-bold uppercase text-slate-500">Turno</label>
+                    <SelectButton
                       v-model="filtroTurno" 
                       :options="turnos" 
                       optionLabel="label" 
@@ -345,89 +340,133 @@ watch(activeTab, (newTab) => {
                       class="custom-select-button"
                     />
                   </div>
-                  <Button icon="pi pi-search" label="Filtrar" @click="carregarPresencas" :loading="loading" class="!rounded-xl" />
+                  <Button icon="pi pi-search" label="Buscar" severity="primary" @click="carregarPresencas" :loading="loading" class="!rounded-xl" />
                 </div>
-                <Button label="Exportar Detalhado" icon="pi pi-download" severity="info" outlined class="!rounded-xl" @click="exportarGeral" />
+                <Button label="Exportar Excel" icon="pi pi-file-excel" severity="success" outlined class="!rounded-xl" @click="exportarGeral" />
               </div>
 
-              <DataTable 
+              <!-- Resumo -->
+              <div v-if="relatorioPresencas?.meta?.totais" class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                <div class="p-4 bg-emerald-50 rounded-xl border border-emerald-100 text-center">
+                  <p class="text-[10px] font-bold text-emerald-600 uppercase">Presentes</p>
+                  <p class="text-2xl font-black text-emerald-700">{{ relatorioPresencas.meta.totais.presentes }}</p>
+                </div>
+                <div class="p-4 bg-blue-50 rounded-xl border border-blue-100 text-center">
+                  <p class="text-[10px] font-bold text-blue-600 uppercase">Faltas Just.</p>
+                  <p class="text-2xl font-black text-blue-700">{{ relatorioPresencas.meta.totais.falta_justificada }}</p>
+                </div>
+                <div class="p-4 bg-red-50 rounded-xl border border-red-100 text-center">
+                  <p class="text-[10px] font-bold text-red-600 uppercase">Faltas Injust.</p>
+                  <p class="text-2xl font-black text-red-700">{{ relatorioPresencas.meta.totais.falta_injustificada }}</p>
+                </div>
+                <div class="p-4 bg-amber-50 rounded-xl border border-amber-100 text-center">
+                  <p class="text-[10px] font-bold text-amber-600 uppercase">Cancelados</p>
+                  <p class="text-2xl font-black text-amber-700">{{ relatorioPresencas.meta.totais.cancelados }}</p>
+                </div>
+                <div class="p-4 bg-slate-100 rounded-xl border border-slate-200 text-center">
+                  <p class="text-[10px] font-bold text-slate-600 uppercase">Total</p>
+                  <p class="text-2xl font-black text-slate-700">{{ relatorioPresencas.meta.totais.total_registros }}</p>
+                </div>
+              </div>
+
+              <!-- Tabela de dados -->
+              <DataTable
                 v-model:filters="filters"
                 :value="relatorioPresencas?.data || []" 
                 :loading="loading" 
                 paginator 
-                :rows="10" 
-                class="p-datatable-sm mt-4"
-                :globalFilterFields="['nome', 'matricula', 'status', 'tipo']"
+                :rows="15"
+                :rowsPerPageOptions="[10, 15, 25, 50]"
+                class="p-datatable-sm"
+                :globalFilterFields="['data', 'turno']"
+                stripedRows
               >
                 <template #header>
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-lg font-black text-slate-700 uppercase tracking-wider">Resultados</span>
-                        <IconField iconPosition="left">
-                            <InputIcon class="pi pi-search" />
-                            <InputText v-model="filters['global'].value" placeholder="Filtrar resultados..." class="!rounded-xl" />
-                        </IconField>
-                    </div>
+                  <div class="flex justify-between items-center">
+                    <span class="text-lg font-bold text-slate-700">Registro de Presenças por Dia</span>
+                    <InputText v-model="filters['global'].value" placeholder="Buscar..." class="!rounded-xl w-60" />
+                  </div>
                 </template>
                 <template #empty>
-                  <p class="text-center p-8 text-slate-500">Nenhum registro encontrado para o período.</p>
+                  <div class="text-center py-8 text-slate-400">
+                    <i class="pi pi-inbox text-4xl mb-2"></i>
+                    <p>Nenhum registro encontrado para o período.</p>
+                  </div>
                 </template>
-                <Column header="Refeição">
+
+                <Column header="Data" field="data" :sortable="true" :style="{ width: '120px' }">
                   <template #body="{ data }">
-                    <div class="flex items-center gap-3">
-                      <div :class="data.turno === 'almoco' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'" class="w-10 h-10 rounded-xl flex items-center justify-center">
-                        <i :class="data.turno === 'almoco' ? 'pi pi-sun' : 'pi pi-moon'" class="text-xl"></i>
+                    <span class="font-bold text-slate-800">{{ data.data }}</span>
+                  </template>
+                </Column>
+
+                <Column header="Turno" field="turno" :sortable="true" :style="{ width: '120px' }">
+                  <template #body="{ data }">
+                    <div class="flex items-center gap-2">
+                      <div :class="data.turno === 'almoco' ? 'bg-amber-100 text-amber-600' : 'bg-indigo-100 text-indigo-600'" class="w-8 h-8 rounded-lg flex items-center justify-center">
+                        <i :class="data.turno === 'almoco' ? 'pi pi-sun' : 'pi pi-moon'"></i>
                       </div>
-                      <div>
-                        <p class="font-bold text-slate-800 leading-tight">{{ data.data }}</p>
-                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-tighter">{{ data.turno === 'almoco' ? 'Almoço' : 'Jantar' }}</p>
-                      </div>
+                      <span class="font-medium">{{ data.turno === 'almoco' ? 'Almoço' : 'Jantar' }}</span>
                     </div>
                   </template>
                 </Column>
-                <Column header="Matrícula" field="matricula"></Column>
-                <Column header="Nome" field="nome"></Column>
-                <Column header="Status">
+
+                <Column header="Presentes" field="presentes" :sortable="true" :style="{ width: '100px' }">
                   <template #body="{ data }">
-                    <Tag :value="getStatusLabel(data.status)" :severity="getStatusSeverity(data.status)" class="!rounded-full text-[10px]" />
+                    <Tag :value="data.presentes.toString()" severity="success" class="!rounded-full !px-3 !font-bold" />
                   </template>
                 </Column>
-                <Column header="Tipo">
+
+                <Column header="Falta Just." field="falta_justificada" :sortable="true" :style="{ width: '100px' }">
                   <template #body="{ data }">
-                    <Tag :value="data.tipo" :severity="data.tipo === 'extra' ? 'warn' : 'info'" outlined class="!rounded-full text-[10px]" />
+                    <Tag :value="data.falta_justificada.toString()" severity="info" class="!rounded-full !px-3" />
+                  </template>
+                </Column>
+
+                <Column header="Falta Injust." field="falta_injustificada" :sortable="true" :style="{ width: '110px' }">
+                  <template #body="{ data }">
+                    <Tag :value="data.falta_injustificada.toString()" severity="danger" class="!rounded-full !px-3" />
+                  </template>
+                </Column>
+
+                <Column header="Cancelados" field="cancelados" :sortable="true" :style="{ width: '100px' }">
+                  <template #body="{ data }">
+                    <Tag :value="data.cancelados.toString()" severity="warn" class="!rounded-full !px-3" />
+                  </template>
+                </Column>
+
+                <Column header="Total" field="total" :sortable="true" :style="{ width: '80px' }">
+                  <template #body="{ data }">
+                    <span class="font-black text-slate-700">{{ data.total }}</span>
                   </template>
                 </Column>
               </DataTable>
+            </template>
+          </Card>
+        </div>
 
-              <!-- Seção de Resumo Detalhado -->
-              <div v-if="relatorioPresencas?.meta?.totais" class="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p class="text-[10px] font-black text-slate-400 uppercase">Total Presentes</p>
-                    <p class="text-xl font-bold">{{ relatorioPresencas.meta.totais.presentes }}</p>
-                  </div>
-                  <div v-if="relatorioPresencas.meta.totais.extras !== undefined" class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p class="text-[10px] font-black text-slate-400 uppercase">Total Extras</p>
-                    <p class="text-xl font-bold">{{ relatorioPresencas.meta.totais.extras }}</p>
-                  </div>
-                  <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p class="text-[10px] font-black text-slate-400 uppercase">Faltas Injust.</p>
-                    <p class="text-xl font-bold">{{ relatorioPresencas.meta.totais.falta_injustificada }}</p>
-                  </div>
-                  <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p class="text-[10px] font-black text-slate-400 uppercase">Faltas Just.</p>
-                    <p class="text-xl font-bold">{{ relatorioPresencas.meta.totais.falta_justificada }}</p>
-                  </div>
+        <!-- ABA: RELATÓRIO DE EXTRAS -->
+        <div v-else-if="activeTab === 'extras'">
+          <Card class="!rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <template #content>
+              <div class="flex flex-col items-center justify-center py-16 text-slate-400">
+                <i class="pi pi-user-plus text-6xl mb-4"></i>
+                <h3 class="text-xl font-bold text-slate-600 mb-2">Relatório de Extras</h3>
+                <p class="text-sm text-center max-w-md">
+                  Este relatório mostrará as refeições extras (não-bolsistas que consumiram no refeitório).
+                  <br/>Funcionalidade em desenvolvimento.
+                </p>
               </div>
             </template>
           </Card>
-        </TabPanel>
+        </div>
 
-        <!-- ABA 2: MODELOS DE IMPORTAÇÃO -->
-        <TabPanel value="2">
-          <div class="grid md:grid-cols-2 gap-6 mt-4">
-            <Card class="!rounded-3xl border border-slate-200 shadow-sm">
+        <!-- ABA: MODELOS DE IMPORTAÇÃO -->
+        <div v-else-if="activeTab === 'modelos'" class="grid md:grid-cols-2 gap-6">
+            <Card class="!rounded-xl border border-slate-200 shadow-sm">
               <template #title>
                 <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+                  <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
                     <i class="pi pi-users"></i>
                   </div>
                   <span class="text-lg font-bold">Importação de Bolsistas</span>
@@ -438,7 +477,7 @@ watch(activeTab, (newTab) => {
                   Use este modelo para importar a lista de estudantes aprovados no programa de bolsas. 
                   O sistema criará automaticamente as contas ou vinculará aos usuários existentes.
                 </p>
-                <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 mb-6">
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-100 mb-6">
                   <h4 class="text-xs font-black uppercase text-slate-400 mb-2">Colunas Necessárias:</h4>
                   <ul class="text-xs text-slate-600 space-y-1">
                     <li>• <strong>Matrícula:</strong> Número de identificação do aluno.</li>
@@ -456,10 +495,10 @@ watch(activeTab, (newTab) => {
               </template>
             </Card>
 
-            <Card class="!rounded-3xl border border-slate-200 shadow-sm">
+            <Card class="!rounded-xl border border-slate-200 shadow-sm">
               <template #title>
                 <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-600">
+                  <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600">
                     <i class="pi pi-calendar"></i>
                   </div>
                   <span class="text-lg font-bold">Importação de Cardápios</span>
@@ -470,7 +509,7 @@ watch(activeTab, (newTab) => {
                   Modelo para importação em lote de cardápios. Ideal para planejar o mês inteiro de uma só vez. 
                   O sistema gera as refeições para os turnos selecionados.
                 </p>
-                <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 mb-6">
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-100 mb-6">
                   <h4 class="text-xs font-black uppercase text-slate-400 mb-2">Colunas Necessárias:</h4>
                   <ul class="text-xs text-slate-600 space-y-1">
                     <li>• <strong>Data:</strong> Data do cardápio (DD/MM/AAAA).</li>
@@ -487,10 +526,7 @@ watch(activeTab, (newTab) => {
                 />
               </template>
             </Card>
-          </div>
-        </TabPanel>
-      </TabPanels>
-    </Tabs>
+        </div>
   </div>
 </template>
 
@@ -499,7 +535,31 @@ table th, table td {
   border-width: 1px;
 }
 
-.custom-select-button :deep(.p-button) {
+/* Estilo para SelectButton de abas */
+.tab-select-button :deep(.p-togglebutton) {
+  border: 1px solid #e2e8f0;
+  background: white;
+  color: #64748b;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  margin: 0 4px;
+  transition: all 0.2s ease;
+}
+
+.tab-select-button :deep(.p-togglebutton:hover:not(.p-togglebutton-checked)) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.tab-select-button :deep(.p-togglebutton.p-togglebutton-checked) {
+  background: var(--ifba-verde, #32a041);
+  border-color: var(--ifba-verde, #32a041);
+  color: white;
+  box-shadow: 0 2px 8px rgba(50, 160, 65, 0.3);
+}
+
+.custom-select-button :deep(.p-togglebutton) {
   border: 0;
   background: transparent;
   color: #64748b;
@@ -508,12 +568,12 @@ table th, table td {
   border-radius: 0.75rem;
 }
 
-.custom-select-button :deep(.p-button.p-highlight) {
+.custom-select-button :deep(.p-togglebutton.p-togglebutton-checked) {
   background: #f1f5f9;
   color: #1e293b;
 }
 
-.custom-select-button :deep(.p-button:not(.p-highlight):hover) {
+.custom-select-button :deep(.p-togglebutton:hover:not(.p-togglebutton-checked)) {
   background: #f8fafc;
 }
 </style>

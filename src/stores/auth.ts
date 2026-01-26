@@ -54,10 +54,23 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const data = await authService.me()
       // Normalização manual da foto para garantir consistência no store
-      if (data.foto && !data.foto.startsWith('http')) {
-         const baseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1').replace('/api/v1', '')
-         const cleanPath = data.foto.startsWith('/') ? data.foto.substring(1) : data.foto
-         data.foto = `${baseUrl}/storage/${cleanPath}`
+      if (data.foto) {
+         if (data.foto.startsWith('http')) {
+            try {
+               const url = new URL(data.foto)
+               const index = url.pathname.indexOf('/storage/')
+               if (index !== -1) {
+                  data.foto = url.pathname.substring(index)
+               }
+            } catch (e) {
+               // Mantém como está se der erro
+            }
+         } else if (!data.foto.startsWith('data:')) {
+            const baseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1').replace('/api/v1', '')
+            const cleanPath = data.foto.startsWith('/') ? data.foto.substring(1) : data.foto
+            const pathSemStorage = cleanPath.startsWith('storage/') ? cleanPath.substring(8) : cleanPath
+            data.foto = baseUrl ? `${baseUrl}/storage/${pathSemStorage}` : `/storage/${pathSemStorage}`
+         }
       }
       user.value = data
     } catch (error) {

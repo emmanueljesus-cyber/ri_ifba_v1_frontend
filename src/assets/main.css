@@ -21,6 +21,388 @@
   --p-primary-800: #1a5224;
   --p-primary-900: #15431e;
   --p-primary-950: #0b2510;
+
+  /* Padronização de Bordas - menos arredondadas para visual institucional */
+  --ri-radius-sm: 0.375rem;  /* 6px */
+  --ri-radius-md: 0.5rem;    /* 8px */
+  --ri-radius-lg: 0.625rem;  /* 10px */
+}
+
+/* ===== PADRONIZAÇÃO GLOBAL DE COMPONENTES ===== */
+
+/* Ícones dentro de botões - garantir visibilidade */
+.p-button .p-button-icon,
+.p-button [class*="pi-"],
+.p-button .pi {
+  font-family: 'primeicons' !important;
+  speak: none;
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+  display: inline-block !important;
+  -webkit-font-smoothing: antialiased;
+  font-size: 1rem;
+}
+
+/* Garantir que ícone pi-times apareça */
+.pi-times::before {
+  content: "\e90b" !important;
+  font-family: 'primeicons' !important;
+}
+
+/* Botões icon-only (rounded) */
+.p-button.p-button-rounded.p-button-icon-only,
+.p-button[rounded] {
+  width: 2.5rem !important;
+  height: 2.5rem !important;
+  padding: 0 !important;
+  justify-content: center !important;
+}
+
+.p-button.p-button-rounded.p-button-icon-only .p-button-icon,
+.p-button[rounded] .pi {
+  font-size: 1rem !important;
+}
+
+/* Botões - estilo institucional profissional */
+.p-button {
+  border-radius: var(--ri-radius-md) !important;
+  font-weight: 600 !important;
+  padding: 0.625rem 1.25rem !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+  transition: all 0.2s ease-in-out !important;
+  letter-spacing: 0.01em !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+}
+
+.p-button.p-button-sm {
+  padding: 0.5rem 1rem !important;
+  font-size: 0.8125rem !important;
+}
+
+.p-button.p-button-lg {
+  padding: 0.75rem 1.5rem !important;
+  font-size: 1rem !important;
+}
+
+.p-button:hover {
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1) !important;
+  transform: translateY(-1px);
+}
+
+.p-button:active {
+  transform: translateY(0);
+}
+
+.p-button:focus {
+  box-shadow: 0 0 0 2px rgba(50, 160, 65, 0.15) !important;
+  outline: none !important;
+}
+
+/* Botões com severity success - Verde IFBA institucional */
+.p-button[data-p-severity="success"],
+.p-button.p-button-success {
+  background: linear-gradient(135deg, #32a041 0%, #268133 100%) !important;
+  border-color: #268133 !important;
+  color: #ffffff !important;
+}
+
+.p-button[data-p-severity="success"]:hover,
+.p-button.p-button-success:hover {
+  background: linear-gradient(135deg, #268133 0%, #1f662a 100%) !important;
+}
+
+/* Botões com severity danger - Vermelho */
+.p-button[data-p-severity="danger"],
+.p-button.p-button-danger {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+  border-color: #b91c1c !important;
+  color: #ffffff !important;
+}
+
+.p-button[data-p-severity="danger"]:hover,
+.p-button.p-button-danger:hover {
+  background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%) !important;
+}
+
+/* Botões com severity warning - Usando verde IFBA mais claro */
+.p-button[data-p-severity="warn"],
+.p-button[data-p-severity="warning"],
+.p-button.p-button-warning {
+  background: linear-gradient(135deg, var(--p-primary-400) 0%, var(--p-primary-500) 100%) !important;
+  border-color: var(--p-primary-500) !important;
+  color: #ffffff !important;
+}
+
+.p-button[data-p-severity="warn"]:hover,
+.p-button[data-p-severity="warning"]:hover,
+.p-button.p-button-warning:hover {
+  background: linear-gradient(135deg, var(--p-primary-500) 0%, var(--p-primary-600) 100%) !important;
+}
+
+/* Botões com severity info */
+.p-button[data-p-severity="info"],
+.p-button.p-button-info {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  border-color: #2563eb !important;
+  color: #ffffff !important;
+}
+
+.p-button[data-p-severity="info"]:hover,
+.p-button.p-button-info:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+}
+
+/* Botões com severity secondary */
+.p-button[data-p-severity="secondary"],
+.p-button.p-button-secondary {
+  background: #f8fafc !important;
+  border: 1.5px solid #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+.p-button[data-p-severity="secondary"]:hover,
+.p-button.p-button-secondary:hover {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+/* Botões text (sem background) */
+.p-button.p-button-text,
+.p-button[data-p-text="true"] {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.p-button.p-button-text:hover,
+.p-button[data-p-text="true"]:hover {
+  background: rgba(0, 0, 0, 0.04) !important;
+  box-shadow: none !important;
+}
+
+/* Botões outlined */
+.p-button.p-button-outlined,
+.p-button[data-p-outlined="true"] {
+  background: transparent !important;
+  border-width: 1.5px !important;
+}
+
+/* Dialogs/Modals - estilo limpo e profissional */
+.p-dialog {
+  border-radius: var(--ri-radius-lg) !important;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+  max-height: 90vh !important;
+}
+
+.p-dialog .p-dialog-header {
+  border-top-left-radius: var(--ri-radius-lg) !important;
+  border-top-right-radius: var(--ri-radius-lg) !important;
+  padding: 1.25rem 1.5rem !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  background: #f8fafc !important;
+}
+
+.p-dialog .p-dialog-title {
+  font-weight: 700 !important;
+  font-size: 1.125rem !important;
+  color: #1e293b !important;
+}
+
+.p-dialog .p-dialog-content {
+  padding: 1.5rem !important;
+  max-height: calc(90vh - 150px) !important;
+  overflow-y: auto !important;
+}
+
+.p-dialog .p-dialog-footer {
+  padding: 1rem 1.5rem !important;
+  border-top: 1px solid #e2e8f0 !important;
+  background: #f8fafc !important;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+/* Tamanhos padrão de modais */
+.p-dialog[style*="width: 450px"],
+.p-dialog[style*="width: 400px"] {
+  min-width: 320px !important;
+}
+
+.p-dialog[style*="width: 500px"],
+.p-dialog[style*="width: 600px"] {
+  min-width: 400px !important;
+}
+
+/* Botão de fechar da modal */
+.p-dialog .p-dialog-header-icon {
+  width: 2rem !important;
+  height: 2rem !important;
+  border-radius: 0.5rem !important;
+  color: #64748b !important;
+  transition: all 0.2s ease !important;
+}
+
+.p-dialog .p-dialog-header-icon:hover {
+  background: #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+/* Overlay escurecido */
+.p-dialog-mask {
+  background: rgba(15, 23, 42, 0.6) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+/* Cards */
+.p-card {
+  border-radius: var(--ri-radius-lg) !important;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.p-card:hover {
+  transform: translateY(-1px);
+}
+
+/* Inputs, Selects, Textareas - com padding adequado */
+.p-inputtext,
+.p-textarea,
+.p-password input,
+.p-datepicker input {
+  border-radius: var(--ri-radius-md) !important;
+  padding: 0.625rem 0.875rem !important;
+}
+
+.p-select {
+  border-radius: var(--ri-radius-md) !important;
+}
+
+.p-select .p-select-label {
+  padding: 0.625rem 0.875rem !important;
+}
+
+.p-inputtext:focus,
+.p-textarea:focus,
+.p-select.p-focus {
+  box-shadow: 0 0 0 2px rgba(50, 160, 65, 0.1) !important;
+  border-color: var(--p-primary-400) !important;
+}
+
+/* DataTable - alinhamento e espaçamento */
+.p-datatable .p-datatable-thead > tr > th {
+  text-align: left !important;
+  padding: 0.875rem 1rem !important;
+  font-weight: 700 !important;
+  font-size: 0.75rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  color: #64748b !important;
+  background: #f8fafc !important;
+  border-bottom: 2px solid #e2e8f0 !important;
+}
+
+.p-datatable .p-datatable-tbody > tr > td {
+  text-align: left !important;
+  padding: 0.875rem 1rem !important;
+  vertical-align: middle !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+}
+
+.p-datatable .p-datatable-tbody > tr:hover {
+  background: #f8fafc !important;
+}
+
+/* DataTable - cabeçalho centralizado quando necessário */
+.p-datatable .p-datatable-thead > tr > th.text-center {
+  text-align: center !important;
+}
+
+.p-datatable .p-datatable-tbody > tr > td.text-center {
+  text-align: center !important;
+}
+
+/* Tags - mais discretas */
+.p-tag {
+  border-radius: var(--ri-radius-sm) !important;
+  font-weight: 600 !important;
+  font-size: 0.65rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.03em !important;
+}
+
+/* SelectButton para troca de turnos */
+.p-selectbutton .p-togglebutton {
+  border-radius: var(--ri-radius-md) !important;
+  font-weight: 600 !important;
+  padding: 0.5rem 1rem !important;
+}
+
+.p-selectbutton .p-togglebutton.p-togglebutton-checked {
+  background: var(--p-primary-500) !important;
+  border-color: var(--p-primary-600) !important;
+  color: #ffffff !important;
+}
+
+/* DataTable */
+.p-datatable {
+  border-radius: var(--ri-radius-lg) !important;
+}
+
+/* Accordion - estilo clean */
+.p-accordion .p-accordionpanel {
+  border-radius: var(--ri-radius-lg) !important;
+  border: 1px solid #e2e8f0 !important;
+  background: white !important;
+  margin-bottom: 0.75rem !important;
+  overflow: hidden;
+}
+
+.p-accordion .p-accordionheader {
+  background: white !important;
+  border: none !important;
+  padding: 1rem 1.25rem !important;
+  transition: background 0.2s ease !important;
+}
+
+.p-accordion .p-accordionheader:hover {
+  background: #f8fafc !important;
+}
+
+.p-accordion .p-accordionheader-toggle-icon {
+  color: #94a3b8 !important;
+  font-size: 0.75rem !important;
+}
+
+.p-accordion .p-accordioncontent-content {
+  padding: 0 1.25rem 1.25rem !important;
+  border-top: 1px solid #f1f5f9 !important;
+}
+
+/* FileUpload */
+.p-fileupload {
+  border-radius: var(--ri-radius-md) !important;
+}
+
+/* Messages */
+.p-message {
+  border-radius: var(--ri-radius-md) !important;
+}
+
+/* Checkbox */
+.p-checkbox .p-checkbox-box {
+  border-radius: 4px !important;
+}
+
+/* Remove outline verde neon de todos os elementos */
+*:focus {
+  outline: none !important;
 }
 
 /* Animações para melhor fluidez */
@@ -69,6 +451,43 @@ button:active,
 a:active,
 .cursor-pointer:active {
   transform: scale(0.98);
+}
+
+/* SelectButton - Estilo Limpo e Moderno */
+.p-selectbutton {
+  border-radius: 0.75rem !important;
+  padding: 3px !important;
+  background: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: none !important;
+}
+
+.p-selectbutton .p-togglebutton {
+  border: none !important;
+  border-radius: 0.625rem !important;
+  padding: 0.5rem 1.25rem !important;
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  background: transparent !important;
+  color: #64748b !important;
+  box-shadow: none !important;
+  transition: all 0.2s ease !important;
+}
+
+.p-selectbutton .p-togglebutton:hover:not(.p-togglebutton-checked) {
+  background: #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+.p-selectbutton .p-togglebutton.p-togglebutton-checked {
+  background: white !important;
+  color: var(--ifba-verde) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+.p-selectbutton .p-togglebutton:focus {
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 

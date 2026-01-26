@@ -11,6 +11,8 @@ export interface Perfil {
   foto?: string | null
   preferencia_alimentar?: string | null
   restricoes_alimentares?: string[]
+  alergias?: string | null
+  is_ovolactovegetariano?: boolean
   dias_cadastrados?: string[]
   created_at?: string
   updated_at?: string
@@ -21,10 +23,12 @@ export interface AtualizarPerfilRequest {
   email?: string
   curso?: string
   turno?: 'almoco' | 'jantar' | 'matutino' | 'vespertino' | 'noturno'
+  alergias?: string
+  is_ovolactovegetariano?: boolean
 }
 
 export interface AlterarSenhaRequest {
-  senha_atual: string
-  senha_nova: string
-  senha_nova_confirmacao: string
+  current_password: string
+  password: string
+  password_confirmation: string
 }

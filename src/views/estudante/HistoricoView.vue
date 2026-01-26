@@ -4,15 +4,12 @@ import { FilterMatchMode } from '@primevue/core/api'
 import { useAuthStore } from '../../stores/auth'
 import { historicoService } from '../../services/historico'
 import PageHeader from '../../components/common/PageHeader.vue'
-import Card from 'primevue/card'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import Skeleton from 'primevue/skeleton'
-import Message from 'primevue/message'
-import IconField from 'primevue/iconfield'
-import InputIcon from 'primevue/inputicon'
 import InputText from 'primevue/inputtext'
+import Select from 'primevue/select'
 import type { HistoricoRefeicao, ResumoHistorico } from '../../types/historico'
 
 const auth = useAuthStore()
@@ -21,8 +18,21 @@ const resumo = ref<ResumoHistorico | null>(null)
 const loading = ref(false)
 
 const filters = ref({
-  global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+  global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+  data: { value: null, matchMode: FilterMatchMode.CONTAINS },
+  turno: { value: null, matchMode: FilterMatchMode.EQUALS },
+  presente: { value: null, matchMode: FilterMatchMode.EQUALS }
 })
+
+const turnoOptions = [
+  { label: 'Almoço', value: 'almoco' },
+  { label: 'Jantar', value: 'jantar' }
+]
+
+const statusOptions = [
+  { label: 'Presente', value: true },
+  { label: 'Ausente', value: false }
+]
 
 // safer: use the boolean field `bolsista` if available on the authenticated user
 const isBolsista = computed(() => !!auth.user?.bolsista)
@@ -49,9 +59,6 @@ const formatarHora = (dataString: string) => {
   }
 }
 
-const formatarTurno = (turno: string) => {
-  return turno === 'almoco' ? 'Almoco' : 'Jantar'
-}
 
 const carregarDados = async () => {
   loading.value = true
@@ -86,8 +93,8 @@ onMounted(() => {
 
     <!-- Resumo (Cards Estilizados) -->
     <div v-if="resumo" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <div class="bg-white border border-slate-200 rounded-[2rem] p-6 shadow-sm flex items-center gap-4">
-        <div class="w-14 h-14 rounded-2xl bg-primary-100 flex items-center justify-center text-primary-600">
+      <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex items-center gap-4">
+        <div class="w-14 h-14 rounded-xl bg-primary-100 flex items-center justify-center text-primary-600">
            <i class="pi pi-check-circle text-2xl"></i>
         </div>
         <div>
@@ -100,13 +107,13 @@ onMounted(() => {
         </div>
       </div>
 
-      <div class="bg-white border border-slate-200 rounded-[2rem] p-6 shadow-sm flex items-center gap-4">
-        <div class="w-14 h-14 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-600">
+      <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex items-center gap-4">
+        <div class="w-14 h-14 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600">
            <i class="pi pi-calendar text-2xl"></i>
         </div>
         <div>
           <p class="text-2xl font-black text-slate-800 leading-tight">
-            {{ isBolsista ? resumo.mes_atual.extras : resumo.mes_atual.refeicoes }}
+            {{ isBolsista ? resumo.mes_atual?.extras : resumo.mes_atual?.refeicoes }}
           </p>
           <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
             Neste Mês
@@ -114,8 +121,8 @@ onMounted(() => {
         </div>
       </div>
 
-      <div class="hidden lg:flex bg-gradient-to-br from-primary-600 to-primary-700 rounded-[2rem] p-6 shadow-md shadow-primary-100 items-center gap-4 text-white">
-        <div class="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
+      <div class="hidden lg:flex bg-gradient-to-br from-primary-600 to-primary-700 rounded-xl p-6 shadow-md  items-center gap-4 text-white">
+        <div class="w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center">
            <i class="pi pi-bolt text-2xl"></i>
         </div>
         <div>
@@ -139,45 +146,49 @@ onMounted(() => {
       </div>
 
       <div v-else-if="historico.length === 0">
-        <div class="bg-slate-50 border border-slate-200 rounded-[2.5rem] p-12 text-center">
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-12 text-center">
            <i class="pi pi-history text-4xl text-slate-300 mb-4"></i>
            <p class="text-slate-500 font-medium">Você ainda não possui registros de refeições.</p>
         </div>
       </div>
 
-      <div v-else class="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-sm p-4">
+      <div v-else class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm p-4">
         <DataTable
           v-model:filters="filters"
           :value="historico"
           :rows="10"
           :paginator="historico.length > 10"
           :globalFilterFields="['data', 'turno', 'prato_principal']"
+          filterDisplay="row"
           stripedRows
           class="p-datatable-sm"
           responsiveLayout="stack"
           breakpoint="768px"
         >
           <template #header>
-            <div class="flex justify-between items-center mb-2">
+            <div class="flex flex-wrap justify-between items-center gap-4 mb-2">
               <span class="text-sm font-black text-slate-400 uppercase tracking-widest">Histórico de Refeições</span>
-              <IconField iconPosition="left">
-                <InputIcon class="pi pi-search" />
-                <InputText v-model="filters['global'].value" placeholder="Filtrar histórico..." class="!rounded-xl" />
-              </IconField>
+              <InputText v-model="filters['global'].value" placeholder="Buscar..." class="!rounded-xl" />
             </div>
           </template>
-          <Column header="Data" field="data">
+          <Column header="Data" field="data" :sortable="true" :showFilterMenu="false">
             <template #body="{ data }">
               <span class="font-semibold text-slate-700">{{ formatarData(data.data) }}</span>
             </template>
+            <template #filter="{ filterModel, filterCallback }">
+              <InputText v-model="filterModel.value" type="text" @input="filterCallback()" placeholder="Filtrar data" class="!text-sm !py-1.5 !rounded-lg" />
+            </template>
           </Column>
 
-          <Column header="Turno" field="turno">
+          <Column header="Turno" field="turno" :showFilterMenu="false">
             <template #body="{ data }">
               <div class="flex items-center gap-2">
                 <i :class="data.turno === 'almoco' ? 'pi pi-sun text-amber-500' : 'pi pi-moon text-indigo-500'"></i>
                 <span class="capitalize font-medium">{{ data.turno === 'almoco' ? 'Almoço' : 'Jantar' }}</span>
               </div>
+            </template>
+            <template #filter="{ filterModel, filterCallback }">
+              <Select v-model="filterModel.value" :options="turnoOptions" optionLabel="label" optionValue="value" placeholder="Todos" @change="filterCallback()" class="!text-sm" showClear />
             </template>
           </Column>
 
@@ -187,13 +198,16 @@ onMounted(() => {
             </template>
           </Column>
 
-          <Column header="Status" field="presente">
+          <Column header="Status" field="presente" :showFilterMenu="false">
             <template #body="{ data }">
               <Tag
                 :value="data.presente ? 'Presente' : 'Ausente'"
                 :severity="data.presente ? 'success' : 'danger'"
                 class="!rounded-full px-3 uppercase text-[10px] font-black"
               />
+            </template>
+            <template #filter="{ filterModel, filterCallback }">
+              <Select v-model="filterModel.value" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Todos" @change="filterCallback()" class="!text-sm" showClear />
             </template>
           </Column>
 

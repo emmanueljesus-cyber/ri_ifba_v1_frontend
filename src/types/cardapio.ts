@@ -56,4 +56,19 @@ export interface CardapioDia {
   dia_semana: string
   almoco: Refeicao | null
   jantar: Refeicao | null
+  // Campos que vêm no nível raiz da API
+  id?: number
+  data_do_cardapio?: string
+  data_formatada?: string
+  prato_principal_ptn01?: string
+  prato_principal_ptn02?: string
+  acompanhamento_01?: string
+  acompanhamento_02?: string
+  guarnicao?: string
+  salada?: string
+  sobremesa?: string
+  suco?: string
+  ovo_lacto_vegetariano?: string
+  criado_em?: string
+  atualizado_em?: string
 }

@@ -189,12 +189,13 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
     <PageHeader
       title="Controle de Presenças"
       subtitle="Valide QR Codes ou confirme presenças manualmente."
+      :show-back-button="true"
       :breadcrumbs="[{ label: 'Admin', route: '/admin' }, { label: 'Controle de Presença' }]"
     />
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Filtros e Lista do Dia -->
-      <Card class="lg:col-span-2 overflow-hidden !rounded-3xl border border-slate-200 shadow-sm">
+      <Card class="lg:col-span-2 overflow-hidden !rounded-xl border border-slate-200 shadow-sm">
         <template #title>
           <div class="flex items-center gap-2">
             <i class="pi pi-list text-primary-600"></i>
@@ -217,12 +218,7 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
               <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div class="flex gap-2">
                   <Button type="button" icon="pi pi-filter-slash" label="Limpar" variant="outlined" @click="clearFilter()" size="small" class="!rounded-xl" />
-                  <IconField>
-                    <InputIcon>
-                      <i class="pi pi-search" />
-                    </InputIcon>
-                    <InputText v-model="filters['global'].value" placeholder="Buscar aluno..." size="small" class="!rounded-xl" />
-                  </IconField>
+                  <InputText v-model="filters['global'].value" placeholder="Buscar aluno..." size="small" class="!rounded-xl" />
                 </div>
                 <div class="flex gap-2 items-center">
                   <DatePicker v-model="dataFiltro" dateFormat="dd/mm/yy" showIcon class="w-36" :locale="ptBR" size="small" />
@@ -301,26 +297,26 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
                   <Button
                     icon="pi pi-check-circle"
                     severity="success" 
-                    text 
-                    rounded
+                    outlined
                     @click="confirmarPresencaManual(data.id)"
                     v-tooltip.top="'Confirmar Presença'"
+                    class="!rounded-lg"
                   />
                   <Button 
                     icon="pi pi-times-circle"
                     severity="danger" 
-                    text 
-                    rounded
+                    outlined
                     v-tooltip.top="'Marcar Falta'"
                     @click="marcarFaltaManual(data.id, false)"
+                    class="!rounded-lg"
                   />
                   <Button
                     icon="pi pi-file-edit"
                     severity="info"
-                    text
-                    rounded
+                    outlined
                     v-tooltip.top="'Falta Justificada'"
                     @click="marcarFaltaManual(data.id, true)"
+                    class="!rounded-lg"
                   />
                 </div>
               </template>
@@ -331,7 +327,7 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
 
       <div class="space-y-6">
         <!-- Busca Manual -->
-        <Card class="!rounded-3xl border border-slate-200 shadow-sm">
+        <Card class="!rounded-xl border border-slate-200 shadow-sm">
           <template #title>
              <div class="flex items-center gap-2">
                 <i class="pi pi-search text-primary-600"></i>
@@ -380,7 +376,7 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
           </template>
         </Card>
         <!-- Validação de QR Code -->
-        <Card class="!rounded-3xl border border-slate-200 shadow-sm">
+        <Card class="!rounded-xl border border-slate-200 shadow-sm">
           <template #title>
              <div class="flex items-center gap-2">
                 <i class="pi pi-qrcode text-primary-600"></i>
@@ -389,7 +385,7 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
           </template>
           <template #content>
             <div class="space-y-4">
-              <div class="p-8 border-2 border-dashed border-slate-200 rounded-3xl text-center bg-slate-50/50">
+              <div class="p-8 border-2 border-dashed border-slate-200 rounded-xl text-center bg-slate-50/50">
                 <i class="pi pi-qrcode text-6xl text-slate-200 mb-4"></i>
                 <p class="text-slate-400 mb-4 text-xs font-medium">Aponte a câmera para o QR Code do estudante</p>
                 <Button label="Ativar Câmera" icon="pi pi-camera" severity="success" disabled class="w-full !rounded-xl" v-tooltip.bottom="'Está sendo implementado'" />

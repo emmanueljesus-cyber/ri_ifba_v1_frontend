@@ -60,12 +60,11 @@ const home: MenuItem = {
       <Button
         v-if="showBackButton"
         icon="pi pi-arrow-left"
-        text
-        rounded
+        outlined
         severity="secondary"
         @click="goBack"
         aria-label="Voltar"
-        class="mt-1"
+        class="mt-1 !rounded-xl"
       />
       <div class="flex-1">
         <h1 class="text-3xl font-black text-slate-800 lato-black">{{ title }}</h1>

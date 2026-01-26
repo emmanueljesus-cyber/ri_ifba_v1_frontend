@@ -11,7 +11,7 @@ import OverlayPanel from 'primevue/overlaypanel'
 const router = useRouter()
 const auth = useAuthStore()
 const notificacoes = useNotificacoesStore()
-const { getInitials, getAvatarStyle } = useAvatar()
+const { getAvatarStyle } = useAvatar()
 
 const menuPanel = ref()
 const notifPanel = ref()
@@ -28,6 +28,22 @@ const toggleMenu = (event: Event) => {
 
 const toggleNotif = (event: Event) => {
   notifPanel.value?.toggle(event)
+}
+
+// Formata mensagem de notificação para destacar nomes em negrito
+const formatarMensagemNotificacao = (mensagem: string): string => {
+  if (!mensagem) return ''
+
+  // Padrões comuns de nomes em notificações:
+  // "O estudante João Silva solicitou..." -> destaca "João Silva"
+  // "Maria Santos justificou..." -> destaca "Maria Santos"
+  // "Aprovada a solicitação de Pedro Lima" -> destaca "Pedro Lima"
+
+  // Regex para encontrar nomes próprios (2+ palavras capitalizadas consecutivas)
+  const regexNomes = /\b([A-ZÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ][a-záàâãéèêíìîóòôõúùûç]+(?:\s+(?:d[aeo]s?\s+)?[A-ZÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ][a-záàâãéèêíìîóòôõúùûç]+)+)\b/g
+
+  // Substitui nomes encontrados por versão em negrito
+  return mensagem.replace(regexNomes, '<strong class="font-bold text-slate-800">$1</strong>')
 }
 
 onMounted(() => {
@@ -87,7 +103,7 @@ onMounted(() => {
                   @click="notificacoes.marcarComoLida(notif.id)"
                 >
                   <p class="font-medium text-sm text-slate-800">{{ notif.titulo }}</p>
-                  <p class="text-xs text-slate-600 mt-1">{{ notif.mensagem }}</p>
+                  <p class="text-xs text-slate-600 mt-1" v-html="formatarMensagemNotificacao(notif.mensagem)"></p>
                 </div>
               </div>
               <div v-if="notificacoes.naoLidas.length > 0" class="p-3 border-t border-slate-200">
@@ -171,6 +187,20 @@ onMounted(() => {
                   >
                     <i class="pi pi-file-excel text-slate-500 group-hover:text-primary-600 transition-colors"></i>
                     <span class="text-sm font-semibold text-slate-700 group-hover:text-primary-700">Relatórios e Modelos</span>
+                  </button>
+                  <button
+                    class="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-primary-50 hover:text-primary-700 rounded-xl transition-all group"
+                    @click="router.push('/admin/usuarios'); menuPanel?.hide()"
+                  >
+                    <i class="pi pi-user-plus text-slate-500 group-hover:text-primary-600 transition-colors"></i>
+                    <span class="text-sm font-semibold text-slate-700 group-hover:text-primary-700">Gestão de Usuários</span>
+                  </button>
+                  <button
+                    class="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-primary-50 hover:text-primary-700 rounded-xl transition-all group"
+                    @click="router.push('/admin/solicitacoes-mudanca-dias'); menuPanel?.hide()"
+                  >
+                    <i class="pi pi-sync text-slate-500 group-hover:text-primary-600 transition-colors"></i>
+                    <span class="text-sm font-semibold text-slate-700 group-hover:text-primary-700">Solicitações de Mudança</span>
                   </button>
                   <button
                     class="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-primary-50 hover:text-primary-700 rounded-xl transition-all group"

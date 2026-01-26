@@ -7,13 +7,27 @@ interface ApiResponse<T> {
 }
 
 const normalizeFotoUrl = (path: string | null): string | null => {
-  if (!path || path.startsWith('http') || path.startsWith('data:')) return path
+  if (!path) return null
+  if (path.startsWith('data:')) return path
 
-  // Limpa possíveis barras duplas no início do path
+  // Se já é uma URL absoluta para o storage, usar diretamente via proxy
+  if (path.includes('/storage/')) {
+    // Extrair apenas o caminho /storage/... para usar via proxy do Vite
+    const storageIndex = path.indexOf('/storage/')
+    if (storageIndex !== -1) {
+      return path.substring(storageIndex)
+    }
+  }
+
+  // Se já começa com /storage/
+  if (path.startsWith('/storage/')) return path
+
+  // Se começa com storage/ (sem barra inicial)
+  if (path.startsWith('storage/')) return '/' + path
+
+  // Se for apenas o caminho interno (ex: fotos_perfil/user.jpg)
   const cleanPath = path.startsWith('/') ? path.substring(1) : path
-
-  const baseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1').replace('/api/v1', '')
-  return `${baseUrl}/storage/${cleanPath}`
+  return `/storage/${cleanPath}`
 }
 
 const normalizePerfil = (raw: any): Perfil => ({
@@ -24,10 +38,13 @@ const normalizePerfil = (raw: any): Perfil => ({
   perfil: raw.perfil,
   bolsista: !!raw.bolsista,
   curso: raw.curso ?? null,
-  turno: raw.turno ?? null,
+  turno_refeicao: raw.turno_refeicao ?? null,
+  turno_aula: raw.turno_aula ?? null,
   foto: normalizeFotoUrl(raw.foto ?? raw.foto_url ?? null),
   preferencia_alimentar: raw.preferencia_alimentar ?? null,
   restricoes_alimentares: raw.restricoes_alimentares ?? [],
+  alergias: raw.alergias ?? null,
+  is_ovolactovegetariano: !!raw.is_ovolactovegetariano,
   dias_cadastrados: raw.dias_cadastrados ?? [],
   created_at: raw.created_at,
   updated_at: raw.updated_at
@@ -70,5 +87,10 @@ export const perfilService = {
   }): Promise<{ preferencia_alimentar: string; restricoes_alimentares: string[] }> {
     const { data } = await api.put('/estudante/perfil/restricoes-alimentares', payload)
     return data.data
+  },
+  
+  async atualizarDiasSemana(dias: number[], motivo?: string): Promise<any> {
+    const { data } = await api.put('/estudante/perfil/dias-semana', { dias, motivo })
+    return data
   }
 }

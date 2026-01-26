@@ -2,6 +2,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { FilterMatchMode } from '@primevue/core/api'
 import { useToast } from 'primevue/usetoast'
+import { useAuthStore } from '../../stores/auth'
 import { justificativaService } from '../../services/justificativas'
 import { cardapioService } from '../../services/cardapio'
 import PageHeader from '../../components/common/PageHeader.vue'
@@ -15,18 +16,22 @@ import Dialog from 'primevue/dialog'
 import Textarea from 'primevue/textarea'
 import Select from 'primevue/select'
 import FileUpload from 'primevue/fileupload'
-import Message from 'primevue/message'
 import InputNumber from 'primevue/inputnumber'
 import Skeleton from 'primevue/skeleton'
 import ProgressBar from 'primevue/progressbar'
 import Badge from 'primevue/badge'
-import IconField from 'primevue/iconfield'
-import InputIcon from 'primevue/inputicon'
 import InputText from 'primevue/inputtext'
+import Accordion from 'primevue/accordion'
+import AccordionPanel from 'primevue/accordionpanel'
+import AccordionHeader from 'primevue/accordionheader'
+import AccordionContent from 'primevue/accordioncontent'
+
 
 const toast = useToast()
+const authStore = useAuthStore()
 const justificativas = ref<Justificativa[]>([])
 const loading = ref(false)
+const enviando = ref(false)
 
 const filters = ref({
   global: { value: null, matchMode: FilterMatchMode.CONTAINS }
@@ -52,7 +57,7 @@ const novaJustificativa = ref({
 const onRemoveTemplatingFile = (file: any, removeFileCallback: any, index: number) => {
   removeFileCallback(index)
   totalSize.value -= file.size
-  totalSizePercent.value = (totalSize.value / 10000000) * 100
+  totalSizePercent.value = (totalSize.value / 5120000) * 100
 }
 
 const onClearTemplatingFile = (clearCallback: any) => {
@@ -67,7 +72,7 @@ const onSelectedFiles = (event: any) => {
   event.files.forEach((file: any) => {
     totalSize.value += file.size
   })
-  totalSizePercent.value = (totalSize.value / 10000000) * 100
+  totalSizePercent.value = (totalSize.value / 5120000) * 100
 }
 
 const formatSize = (bytes: number) => {
@@ -99,7 +104,6 @@ const motivosCategorias = [
 
 // Computed para verificar se é justificativa posterior
 const isPosterior = computed(() => novaJustificativa.value.tipo === 'posterior')
-const isAntecipada = computed(() => novaJustificativa.value.tipo === 'antecipada')
 
 // Watch para limpar campos ao mudar tipo
 watch(() => novaJustificativa.value.tipo, () => {
@@ -131,11 +135,41 @@ const carregarJustificativas = async () => {
 const carregarRefeicoes = async () => {
   try {
     const data = await cardapioService.semanal()
-    refeicoesDisponiveis.value = data.flatMap(c => c.refeicoes || [])
+    // Mapeia os cardápios para o formato de refeições
+    refeicoesDisponiveis.value = data.map(c => ({
+      id: c.id,
+      cardapio_id: c.id,
+      data_do_cardapio: c.data_do_cardapio,
+      turno: c.turno,
+      prato_principal: c.prato_principal_ptn01,
+      prato_principal_ptn02: c.prato_principal_ptn02 || '',
+      acompanhamento: c.acompanhamento_01,
+      guarnicao: c.guarnicao,
+      salada: c.salada,
+      sobremesa: c.sobremesa,
+      suco: c.suco,
+      ovo_lacto_vegetariano: c.ovo_lacto_vegetariano || ''
+    }))
   } catch (err) {
     console.error('Erro ao carregar refeições', err)
   }
 }
+
+// Computed para verificar se é bolsista
+const isBolsista = computed(() => authStore.user?.bolsista === true)
+
+// Computed para obter o turno do bolsista
+const turnoBolsista = computed(() => {
+  if (!authStore.user?.turno_refeicao) return null
+  const turno = authStore.user.turno_refeicao.toLowerCase()
+  return turno === 'almoço' ? 'almoco' : turno
+})
+
+// Computed para filtrar refeições pelo turno do bolsista
+const refeicoesParaBolsista = computed(() => {
+  if (!turnoBolsista.value) return refeicoesDisponiveis.value
+  return refeicoesDisponiveis.value.filter(r => r.turno === turnoBolsista.value)
+})
 
 const abrirNovo = () => {
   novaJustificativa.value = {
@@ -148,31 +182,45 @@ const abrirNovo = () => {
   }
   totalSize.value = 0
   totalSizePercent.value = 0
+
+  // Se for bolsista, pré-seleciona automaticamente a primeira refeição do turno dele
+  if (isBolsista.value && refeicoesParaBolsista.value.length > 0) {
+    const primeiraRefeicao = refeicoesParaBolsista.value[0]
+    if (primeiraRefeicao) {
+      novaJustificativa.value.refeicao_id = primeiraRefeicao.id
+    }
+  }
+
   displayDialog.value = true
 }
 
 const enviarJustificativa = async () => {
+  // Evitar envios duplicados
+  if (enviando.value) return
+
   // Validações
   if (!novaJustificativa.value.refeicao_id) {
-    toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Selecione a refeição' })
+    toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Selecione a refeição', life: 3000 })
     return
   }
 
   if (isPosterior.value) {
     if (!novaJustificativa.value.motivo_categoria) {
-      toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Selecione o motivo da ausência' })
+      toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Selecione o motivo da ausência', life: 3000 })
       return
     }
     if (!novaJustificativa.value.anexo) {
-      toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Anexe a declaração ou atestado' })
+      toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Anexe a declaração ou atestado', life: 3000 })
       return
     }
   } else {
     if (!novaJustificativa.value.motivo) {
-      toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Informe o motivo da ausência programada' })
+      toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Informe o motivo da ausência programada', life: 3000 })
       return
     }
   }
+
+  enviando.value = true
 
   try {
     // Montar motivo completo para posterior
@@ -191,11 +239,15 @@ const enviarJustificativa = async () => {
       motivo: motivoFinal,
       anexo: novaJustificativa.value.anexo
     })
-    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Justificativa enviada com sucesso' })
+
     displayDialog.value = false
-    carregarJustificativas()
-  } catch (err) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao enviar justificativa' })
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Justificativa enviada com sucesso!', life: 4000 })
+    await carregarJustificativas()
+  } catch (err: any) {
+    const mensagemErro = err?.response?.data?.message || err?.message || 'Falha ao enviar justificativa'
+    toast.add({ severity: 'error', summary: 'Erro', detail: mensagemErro, life: 5000 })
+  } finally {
+    enviando.value = false
   }
 }
 
@@ -216,6 +268,7 @@ onMounted(() => {
     <PageHeader
       title="Justificativas"
       subtitle="Gerencie suas ausências e acompanhe o status das suas solicitações."
+      :show-back-button="true"
       :breadcrumbs="[{ label: 'Dashboard', route: '/dashboard' }, { label: 'Justificativas' }]"
     />
 
@@ -224,13 +277,13 @@ onMounted(() => {
         label="Nova Justificativa" 
         icon="pi pi-plus" 
         severity="success" 
-        class="!rounded-2xl shadow-lg shadow-primary-100"
-        @click="abrirNovo" 
+        @click="abrirNovo"
       />
     </div>
 
     <!-- Informações sobre Justificativas - Card informativo sempre visível -->
-    <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+
+    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
       <!-- Header -->
       <div class="bg-blue-50 border-b border-blue-100 px-6 py-4 flex items-center gap-3">
         <i class="pi pi-info-circle text-blue-600 text-xl"></i>
@@ -239,11 +292,14 @@ onMounted(() => {
 
       <!-- Content -->
       <div class="p-6 space-y-6">
-        <!-- Ausência Posterior -->
-        <div class="border-l-4 border-amber-500 pl-4">
-          <h3 class="font-bold text-amber-800 mb-2 flex items-center gap-2">
+        <Accordion :value="['0']" multiple>
+          <AccordionPanel value="0">
+            <AccordionHeader>
+              <div class="font-bold text-amber-800 mb-2 flex items-center gap-2">
             <i class="pi pi-clock"></i> Ausência Posterior
-          </h3>
+              </div>
+            </AccordionHeader>
+            <AccordionContent>
           <p class="text-sm text-slate-600 mb-3">
             São as justificativas de ausências informadas <strong>posteriormente</strong> à data da ausência.
           </p>
@@ -255,17 +311,18 @@ onMounted(() => {
             <li>Ausência devido ao <strong>falecimento de familiares</strong>, comprovada por atestado</li>
             <li>Ausência devido à <strong>atividade religiosa</strong>, comprovada por declaração da entidade</li>
           </ul>
-          <Message severity="warn" :closable="false" class="!mt-4 !text-xs">
-            <strong>IMPORTANTE:</strong> Todas as justificativas devem conter o nome completo do discente e ser coincidente com a data da ausência.
-            As ausências devem ser justificadas <strong>até o penúltimo dia letivo de cada mês</strong>.
-          </Message>
-        </div>
+              <br>
+          <p><strong>IMPORTANTE:</strong> As ausências devem ser justificadas até o penúltimo dia letivo de cada mês.</p>
+            </AccordionContent>
+          </AccordionPanel>
 
-        <!-- Ausência Programada -->
-        <div class="border-l-4 border-emerald-500 pl-4">
-          <h3 class="font-bold text-emerald-800 mb-2 flex items-center gap-2">
+          <AccordionPanel value="1">
+            <AccordionHeader>
+              <div class="font-bold text-emerald-800 mb-2 flex items-center gap-2">
             <i class="pi pi-calendar-plus"></i> Ausência Programada (Antecipada)
-          </h3>
+              </div>
+            </AccordionHeader>
+            <AccordionContent>
           <p class="text-sm text-slate-600 mb-3">
             São as justificativas de ausências informadas <strong>com antecedência</strong> à data da ausência.
             <strong class="text-emerald-700">NÃO PRECISA DE ATESTADO.</strong>
@@ -275,7 +332,9 @@ onMounted(() => {
             <li><strong>Almoço:</strong> até às <strong>13:30</strong> do dia da ausência</li>
             <li><strong>Jantar:</strong> até às <strong>19:00</strong> do dia da ausência</li>
           </ul>
-        </div>
+            </AccordionContent>
+          </AccordionPanel>
+        </Accordion>
       </div>
     </div>
 
@@ -285,12 +344,12 @@ onMounted(() => {
         <Skeleton v-for="i in 3" :key="i" height="80px" border-radius="1.5rem" />
       </div>
 
-      <div v-else-if="justificativas.length === 0" class="bg-white border border-dashed border-slate-300 rounded-[2.5rem] p-12 text-center">
+      <div v-else-if="justificativas.length === 0" class="bg-white border border-dashed border-slate-300 rounded-xl p-12 text-center">
          <i class="pi pi-file-edit text-5xl text-slate-200 mb-4"></i>
          <p class="text-slate-500 font-medium">Você ainda não enviou nenhuma justificativa.</p>
       </div>
 
-      <div v-else class="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-sm p-4">
+      <div v-else class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm p-4">
         <DataTable 
           v-model:filters="filters"
           :value="justificativas" 
@@ -305,10 +364,7 @@ onMounted(() => {
           <template #header>
             <div class="flex justify-between items-center mb-2">
               <span class="text-sm font-black text-slate-400 uppercase tracking-widest">Minhas Justificativas</span>
-              <IconField iconPosition="left">
-                <InputIcon class="pi pi-search" />
-                <InputText v-model="filters['global'].value" placeholder="Filtrar..." class="!rounded-xl" />
-              </IconField>
+              <InputText v-model="filters['global'].value" placeholder="Filtrar..." />
             </div>
           </template>
           <template #empty> Nenhuma justificativa encontrada. </template>
@@ -368,7 +424,7 @@ onMounted(() => {
       header="Nova Justificativa" 
       :style="{ width: '95%', maxWidth: '550px' }"
       modal
-      class="p-fluid !rounded-[2.5rem] overflow-hidden"
+      class="p-fluid !rounded-xl overflow-hidden"
     >
       <div class="space-y-6 pt-4">
         <!-- Tipo da Justificativa -->
@@ -380,7 +436,7 @@ onMounted(() => {
               :key="tipo.value"
               @click="novaJustificativa.tipo = tipo.value as TipoJustificativa"
               :class="[
-                'cursor-pointer p-3 border-2 rounded-2xl text-center transition-all',
+                'cursor-pointer p-3 border-2 rounded-xl text-center transition-all',
                 novaJustificativa.tipo === tipo.value
                   ? tipo.value === 'antecipada'
                     ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
@@ -394,33 +450,34 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- Mensagem informativa baseada no tipo -->
-        <Message v-if="isAntecipada" severity="success" :closable="false" class="!m-0 text-xs">
-          <strong>Ausência Programada:</strong> Não precisa de atestado. Registre até às 13:30 (almoço) ou 19:00 (jantar) do dia da ausência.
-        </Message>
-        <Message v-else severity="warn" :closable="false" class="!m-0 text-xs">
-          <strong>Ausência Posterior:</strong> Necessário anexar atestado ou declaração comprobatória.
-        </Message>
-
-        <!-- Seleção de Refeição -->
+        <!-- Seleção de Data - para BOLSISTAS (turno já é conhecido) -->
         <div class="flex flex-col gap-2">
+<!--          <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-lg mb-2">-->
+<!--            <p class="text-sm text-emerald-700 flex items-center gap-2">-->
+<!--              <i :class="turnoBolsista === 'almoco' ? 'pi pi-sun text-amber-500' : 'pi pi-moon text-indigo-500'"></i>-->
+<!--              <span>Seu turno: <strong class="capitalize">{{ turnoBolsista === 'almoco' ? 'Almoço' : 'Jantar' }}</strong></span>-->
+<!--            </p>-->
+<!--          </div>-->
           <label class="text-sm font-bold text-slate-700 flex items-center gap-2">
-            <i class="pi pi-calendar text-emerald-600"></i> Refeição *
+            <i class="pi pi-calendar text-emerald-600"></i> Data da Refeição *
           </label>
           <Select
             v-model="novaJustificativa.refeicao_id"
-            :options="refeicoesDisponiveis"
+            :options="refeicoesParaBolsista"
             optionLabel="id"
-            placeholder="Selecione a refeição"
+            placeholder="Selecione a data"
             optionValue="id"
-            class="!rounded-2xl"
           >
             <template #option="slotProps">
               <div class="flex items-center gap-2">
-                 <i :class="slotProps.option.turno === 'almoco' ? 'pi pi-sun text-amber-500' : 'pi pi-moon text-indigo-500'"></i>
-                 <span>{{ slotProps.option.data_do_cardapio ? slotProps.option.data_do_cardapio.split('-').reverse().join('/') : '-' }} - </span>
-                 <span class="capitalize">{{ slotProps.option.turno }}</span>
+                 <span>{{ slotProps.option.data_do_cardapio ? slotProps.option.data_do_cardapio.split('-').reverse().join('/') : '-' }}</span>
               </div>
+            </template>
+            <template #value="slotProps">
+              <div v-if="slotProps.value" class="flex items-center gap-2">
+                <span>{{ refeicoesParaBolsista.find(r => r.id === slotProps.value)?.data_do_cardapio?.split('-').reverse().join('/') || '-' }}</span>
+              </div>
+              <span v-else>Selecione a data</span>
             </template>
           </Select>
         </div>
@@ -438,7 +495,7 @@ onMounted(() => {
               optionLabel="label"
               optionValue="value"
               placeholder="Selecione o motivo"
-              class="!rounded-2xl"
+              class="!rounded-xl"
             />
           </div>
 
@@ -453,9 +510,9 @@ onMounted(() => {
             <FileUpload
               name="anexo"
               accept="image/*,application/pdf"
-              :maxFileSize="10000000"
+              :maxFileSize="5120000"
               @select="onSelectedFiles"
-              class="!rounded-2xl"
+              class="!rounded-xl"
             >
               <template #header="{ chooseCallback, clearCallback, files }">
                 <div class="flex flex-wrap justify-between items-center flex-1 gap-4">
@@ -464,7 +521,7 @@ onMounted(() => {
                     <Button @click="onClearTemplatingFile(clearCallback)" icon="pi pi-times" rounded variant="outlined" severity="danger" :disabled="!files || files.length === 0"></Button>
                   </div>
                   <ProgressBar :value="totalSizePercent" :showValue="false" class="md:w-40 h-1 w-full md:ml-auto">
-                    <span class="whitespace-nowrap">{{ formatSize(totalSize) }} / 10Mb</span>
+                    <span class="whitespace-nowrap">{{ formatSize(totalSize) }} / 5MB</span>
                   </ProgressBar>
                 </div>
               </template>
@@ -472,15 +529,15 @@ onMounted(() => {
                 <div class="flex flex-col gap-4 pt-4">
                   <div v-if="files.length > 0">
                     <div class="flex flex-wrap gap-4">
-                      <div v-for="(file, index) of files" :key="file.name + file.type + file.size" class="p-4 rounded-2xl flex flex-col border border-slate-200 items-center gap-3 bg-slate-50">
+                      <div v-for="(file, index) of files" :key="file.name + file.type + file.size" class="p-4 rounded-xl flex flex-row justif border border-slate-200 items-center gap-5 bg-slate-50 w-full">
                         <div>
                           <i v-if="file.type.includes('pdf')" class="pi pi-file-pdf text-4xl text-red-500"></i>
-                          <img v-else role="presentation" :alt="file.name" :src="file.objectURL" width="100" class="rounded-lg shadow-sm" />
+                          <img v-else role="presentation" :alt="file.name" :src="(file as any).objectURL || URL.createObjectURL(file)" width="100" class="rounded-lg shadow-sm" />
                         </div>
-                        <span class="font-bold text-xs text-ellipsis max-w-40 whitespace-nowrap overflow-hidden text-slate-700">{{ file.name }}</span>
-                        <div class="text-[10px] font-black text-slate-400 uppercase">{{ formatSize(file.size) }}</div>
+                        <span class="font-bold text-sm text-ellipsis max-w-40 whitespace-nowrap overflow-hidden text-slate-800">{{ file.name }}</span>
+                        <div class="text-[10px] font-black text-xs text-slate-500 uppercase">{{ formatSize(file.size) }}</div>
                         <Badge value="Pendente" severity="warn" class="!text-[10px]" />
-                        <Button icon="pi pi-times" @click="onRemoveTemplatingFile(file, removeFileCallback, index)" variant="outlined" rounded severity="danger" size="small" />
+                        <Button icon="pi pi-times" @click="onRemoveTemplatingFile(file, removeFileCallback, index)" class="ml-6" outlined rounded severity="danger" />
                       </div>
                     </div>
                   </div>
@@ -506,7 +563,7 @@ onMounted(() => {
               :min="1"
               :max="30"
               showButtons
-              class="!rounded-2xl"
+              class="!rounded-xl"
             />
           </div>
 
@@ -518,7 +575,7 @@ onMounted(() => {
               rows="2"
               autoResize
               placeholder="Informações adicionais, se necessário..."
-              class="!rounded-2xl"
+              class="!rounded-xl"
             />
           </div>
         </template>
@@ -532,7 +589,7 @@ onMounted(() => {
               rows="4"
               autoResize
               placeholder="Descreva o motivo da sua ausência programada..."
-              class="!rounded-2xl"
+              class="!rounded-xl"
             />
           </div>
         </template>
@@ -540,11 +597,13 @@ onMounted(() => {
       
       <template #footer>
         <div class="flex gap-3 w-full pt-4">
-          <Button label="Cancelar" text class="flex-1 !rounded-xl" @click="displayDialog = false" />
+          <Button label="Cancelar" text class="flex-1 !rounded-xl" @click="displayDialog = false" :disabled="enviando" />
           <Button
-            label="Enviar Justificativa"
+            :label="enviando ? 'Enviando...' : 'Enviar Justificativa'"
             :severity="isPosterior ? 'warning' : 'success'"
             class="flex-1 !rounded-xl"
+            :loading="enviando"
+            :disabled="enviando"
             @click="enviarJustificativa"
           />
         </div>
@@ -557,7 +616,7 @@ onMounted(() => {
       header="Detalhes da Justificativa" 
       :style="{ width: '90%', maxWidth: '450px' }" 
       modal
-      class="!rounded-[2.5rem] overflow-hidden"
+      class="!rounded-xl overflow-hidden"
     >
       <div v-if="selectedJustificativa" class="space-y-6 py-4">
         <div class="flex justify-between items-center border-b border-slate-100 pb-4">
@@ -571,22 +630,22 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
           <span class="text-[10px] text-slate-400 font-black uppercase tracking-widest block mb-2">Motivo do Estudante</span>
           <p class="text-slate-700 text-sm leading-relaxed">{{ selectedJustificativa.motivo }}</p>
         </div>
 
-        <div v-if="selectedJustificativa.motivo_rejeicao" class="bg-red-50 p-4 rounded-2xl border border-red-100">
+        <div v-if="selectedJustificativa.motivo_rejeicao" class="bg-red-50 p-4 rounded-xl border border-red-100">
           <span class="text-[10px] text-red-400 font-black uppercase tracking-widest block mb-2">Observação do Administrador</span>
           <p class="text-red-700 text-sm leading-relaxed">{{ selectedJustificativa.motivo_rejeicao }}</p>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
-          <div class="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 text-center">
             <span class="text-[10px] text-slate-400 font-black uppercase tracking-widest block mb-1">Enviado em</span>
             <span class="text-xs font-bold text-slate-700">{{ selectedJustificativa.enviado_em }}</span>
           </div>
-          <div v-if="selectedJustificativa.avaliado_em" class="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+          <div v-if="selectedJustificativa.avaliado_em" class="p-3 bg-slate-50 rounded-xl border border-slate-100 text-center">
             <span class="text-[10px] text-slate-400 font-black uppercase tracking-widest block mb-1">Avaliado em</span>
             <span class="text-xs font-bold text-slate-700">{{ selectedJustificativa.avaliado_em }}</span>
           </div>

@@ -9,20 +9,27 @@ import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Password from 'primevue/password'
 import Avatar from 'primevue/avatar'
-import FileUpload from 'primevue/fileupload'
 import Dialog from 'primevue/dialog'
 import Message from 'primevue/message'
 import Skeleton from 'primevue/skeleton'
 import Tag from 'primevue/tag'
+import Accordion from 'primevue/accordion'
+import AccordionPanel from 'primevue/accordionpanel'
+import AccordionHeader from 'primevue/accordionheader'
+import AccordionContent from 'primevue/accordioncontent'
+import Textarea from 'primevue/textarea'
+import Checkbox from 'primevue/checkbox'
+import ToggleSwitch from 'primevue/toggleswitch'
 import type { Perfil } from '../../types/perfil'
 
 const auth = useAuthStore()
 const toast = useToast()
-const { getInitials, getAvatarStyle } = useAvatar()
+const { getAvatarStyle } = useAvatar()
 
 const perfil = ref<Perfil | null>(null)
 const loading = ref(false)
 const loadingSenha = ref(false)
+const loadingBolsista = ref(false)
 
 const formSenha = ref({
   senha_atual: '',
@@ -30,10 +37,35 @@ const formSenha = ref({
   senha_nova_confirmacao: ''
 })
 
+const formBolsista = ref({
+  alergias: '',
+  is_ovolactovegetariano: false,
+  dias: [] as number[]
+})
+
+// Controle de solicitação de mudança de dias
+const temSolicitacaoPendente = ref(false)
+const displayMotivoMudanca = ref(false)
+const motivoMudanca = ref('')
+
+const diasSemanaOpcoes = [
+  { label: 'Segunda', value: 1 },
+  { label: 'Terça', value: 2 },
+  { label: 'Quarta', value: 3 },
+  { label: 'Quinta', value: 4 },
+  { label: 'Sexta', value: 5 }
+]
+
 const carregarPerfil = async () => {
   loading.value = true
   try {
     perfil.value = await perfilService.obter()
+    formBolsista.value.alergias = perfil.value.alergias || ''
+    formBolsista.value.is_ovolactovegetariano = !!perfil.value.is_ovolactovegetariano
+    formBolsista.value.dias = perfil.value.dias_cadastrados?.map(d => parseInt(d)) || []
+
+    // Verificar se tem solicitação pendente
+    temSolicitacaoPendente.value = !!(perfil.value as any).solicitacao_pendente
   } catch (err) {
     console.error('Erro ao carregar perfil:', err)
     // Fallback para dados do auth store
@@ -77,9 +109,9 @@ const alterarSenha = async () => {
   loadingSenha.value = true
   try {
     await perfilService.alterarSenha({
-      senha_atual: formSenha.value.senha_atual,
-      senha_nova: formSenha.value.senha_nova,
-      senha_nova_confirmacao: formSenha.value.senha_nova_confirmacao
+      current_password: formSenha.value.senha_atual,
+      password: formSenha.value.senha_nova,
+      password_confirmation: formSenha.value.senha_nova_confirmacao
     })
     toast.add({
       severity: 'success',
@@ -131,14 +163,14 @@ const onFileChange = (event: Event) => {
     return
   }
 
-  // Validar tamanho (2MB)
-  const maxSize = 2 * 1024 * 1024 // 2MB
+  // Validar tamanho (5MB)
+  const maxSize = 5 * 1024 * 1024 // 5MB
   if (file.size > maxSize) {
     const sizeMB = (file.size / (1024 * 1024)).toFixed(2)
     toast.add({
       severity: 'error',
       summary: 'Arquivo muito grande',
-      detail: `Arquivo tem ${sizeMB} MB. Tamanho máximo: 2 MB`,
+      detail: `Arquivo tem ${sizeMB} MB. Tamanho máximo: 5 MB`,
       life: 5000
     })
     target.value = ''
@@ -220,6 +252,88 @@ const removerFoto = async () => {
   }
 }
 
+const salvarDadosBolsista = async () => {
+  loadingBolsista.value = true
+  try {
+    await perfilService.atualizar({
+      alergias: formBolsista.value.alergias,
+      is_ovolactovegetariano: formBolsista.value.is_ovolactovegetariano
+    })
+    toast.add({
+      severity: 'success',
+      summary: 'Sucesso!',
+      detail: 'Informações de saúde atualizadas',
+      life: 3000
+    })
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Erro',
+      detail: err?.response?.data?.message || 'Erro ao atualizar informações',
+      life: 5000
+    })
+  } finally {
+    loadingBolsista.value = false
+  }
+}
+
+const abrirModalMudanca = () => {
+  if (temSolicitacaoPendente.value) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Aguarde',
+      detail: 'Você já possui uma solicitação pendente. Aguarde a resposta do administrador.',
+      life: 5000
+    })
+    return
+  }
+  motivoMudanca.value = ''
+  displayMotivoMudanca.value = true
+}
+
+const solicitarMudancaDias = async () => {
+  if (!motivoMudanca.value.trim()) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Atenção',
+      detail: 'Por favor, informe o motivo da solicitação.',
+      life: 3000
+    })
+    return
+  }
+
+  loadingBolsista.value = true
+  try {
+    const res = await perfilService.atualizarDiasSemana(formBolsista.value.dias, motivoMudanca.value)
+    toast.add({
+      severity: 'info',
+      summary: 'Solicitação Enviada',
+      detail: res.meta?.mensagem || 'Sua solicitação foi enviada para o administrador.',
+      life: 5000
+    })
+    displayMotivoMudanca.value = false
+    temSolicitacaoPendente.value = true
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Erro',
+      detail: err?.response?.data?.message || 'Erro ao solicitar mudança',
+      life: 5000
+    })
+  } finally {
+    loadingBolsista.value = false
+  }
+}
+
+const toggleDia = (value: number) => {
+  const index = formBolsista.value.dias.indexOf(value)
+  if (index === -1) {
+    formBolsista.value.dias.push(value)
+  } else {
+    formBolsista.value.dias.splice(index, 1)
+  }
+}
+
 onMounted(() => {
   carregarPerfil()
 })
@@ -280,7 +394,7 @@ onMounted(() => {
                 :loading="loading"
               />
             </div>
-            <p class="text-xs text-slate-500">JPG, PNG. Máximo 2MB.</p>
+            <p class="text-xs text-slate-500">JPG, PNG. Máximo 5MB.</p>
           </div>
         </div>
       </template>
@@ -361,7 +475,7 @@ onMounted(() => {
               <i class="pi pi-user text-primary-600"></i>
               Nome Completo
             </label>
-            <div class="px-4 py-3 bg-slate-50/50 rounded-2xl border border-slate-100">
+            <div class="px-4 py-3 bg-slate-50/50 rounded-xl border border-slate-100">
               <p class="text-slate-900 font-bold">
                 {{ perfil?.nome || '-' }}
               </p>
@@ -374,7 +488,7 @@ onMounted(() => {
               <i class="pi pi-id-card text-primary-600"></i>
               Matrícula
             </label>
-            <div class="px-4 py-3 bg-slate-50/50 rounded-2xl border border-slate-100">
+            <div class="px-4 py-3 bg-slate-50/50 rounded-xl border border-slate-100">
               <p class="text-slate-900 font-bold font-mono">
                 {{ perfil?.matricula || '-' }}
               </p>
@@ -387,7 +501,7 @@ onMounted(() => {
               <i class="pi pi-envelope text-primary-600"></i>
               E-mail
             </label>
-            <div class="px-4 py-3 bg-slate-50/50 rounded-2xl border border-slate-100">
+            <div class="px-4 py-3 bg-slate-50/50 rounded-xl border border-slate-100">
               <p class="text-slate-900 font-medium">
                 {{ perfil?.email || '-' }}
               </p>
@@ -400,7 +514,7 @@ onMounted(() => {
               <i class="pi pi-book text-primary-600"></i>
               Curso
             </label>
-            <div class="px-4 py-3 bg-slate-50/50 rounded-2xl border border-slate-100">
+            <div class="px-4 py-3 bg-slate-50/50 rounded-xl border border-slate-100">
               <p class="text-slate-900 font-medium">
                 {{ perfil?.curso || '-' }}
               </p>
@@ -411,9 +525,9 @@ onMounted(() => {
           <div v-if="perfil?.perfil === 'estudante'" class="space-y-2">
             <label class="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 ml-1">
               <i class="pi pi-clock text-primary-600"></i>
-              {{ perfil?.bolsista ? 'Refeicao' : 'Turno de Aula' }}
+              {{ perfil?.bolsista ? 'Turno de Refeição' : 'Turno de Aula' }}
             </label>
-            <div class="px-4 py-3 bg-slate-50/50 rounded-2xl border border-slate-100">
+            <div class="px-4 py-3 bg-slate-50/50 rounded-xl border border-slate-100">
               <p class="text-slate-900 font-medium flex items-center gap-2">
                 <!-- Icone baseado no turno -->
                 <i :class="{
@@ -423,7 +537,7 @@ onMounted(() => {
                 }"></i>
                 <!-- Texto do turno -->
                 <span class="capitalize">
-                  {{ perfil?.bolsista ? (perfil?.turno_refeicao === 'almoco' ? 'Almoco' : 'Jantar') :
+                  {{ perfil?.bolsista ? (perfil?.turno_refeicao === 'almoco' ? 'Almoço' : 'Jantar') :
                      (perfil?.turno_aula === 'matutino' ? 'Matutino' :
                       perfil?.turno_aula === 'vespertino' ? 'Vespertino' :
                       perfil?.turno_aula === 'noturno' ? 'Noturno' : '-') }}
@@ -438,7 +552,7 @@ onMounted(() => {
               <i class="pi pi-shield text-primary-600"></i>
               Tipo de Acesso
             </label>
-            <div class="px-4 py-3 bg-slate-50/50 rounded-2xl border border-slate-100">
+            <div class="px-4 py-3 bg-slate-50/50 rounded-xl border border-slate-100">
               <Tag
                 v-if="perfil?.perfil === 'admin'"
                 value="Administrador"
@@ -457,60 +571,271 @@ onMounted(() => {
       </template>
     </Card>
 
+    <!-- Seção exclusiva para Bolsistas -->
+    <template v-if="perfil?.bolsista">
+      <Accordion :value="['saude', 'frequencia']" multiple class="profile-accordions">
+        <!-- Saúde e Restrições -->
+        <AccordionPanel value="saude">
+          <AccordionHeader>
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center">
+                <i class="pi pi-heart text-pink-600"></i>
+              </div>
+              <span class="font-bold text-slate-700">Saúde e Restrições Alimentares</span>
+            </div>
+          </AccordionHeader>
+          <AccordionContent>
+            <div class="space-y-6 pt-4">
+              <div class="flex flex-col gap-3">
+                <label class="font-bold text-slate-700">Alergias</label>
+                <Textarea
+                  v-model="formBolsista.alergias"
+                  rows="3"
+                  autoResize
+                  placeholder="Informe se possui alguma alergia alimentar..."
+                  class="w-full !rounded-xl"
+                />
+              </div>
+
+              <div class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <div class="space-y-1">
+                  <p class="font-bold text-slate-900">Ovolactovegetariano</p>
+                  <p class="text-sm text-slate-500">Marque se você possui esta preferência alimentar.</p>
+                </div>
+                <ToggleSwitch v-model="formBolsista.is_ovolactovegetariano" />
+              </div>
+
+              <div class="flex justify-end pt-2">
+                <Button
+                  label="Salvar Informações de Saúde"
+                  icon="pi pi-check"
+                  severity="success"
+                  @click="salvarDadosBolsista"
+                  :loading="loadingBolsista"
+                  class="!rounded-xl action-btn"
+                />
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionPanel>
+
+        <!-- Frequência Semanal -->
+        <AccordionPanel value="frequencia">
+          <AccordionHeader>
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                <i class="pi pi-calendar text-amber-600"></i>
+              </div>
+              <span class="font-bold text-slate-700">Dias de Frequência</span>
+              <Tag v-if="temSolicitacaoPendente" value="Pendente" severity="warn" class="!rounded-full !text-xs ml-2" />
+            </div>
+          </AccordionHeader>
+          <AccordionContent>
+            <div class="space-y-6 pt-4">
+              <!-- Aviso de solicitação pendente -->
+              <Message v-if="temSolicitacaoPendente" severity="warn" :closable="false" class="!rounded-xl">
+                <div class="flex items-center gap-2">
+                  <i class="pi pi-clock"></i>
+                  <span>Você possui uma solicitação de mudança pendente. Aguarde a análise do administrador.</span>
+                </div>
+              </Message>
+
+              <p class="text-sm text-slate-500">
+                Selecione os dias que você frequenta o refeitório. Alterações dependem de aprovação do administrador.
+              </p>
+              <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div v-for="dia in diasSemanaOpcoes" :key="dia.value"
+                     class="flex items-center gap-2 p-3 bg-white border border-slate-200 rounded-xl hover:border-primary-500 transition-colors cursor-pointer"
+                     :class="{ 'opacity-50': temSolicitacaoPendente }"
+                     @click="!temSolicitacaoPendente && toggleDia(dia.value)">
+                  <Checkbox v-model="formBolsista.dias" :value="dia.value" :disabled="temSolicitacaoPendente" />
+                  <label class="font-bold text-slate-700 cursor-pointer">{{ dia.label }}</label>
+                </div>
+              </div>
+
+              <div class="flex justify-end pt-2">
+                <Button
+                  label="Solicitar Mudança de Dias"
+                  icon="pi pi-send"
+                  severity="success"
+                  @click="abrirModalMudanca"
+                  :disabled="temSolicitacaoPendente"
+                  class="!rounded-xl action-btn"
+                />
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionPanel>
+      </Accordion>
+    </template>
+
+    <!-- Modal de Motivo da Mudança -->
+    <Dialog
+      v-model:visible="displayMotivoMudanca"
+      modal
+      header="Solicitar Mudança de Dias"
+      :style="{ width: '450px' }"
+      class="!rounded-xl"
+    >
+      <div class="space-y-4 pt-2">
+        <div class="p-4 bg-blue-50 rounded-xl border border-blue-100">
+          <p class="text-sm text-blue-700">
+            <i class="pi pi-info-circle mr-2"></i>
+            Informe o motivo da sua solicitação para que o administrador possa analisá-la.
+          </p>
+        </div>
+
+        <div class="space-y-2">
+          <label class="font-bold text-slate-700">Dias Selecionados</label>
+          <div class="flex flex-wrap gap-2">
+            <Tag
+              v-for="dia in formBolsista.dias.sort()"
+              :key="dia"
+              :value="diasSemanaOpcoes.find(d => d.value === dia)?.label"
+              severity="success"
+              class="!rounded-full"
+            />
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <label class="font-bold text-slate-700">Motivo da Solicitação *</label>
+          <Textarea
+            v-model="motivoMudanca"
+            rows="4"
+            autoResize
+            placeholder="Ex: Mudança de horário de aula, estágio, etc..."
+            class="w-full !rounded-xl"
+          />
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex gap-3 w-full">
+          <Button
+            label="Cancelar"
+            icon="pi pi-times"
+            text
+            @click="displayMotivoMudanca = false"
+            class="flex-1 !rounded-xl"
+          />
+          <Button
+            label="Enviar Solicitação"
+            icon="pi pi-send"
+            severity="success"
+            @click="solicitarMudancaDias"
+            :loading="loadingBolsista"
+            class="flex-1 !rounded-xl"
+          />
+        </div>
+      </template>
+    </Dialog>
+
     <!-- Alterar Senha -->
-    <Card>
-      <template #title>Alterar Senha</template>
-      <template #content>
-        <form @submit.prevent="alterarSenha" class="space-y-4">
-          <div class="grid gap-4 md:grid-cols-2">
+    <Accordion class="profile-accordions">
+      <AccordionPanel value="senha">
+        <AccordionHeader>
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+              <i class="pi pi-lock text-blue-600"></i>
+            </div>
+            <span class="font-bold text-slate-700">Segurança e Senha</span>
+          </div>
+        </AccordionHeader>
+        <AccordionContent>
+          <form @submit.prevent="alterarSenha" class="space-y-6 pt-4">
             <div class="space-y-1">
-              <label class="text-sm font-medium text-slate-700">Senha Atual</label>
+              <label class="text-sm font-bold text-slate-600 ml-1">Senha Atual</label>
               <Password
                 v-model="formSenha.senha_atual"
                 :feedback="false"
                 toggleMask
                 class="w-full"
-                inputClass="w-full"
+                inputClass="w-full !rounded-xl border-slate-200 focus:border-primary-500"
                 required
+                placeholder="Digite sua senha atual"
               />
             </div>
 
-            <div class="md:col-span-2"></div>
+            <div class="grid gap-4 md:grid-cols-2">
+              <div class="space-y-1">
+                <label class="text-sm font-bold text-slate-600 ml-1">Nova Senha</label>
+                <Password
+                  v-model="formSenha.senha_nova"
+                  toggleMask
+                  class="w-full"
+                  inputClass="w-full !rounded-xl border-slate-200 focus:border-primary-500"
+                  required
+                  placeholder="Mínimo 6 caracteres"
+                />
+              </div>
 
-            <div class="space-y-1">
-              <label class="text-sm font-medium text-slate-700">Nova Senha</label>
-              <Password
-                v-model="formSenha.senha_nova"
-                toggleMask
-                class="w-full"
-                inputClass="w-full"
-                required
-              />
+              <div class="space-y-1">
+                <label class="text-sm font-bold text-slate-600 ml-1">Confirmar Nova Senha</label>
+                <Password
+                  v-model="formSenha.senha_nova_confirmacao"
+                  :feedback="false"
+                  toggleMask
+                  class="w-full"
+                  inputClass="w-full !rounded-xl border-slate-200 focus:border-primary-500"
+                  required
+                  placeholder="Repita a nova senha"
+                />
+              </div>
             </div>
 
-            <div class="space-y-1">
-              <label class="text-sm font-medium text-slate-700">Confirmar Nova Senha</label>
-              <Password
-                v-model="formSenha.senha_nova_confirmacao"
-                :feedback="false"
-                toggleMask
-                class="w-full"
-                inputClass="w-full"
-                required
+            <div class="flex justify-end pt-2">
+              <Button
+                type="submit"
+                label="Atualizar Senha"
+                icon="pi pi-check"
+                severity="info"
+                :loading="loadingSenha"
+                class="!rounded-xl action-btn"
               />
             </div>
-          </div>
-
-          <div class="flex justify-end">
-            <Button
-              type="submit"
-              label="Alterar Senha"
-              severity="secondary"
-              :loading="loadingSenha"
-            />
-          </div>
-        </form>
-      </template>
-    </Card>
+          </form>
+        </AccordionContent>
+      </AccordionPanel>
+    </Accordion>
   </div>
 </template>
+
+<style scoped>
+/* Estilos para os Accordions do perfil */
+.profile-accordions :deep(.p-accordionpanel) {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.profile-accordions :deep(.p-accordionheader) {
+  background: white;
+  padding: 1rem 1.25rem;
+  border: none;
+}
+
+.profile-accordions :deep(.p-accordionheader:hover) {
+  background: #f8fafc;
+}
+
+.profile-accordions :deep(.p-accordioncontent-content) {
+  padding: 0 1.25rem 1.25rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* Estilo padronizado para botões de ação */
+.action-btn {
+  padding: 0.75rem 1.5rem !important;
+  font-weight: 600 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+.action-btn:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  transform: translateY(-1px);
+}
+</style>
+

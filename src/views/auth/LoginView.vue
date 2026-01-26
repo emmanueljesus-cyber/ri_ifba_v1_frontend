@@ -64,7 +64,7 @@ const handleSubmit = async () => {
               id="matricula" 
               v-model="form.matricula" 
               placeholder="Ex: 2025123456" 
-              class="w-full !pl-12 !rounded-2xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all"
+              class="w-full !pl-12 !rounded-xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all"
               autocomplete="username"
               required 
             />
@@ -91,7 +91,7 @@ const handleSubmit = async () => {
               :feedback="false" 
               toggleMask 
               class="w-full" 
-              inputClass="w-full !pl-12 !rounded-2xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all" 
+              inputClass="w-full !pl-12 !rounded-xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all" 
               placeholder="Digite sua senha" 
               autocomplete="current-password"
               required 
@@ -101,7 +101,7 @@ const handleSubmit = async () => {
 
         <!-- Error Message -->
         <div v-if="errorMessage" class="pt-2">
-          <Message severity="error" icon="pi pi-exclamation-triangle" class="!rounded-2xl">{{ errorMessage }}</Message>
+          <Message severity="error" icon="pi pi-exclamation-triangle" class="!rounded-xl">{{ errorMessage }}</Message>
         </div>
 
         <!-- Submit Button -->
@@ -110,7 +110,7 @@ const handleSubmit = async () => {
             type="submit" 
             label="Entrar no Sistema" 
             icon="pi pi-sign-in" 
-            class="w-full !rounded-2xl !py-4 shadow-xl shadow-primary-100 font-bold tracking-tight" 
+            class="w-full !rounded-xl !py-4 shadow-lg font-bold tracking-tight" 
             :loading="loading" 
             size="large"
           />
@@ -124,7 +124,7 @@ const handleSubmit = async () => {
         icon="pi pi-external-link"
         severity="secondary"
         outlined
-        class="w-full !rounded-2xl !py-3 !border-slate-200 !text-slate-500 hover:!bg-slate-50"
+        class="w-full !rounded-xl !py-3 !border-slate-200 !text-slate-500 hover:!bg-slate-50"
         disabled
       />
 

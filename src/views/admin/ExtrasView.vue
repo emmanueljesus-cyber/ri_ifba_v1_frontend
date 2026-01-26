@@ -34,8 +34,6 @@ import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
 import Calendar from 'primevue/calendar'
 import Avatar from 'primevue/avatar'
-import IconField from 'primevue/iconfield'
-import InputIcon from 'primevue/inputicon'
 
 const toast = useToast()
 const router = useRouter()
@@ -347,6 +345,7 @@ onMounted(() => {
     <PageHeader
       title="Fila de Extras"
       subtitle="Gerencie as inscrições de estudantes não-bolsistas para refeições extras."
+      :show-back-button="true"
       :breadcrumbs="[{ label: 'Admin', route: '/admin' }, { label: 'Fila de Extras' }]"
     />
 
@@ -355,12 +354,12 @@ onMounted(() => {
         label="Gerar Relatório"
         icon="pi pi-file-excel"
         severity="success"
-        class="!rounded-2xl shadow-lg shadow-primary-100"
+        class="!rounded-xl shadow-md"
         @click="abrirRelatorio"
       />
     </div>
 
-    <!-- Seletor de Turno -->
+    <!-- Seletor de Turno B -->
     <div class="flex flex-col gap-2">
       <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Filtrar Turno</label>
       <SelectButton
@@ -385,19 +384,19 @@ onMounted(() => {
 
     <!-- Cards de Estatísticas do Turno Selecionado -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
         <p class="text-3xl font-black text-primary-600 lato-black">{{ estatisticasHoje.total }}</p>
         <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Inscritos ({{ turnoHojeFiltro === 'almoco' ? 'Almoço' : 'Jantar' }})</p>
       </div>
-      <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
         <p class="text-3xl font-black text-amber-600 lato-black">{{ estatisticasHoje.aguardando }}</p>
         <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Aguardando</p>
       </div>
-      <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
         <p class="text-3xl font-black text-primary-500 lato-black">{{ estatisticasHoje.confirmados }}</p>
         <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Confirmados</p>
       </div>
-      <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
         <p class="text-3xl font-black text-red-600 lato-black">{{ estatisticasHojeBackend?.rejeitados || 0 }}</p>
         <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Rejeitados (Total)</p>
       </div>
@@ -405,7 +404,7 @@ onMounted(() => {
 
     <Tabs v-model:value="tabAtiva">
       <!-- Navegação de Tabs -->
-      <div class="flex bg-white/50 backdrop-blur-sm p-1 rounded-2xl border border-slate-200 w-fit mb-6">
+      <div class="flex bg-white/50 backdrop-blur-sm p-1 rounded-xl border border-slate-200 w-fit mb-6">
         <SelectButton
           v-model="tabAtiva"
           :options="[
@@ -458,10 +457,7 @@ onMounted(() => {
                 <template #header>
                   <div class="flex justify-between items-center mb-2">
                     <span class="text-lg font-black text-slate-700 uppercase tracking-wider">Fila do Turno</span>
-                    <IconField iconPosition="left">
-                      <InputIcon class="pi pi-search" />
-                      <InputText v-model="filtersHoje['global'].value" placeholder="Buscar aluno..." class="!rounded-xl" />
-                    </IconField>
+                    <InputText v-model="filtersHoje['global'].value" placeholder="Buscar aluno..." />
                   </div>
                 </template>
                 <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
@@ -588,10 +584,7 @@ onMounted(() => {
               <template #header>
                 <div class="flex justify-between items-center mb-2">
                   <span class="text-lg font-black text-slate-700 uppercase tracking-wider">Histórico</span>
-                  <IconField iconPosition="left">
-                    <InputIcon class="pi pi-search" />
-                    <InputText v-model="filtersHistorico['global'].value" placeholder="Buscar no histórico..." class="!rounded-xl" />
-                  </IconField>
+                  <InputText v-model="filtersHistorico['global'].value" placeholder="Buscar no histórico..." />
                 </div>
               </template>
               <Column field="user.nome" header="Estudante" :sortable="true">

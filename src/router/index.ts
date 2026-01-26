@@ -112,6 +112,16 @@ const router = createRouter({
           component: () => import('../views/admin/RelatoriosView.vue')
         },
         {
+          path: 'usuarios',
+          name: 'admin-usuarios',
+          component: () => import('../views/admin/UsuariosView.vue')
+        },
+        {
+          path: 'solicitacoes-mudanca-dias',
+          name: 'admin-solicitacoes-mudanca-dias',
+          component: () => import('../views/admin/SolicitacoesMudancaDiasView.vue')
+        },
+        {
           path: 'perfil',
           name: 'admin-perfil',
           component: () => import('../views/estudante/PerfilView.vue')
