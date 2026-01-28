@@ -109,9 +109,17 @@ onMounted(() => {
               <div v-if="notificacoes.naoLidas.length > 0" class="p-3 border-t border-slate-200">
                 <button
                   class="text-sm text-primary-600 hover:text-primary-700 font-medium w-full text-center"
-                  @click="notificacoes.marcarTodasComoLidas()"
+                  @click="notificacoes.marcarTodasComoLidas(); notifPanel?.hide()"
                 >
                   Marcar todas como lidas
+                </button>
+              </div>
+              <div class="p-3 border-t border-slate-200">
+                <button
+                  class="text-sm text-primary-600 hover:text-primary-700 font-medium w-full text-center"
+                  @click="router.push('/dashboard/notificacoes'); notifPanel?.hide()"
+                >
+                  Ver todas as notificações
                 </button>
               </div>
             </div>
@@ -242,6 +250,14 @@ onMounted(() => {
                   >
                     <i class="pi pi-file-edit text-slate-500 group-hover:text-primary-600 transition-colors"></i>
                     <span class="text-sm font-semibold text-slate-700 group-hover:text-primary-700">Justificativas</span>
+                  </button>
+                  <button
+                    v-if="auth.user?.bolsista"
+                    class="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-primary-50 hover:text-primary-700 rounded-xl transition-all group"
+                    @click="router.push('/dashboard/carteirinha'); menuPanel?.hide()"
+                  >
+                    <i class="pi pi-qrcode text-slate-500 group-hover:text-primary-600 transition-colors"></i>
+                    <span class="text-sm font-semibold text-slate-700 group-hover:text-primary-700">Minha Carteirinha</span>
                   </button>
                   <button
                     class="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-primary-50 hover:text-primary-700 rounded-xl transition-all group"

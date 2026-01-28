@@ -4,13 +4,11 @@ import { FilterMatchMode } from '@primevue/core/api'
 import { useFilaExtrasStore } from '../../stores/filaExtras'
 import { useToast } from 'primevue/usetoast'
 import PageHeader from '../../components/common/PageHeader.vue'
-import Card from 'primevue/card'
 import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
-import Message from 'primevue/message'
 import Skeleton from 'primevue/skeleton'
 import InputText from 'primevue/inputtext'
 
@@ -47,7 +45,7 @@ const confirmarInscricao = async () => {
 
   loadingAcao.value = true
   try {
-    await filaStore.inscrever(refeicaoSelecionada.value.id)
+    await filaStore.inscrever(refeicaoSelecionada.value.refeicao_id)
     toast.add({
       severity: 'success',
       summary: 'Sucesso!',
@@ -137,8 +135,8 @@ onMounted(async () => {
         >
           <div class="flex justify-between items-start mb-4">
             <div>
-              <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{{ formatarTurno(inscricao.refeicao?.turno) }}</p>
-              <p class="font-bold text-slate-800">{{ formatarData(inscricao.refeicao?.data) }}</p>
+              <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{{ inscricao.refeicao?.turno ? formatarTurno(inscricao.refeicao.turno) : '' }}</p>
+              <p class="font-bold text-slate-800">{{ inscricao.refeicao?.data ? formatarData(inscricao.refeicao.data) : '' }}</p>
             </div>
             <Tag
               v-if="inscricao.confirmado"
@@ -213,7 +211,7 @@ onMounted(async () => {
           :value="filaStore.refeicoesDisponiveis"
           :rows="10"
           :paginator="filaStore.refeicoesDisponiveis.length > 10"
-          :globalFilterFields="['data_do_cardapio', 'turno']"
+          :globalFilterFields="['turno', 'turno_label']"
           class="p-datatable-sm"
           responsiveLayout="stack"
           breakpoint="768px"
@@ -231,13 +229,17 @@ onMounted(async () => {
                   <i :class="data.turno === 'almoco' ? 'pi pi-sun text-amber-500' : 'pi pi-moon text-indigo-500'"></i>
                 </div>
                 <div>
-                  <p class="font-bold text-slate-800">{{ formatarData(data.data) }}</p>
-                  <p class="text-xs text-slate-500 capitalize">{{ data.turno }}</p>
+                  <p class="font-bold text-slate-800">Hoje</p>
+                  <p class="text-xs text-slate-500">{{ data.turno_label }}</p>
                 </div>
               </div>
             </template>
           </Column>
-          <Column field="prato_principal" header="Prato Principal" class="font-medium text-slate-700" />
+          <Column header="Prato Principal" class="font-medium text-slate-700">
+            <template #body="{ data }">
+              {{ data.cardapio.prato_principal_ptn01 }}
+            </template>
+          </Column>
           <Column header="Disponibilidade">
             <template #body="{ data }">
               <div class="flex flex-col gap-1">
@@ -246,14 +248,14 @@ onMounted(async () => {
                   :severity="data.vagas_disponiveis > 10 ? 'success' : 'warn'"
                   class="!rounded-full w-fit"
                 />
-                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Até {{ data.limite_inscricoes }}</span>
+                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Até {{ data.horario_fim }}</span>
               </div>
             </template>
           </Column>
           <Column header="Ações" class="text-right">
             <template #body="{ data }">
               <Button
-                v-if="data.pode_inscrever && !data.ja_inscrito"
+                v-if="data.pode_inscrever && !data.inscrito"
                 label="Inscrever-se"
                 icon="pi pi-plus"
                 size="small"
@@ -261,7 +263,7 @@ onMounted(async () => {
                 severity="success"
                 @click="abrirDialogInscricao(data)"
               />
-              <div v-else-if="data.ja_inscrito" class="flex items-center justify-end gap-2 text-primary-600 font-bold text-sm">
+              <div v-else-if="data.inscrito" class="flex items-center justify-end gap-2 text-primary-600 font-bold text-sm">
                  <i class="pi pi-check-circle"></i>
                  Inscrito
               </div>
@@ -291,15 +293,15 @@ onMounted(async () => {
         <div class="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm">
           <div class="flex justify-between">
             <span class="text-slate-500">Data:</span>
-            <span class="font-bold text-slate-800">{{ formatarData(refeicaoSelecionada.data) }}</span>
+            <span class="font-bold text-slate-800">Hoje</span>
           </div>
           <div class="flex justify-between">
             <span class="text-slate-500">Turno:</span>
-            <span class="font-bold text-slate-800 capitalize">{{ refeicaoSelecionada.turno }}</span>
+            <span class="font-bold text-slate-800">{{ refeicaoSelecionada.turno_label }}</span>
           </div>
           <div class="flex justify-between">
             <span class="text-slate-500">Prato:</span>
-            <span class="font-bold text-slate-800">{{ refeicaoSelecionada.prato_principal }}</span>
+            <span class="font-bold text-slate-800">{{ refeicaoSelecionada.cardapio.prato_principal_ptn01 }}</span>
           </div>
         </div>
       </div>

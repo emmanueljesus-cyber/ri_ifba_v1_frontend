@@ -6,6 +6,7 @@ import { adminPresencaService } from '../../services/adminPresenca'
 import { useAvatar } from '../../composables/useAvatar'
 import { useErrorMessage } from '../../composables/useErrorMessage'
 import PageHeader from '../../components/common/PageHeader.vue'
+import QrScanner from '../../components/common/QrScanner.vue'
 
 // Locale pt-BR para DatePicker
 const ptBR = {
@@ -37,9 +38,15 @@ const resultadosBusca = ref<any[]>([])
 const loadingBusca = ref(false)
 const loadingValidacao = ref(false)
 
-// Lista do dia
-const dataFiltro = ref(new Date())
-const turnoFiltro = ref<'almoco' | 'jantar'>('almoco')
+// Lista do dia - com persistência
+const dataFiltro = ref(
+  localStorage.getItem('presencas_data') 
+    ? new Date(localStorage.getItem('presencas_data')!) 
+    : new Date()
+)
+const turnoFiltro = ref<'almoco' | 'jantar'>(
+  (localStorage.getItem('presencas_turno') as 'almoco' | 'jantar') || 'almoco'
+)
 const listaDia = ref<any[]>([])
 const loadingDia = ref(false)
 
@@ -89,6 +96,12 @@ const carregarListaDia = async () => {
 }
 
 watch([dataFiltro, turnoFiltro], () => {
+  // Salvar no localStorage para persistência
+  if (dataFiltro.value) {
+    localStorage.setItem('presencas_data', dataFiltro.value.toISOString())
+  }
+  localStorage.setItem('presencas_turno', turnoFiltro.value)
+  
   carregarListaDia()
 })
 
@@ -96,9 +109,36 @@ onMounted(() => {
   carregarListaDia()
 })
 
+const isRefeicaoPassada = () => {
+  const agora = new Date()
+  const hoje = new Date()
+  hoje.setHours(0,0,0,0)
+  
+  const filtro = new Date(dataFiltro.value)
+  filtro.setHours(0,0,0,0)
+
+  // Se data futura -> não passou
+  if (filtro > hoje) return false 
+  // Se data passada -> passou
+  if (filtro < hoje) return true 
+
+  // Se é hoje, verifica hora
+  const hora = agora.getHours()
+  // Almoço até 15h, Jantar até 21h (dando uma margem)
+  if (turnoFiltro.value === 'almoco') return hora >= 15
+  if (turnoFiltro.value === 'jantar') return hora >= 21
+  
+  return false
+}
+
 const getStatusSeverity = (status: string | null, temFaltaAntecipada = false) => {
   if (temFaltaAntecipada) return 'info'
-  if (!status) return 'secondary'
+  
+  // Se não tem status, verifica se já passou
+  if (!status) {
+    return isRefeicaoPassada() ? 'danger' : 'secondary'
+  }
+
   switch (status) {
     case 'presente': return 'success'
     case 'falta_justificada': return 'info'
@@ -109,8 +149,13 @@ const getStatusSeverity = (status: string | null, temFaltaAntecipada = false) =>
 }
 
 const getStatusLabel = (status: string | null, temFaltaAntecipada = false) => {
-  if (temFaltaAntecipada) return 'FALTA ANTECIPADA'
-  if (!status) return 'Pendente'
+  if (temFaltaAntecipada) return 'JUSTIFICATIVA ANTECIPADA'
+  
+  // Se não tem status, verifica se já passou
+  if (!status) {
+    return isRefeicaoPassada() ? 'AUSENTE' : 'PENDENTE'
+  }
+
   switch (status) {
     case 'presente': return 'PRESENTE'
     case 'falta_justificada': return 'FALTA JUSTIFICADA'
@@ -122,10 +167,18 @@ const getStatusLabel = (status: string | null, temFaltaAntecipada = false) => {
 
 const validarToken = async () => {
   if (!tokenManual.value) return
+  if (loadingValidacao.value) return
   
   loadingValidacao.value = true
   try {
-    const res = await adminPresencaService.validarQrCode(tokenManual.value)
+    const dataIso = dataFiltro.value.toISOString().split('T')[0]
+    const token = tokenManual.value.trim()
+    const isTokenFixo = token.startsWith('IFBA-') || token.length <= 20
+
+    const res = isTokenFixo
+      ? await adminPresencaService.validarQrCodeFixo(token, turnoFiltro.value, dataIso)
+      : await adminPresencaService.validarQrCode(token)
+
     toast.add({ severity: 'success', summary: 'Sucesso', detail: res.message || 'Presença confirmada!' })
     tokenManual.value = ''
     carregarListaDia()
@@ -139,6 +192,40 @@ const validarToken = async () => {
     loadingValidacao.value = false
   }
 }
+
+const validarTokenQr = async (token: string) => {
+  if (!token) return
+  if (loadingValidacao.value) return
+  
+  loadingValidacao.value = true
+  try {
+    // Detectar se é token fixo (matrícula) ou temporário (hash)
+    const isTokenFixo = token.startsWith('IFBA-') || token.length <= 20
+    const dataIso = dataFiltro.value.toISOString().split('T')[0]
+    
+    const res = isTokenFixo
+      ? await adminPresencaService.validarQrCodeFixo(token, turnoFiltro.value, dataIso)
+      : await adminPresencaService.validarQrCode(token)
+    
+    toast.add({ 
+      severity: 'success', 
+      summary: 'Sucesso', 
+      detail: res.meta?.message || res.message || 'Presença confirmada!',
+      life: 3000
+    })
+    carregarListaDia()
+  } catch (err: any) {
+    toast.add({
+      severity: 'error', 
+      summary: 'Erro', 
+      detail: err.response?.data?.message || 'Falha ao validar QR Code',
+      life: 5000
+    })
+  } finally {
+    loadingValidacao.value = false
+  }
+}
+
 
 const buscarAlunos = async () => {
   if (buscaTermo.value.length < 3) return
@@ -206,6 +293,8 @@ const confirmarPresencaManual = async (userId: number) => {
 const marcarFaltaManual = async (userId: number, justificada = false) => {
   try {
     const dataIso = dataFiltro.value.toISOString().split('T')[0]
+    console.log('Marcando falta:', { userId, data: dataIso, turno: getTurnoAtual(), justificada })
+
     await adminPresencaService.marcarFalta(userId, dataIso, getTurnoAtual(), justificada)
 
     // Atualizar status localmente imediatamente
@@ -226,8 +315,8 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
       detail: justificada ? 'Falta justificada registrada' : 'Falta injustificada registrada'
     })
 
-    // Recarregar lista do servidor em background
-    carregarListaDia()
+    // Recarregar lista do servidor após um pequeno delay para garantir persistência
+    setTimeout(() => carregarListaDia(), 500)
   } catch (err: any) {
     toast.add({
       severity: 'error',
@@ -393,55 +482,6 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
       </Card>
 
       <div class="space-y-6">
-        <!-- Busca Manual -->
-        <Card class="!rounded-xl border border-slate-200 shadow-sm">
-          <template #title>
-             <div class="flex items-center gap-2">
-                <i class="pi pi-search text-primary-600"></i>
-                <span class="text-lg font-bold text-slate-700">Busca Rápida</span>
-             </div>
-          </template>
-          <template #content>
-            <div class="space-y-4">
-              <div class="flex gap-2">
-                <InputText v-model="buscaTermo" placeholder="Nome ou Matrícula..." class="flex-1 !rounded-xl" @keyup.enter="buscarAlunos" />
-                <Button icon="pi pi-search" @click="buscarAlunos" :loading="loadingBusca" class="!rounded-xl" />
-              </div>
-
-              <DataTable :value="resultadosBusca" scrollable scrollHeight="200px" class="p-datatable-sm custom-table">
-                <template #empty> <p class="text-center p-2 text-xs text-slate-400">Pesquise para listar.</p> </template>
-                <Column field="nome" header="Aluno">
-                  <template #body="{ data }">
-                    <div class="flex items-center gap-2">
-                      <Avatar
-                        v-if="data.foto"
-                        :image="data.foto"
-                        shape="circle"
-                        size="small"
-                      />
-                      <Avatar
-                        v-else
-                        :label="getInitials(data.nome)"
-                        shape="circle"
-                        size="small"
-                        :style="getAvatarStyle(data.nome)"
-                      />
-                      <div class="flex flex-col">
-                        <span class="text-xs font-bold text-slate-700">{{ data.nome }}</span>
-                        <span class="text-[9px] text-slate-400">{{ data.matricula }}</span>
-                      </div>
-                    </div>
-                  </template>
-                </Column>
-                <Column header="Ação" class="text-right">
-                  <template #body="{ data }">
-                    <Button icon="pi pi-user-plus" severity="success" text rounded @click="confirmarPresencaManual(data.id)" v-tooltip.left="'Adicionar Presença'" />
-                  </template>
-                </Column>
-              </DataTable>
-            </div>
-          </template>
-        </Card>
         <!-- Validação de QR Code -->
         <Card class="!rounded-xl border border-slate-200 shadow-sm">
           <template #title>
@@ -452,25 +492,13 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
           </template>
           <template #content>
             <div class="space-y-4">
-              <div class="p-8 border-2 border-dashed border-slate-200 rounded-xl text-center bg-slate-50/50">
-                <i class="pi pi-qrcode text-6xl text-slate-200 mb-4"></i>
-                <p class="text-slate-400 mb-4 text-xs font-medium">Aponte a câmera para o QR Code do estudante</p>
-                <Button label="Ativar Câmera" icon="pi pi-camera" severity="success" disabled class="w-full !rounded-xl" v-tooltip.bottom="'Está sendo implementado'" />
-              </div>
-
-              <div class="relative py-2">
-                <div class="absolute inset-0 flex items-center" aria-hidden="true">
-                  <div class="w-full border-t border-slate-100"></div>
-                </div>
-                <div class="relative flex justify-center text-[10px] font-black uppercase tracking-widest">
-                  <span class="bg-white px-2 text-slate-300">ou use o token</span>
-                </div>
-              </div>
-
-              <div class="flex gap-2">
-                <InputText v-model="tokenManual" placeholder="Token manual..." class="flex-1 !rounded-xl" @keyup.enter="validarToken" />
-                <Button icon="pi pi-check" @click="validarToken" :loading="loadingValidacao" severity="primary" class="!rounded-xl" />
-              </div>
+              <!-- QR Scanner Component -->
+              <QrScanner 
+                @scan="validarTokenQr"
+                @error="(err) => toast.add({ severity: 'error', summary: 'Erro', detail: err })"
+                :fps="10"
+                :qrbox="250"
+              />
             </div>
           </template>
         </Card>

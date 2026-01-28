@@ -1,26 +1,25 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import path from 'path'
+import { fileURLToPath, URL } from 'node:url'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [
-    vue(),
-  ],
+  plugins: [vue()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
   server: {
+    host: true, // Listen on all network interfaces
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8000',
+        target: 'http://172.26.0.1:8000', // WSL backend IP
         changeOrigin: true,
         secure: false,
       },
       '/storage': {
-        target: 'http://127.0.0.1:8000',
+        target: 'http://172.26.0.1:8000', // WSL backend IP
         changeOrigin: true,
         secure: false,
       }

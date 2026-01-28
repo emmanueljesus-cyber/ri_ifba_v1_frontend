@@ -125,7 +125,7 @@ onMounted(() => {
         <Column header="Novos Dias">
           <template #body="{ data }">
             <div class="flex flex-wrap gap-1">
-              <Tag v-for="dia in data.dias_semana" :key="dia" 
+              <Tag v-for="dia in data.dias_solicitados" :key="dia" 
                 :value="['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][dia]" 
                 severity="secondary" class="!rounded-md" />
             </div>

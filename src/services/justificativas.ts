@@ -12,9 +12,20 @@ export const justificativaService = {
     return data.data
   },
 
-  async enviar(payload: CriarJustificativaRequest): Promise<Justificativa> {
+  async enviar(payload: CriarJustificativaRequest & { data?: string; turno?: string }): Promise<Justificativa> {
     const formData = new FormData()
-    formData.append('refeicao_id', payload.refeicao_id.toString())
+
+    // Pode enviar refeicao_id OU (data + turno)
+    if (payload.refeicao_id) {
+      formData.append('refeicao_id', payload.refeicao_id.toString())
+    }
+    if (payload.data) {
+      formData.append('data', payload.data)
+    }
+    if (payload.turno) {
+      formData.append('turno', payload.turno)
+    }
+
     formData.append('tipo', payload.tipo)
     formData.append('motivo', payload.motivo)
     if (payload.anexo) {

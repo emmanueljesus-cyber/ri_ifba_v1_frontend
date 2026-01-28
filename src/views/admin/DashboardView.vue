@@ -153,50 +153,98 @@ onMounted(() => {
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Bolsistas do Dia -->
-      <div class="lg:col-span-2 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-        <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-          <div>
-            <h3 class="text-lg font-black text-slate-700 uppercase tracking-wider">Bolsistas do Dia</h3>
-            <p class="text-xs text-slate-500 font-medium">Lista de quem tem direito à refeição hoje.</p>
-          </div>
-          <SelectButton v-model="turnoSelecionado" :options="turnoOptions" optionLabel="label" optionValue="value" :unselectable="false" />
-        </div>
-
-        <DataTable :value="bolsistasHoje" :loading="loadingBolsistas" paginator :rows="5" class="p-datatable-sm">
-          <template #empty>
-            <div class="flex flex-col items-center justify-center py-8 text-slate-400">
-              <i class="pi pi-users text-4xl mb-2"></i>
-              <p>Não foi possível carregar os dados.</p>
+      <div class="lg:col-span-2">
+        <Card class="!rounded-xl !border-slate-200 overflow-hidden shadow-sm">
+          <template #title>
+            <div class="flex justify-between items-center">
+              <div>
+                <h3 class="text-lg font-black text-slate-700 uppercase tracking-wider">Bolsistas do Dia</h3>
+                <p class="text-xs text-slate-500 font-medium mt-1">Lista de quem tem direito à refeição hoje.</p>
+              </div>
+              <SelectButton 
+                v-model="turnoSelecionado" 
+                :options="turnoOptions" 
+                optionLabel="label" 
+                optionValue="value" 
+                :unselectable="false"
+                class="!rounded-xl"
+              />
             </div>
           </template>
-          <Column header="Bolsista">
-            <template #body="{ data }">
+          <template #content>
+            <DataTable 
+              :value="bolsistasHoje" 
+              :loading="loadingBolsistas" 
+              paginator 
+              :rows="10" 
+              class="p-datatable-sm"
+              :rowsPerPageOptions="[5, 10, 20]"
+              paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
+            >
+              <template #empty>
+                <div class="flex flex-col items-center justify-center py-12 text-slate-400">
+                  <i class="pi pi-users text-6xl mb-4 text-slate-200"></i>
+                  <p class="text-sm font-medium text-slate-500">Não foi possível carregar os dados.</p>
+                  <p class="text-xs text-slate-400 mt-1">Verifique se há cardápio cadastrado para hoje.</p>
+                </div>
+              </template>
+              <Column header="Bolsista" style="min-width: 250px">
+                <template #body="{ data }">
+                  <div class="flex items-center gap-3">
+                    <Avatar 
+                      :label="getInitials(data.nome)" 
+                      shape="circle" 
+                      size="large"
+                      class="flex-shrink-0" 
+                      :style="getAvatarStyle(data.nome)" 
+                    />
+                    <div class="flex flex-col">
+                      <span class="font-bold text-slate-700 leading-tight">{{ data.nome }}</span>
+                      <span class="text-[10px] text-slate-400 font-black uppercase tracking-wider mt-0.5">{{ data.matricula }}</span>
+                    </div>
+                  </div>
+                </template>
+              </Column>
+              <Column field="curso" header="Curso" style="min-width: 200px">
+                <template #body="{ data }">
+                  <span class="text-sm text-slate-600">{{ data.curso }}</span>
+                </template>
+              </Column>
+              <Column header="Status" style="min-width: 120px" class="text-right">
+                <template #body="{ data }">
+                  <Tag 
+                    :value="data.presenca_atual?.status_da_presenca || 'Pendente'" 
+                    :severity="getStatusSeverity(data.presenca_atual?.status_da_presenca)" 
+                    class="!rounded-full px-3 py-1 uppercase text-[10px] font-black tracking-wider" 
+                  />
+                </template>
+              </Column>
+            </DataTable>
+            
+            <div 
+              class="mt-4 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl flex justify-between items-center" 
+              v-if="resumo?.refeicao_atual"
+            >
+              <div class="flex items-center gap-2">
+                <i class="pi pi-chart-bar text-emerald-600"></i>
+                <span class="text-xs font-bold text-emerald-700 uppercase tracking-widest">
+                  Ocupação do {{ resumo.refeicao_atual.turno }}:
+                </span>
+              </div>
               <div class="flex items-center gap-3">
-                <Avatar :label="getInitials(data.nome)" shape="circle" class="flex-shrink-0" :style="getAvatarStyle(data.nome)" />
-                <div class="flex flex-col">
-                  <span class="font-bold text-slate-700 leading-none">{{ data.nome }}</span>
-                  <span class="text-[10px] text-slate-400 font-black uppercase tracking-tighter mt-1">{{ data.matricula }}</span>
+                <span class="text-sm font-black text-emerald-800">
+                  {{ resumo.refeicao_atual.confirmados }} / {{ resumo.refeicao_atual.capacidade }}
+                </span>
+                <div class="w-32 h-2.5 bg-emerald-200 rounded-full overflow-hidden">
+                  <div 
+                    class="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300" 
+                    :style="{ width: Math.min(100, (resumo.refeicao_atual.confirmados / resumo.refeicao_atual.capacidade) * 100) + '%' }"
+                  ></div>
                 </div>
               </div>
-            </template>
-          </Column>
-          <Column field="curso" header="Curso" class="text-xs text-slate-500"></Column>
-          <Column header="Status" class="text-right">
-            <template #body="{ data }">
-              <Tag :value="data.presenca?.status || 'Pendente'" :severity="getStatusSeverity(data.presenca?.status)" class="!rounded-full px-3 uppercase text-[10px] font-black" />
-            </template>
-          </Column>
-        </DataTable>
-        
-        <div class="p-4 bg-emerald-50/50 border-t border-emerald-100 flex justify-between items-center" v-if="resumo?.refeicao_atual">
-           <span class="text-xs font-bold text-emerald-700 uppercase tracking-widest">Ocupação do {{ resumo.refeicao_atual.turno }}:</span>
-           <div class="flex items-center gap-3">
-              <span class="text-sm font-black text-emerald-800">{{ resumo.refeicao_atual.confirmados }} / {{ resumo.refeicao_atual.capacidade }}</span>
-              <div class="w-32 h-2 bg-emerald-200 rounded-full overflow-hidden">
-                 <div class="h-full bg-emerald-500" :style="{ width: Math.min(100, (resumo.refeicao_atual.confirmados / resumo.refeicao_atual.capacidade) * 100) + '%' }"></div>
-              </div>
-           </div>
-        </div>
+            </div>
+          </template>
+        </Card>
       </div>
 
       <!-- Ações Rápidas -->

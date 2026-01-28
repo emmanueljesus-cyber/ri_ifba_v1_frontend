@@ -26,6 +26,7 @@ import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import DatePicker from 'primevue/datepicker'
 import InputText from 'primevue/inputtext'
+import Chart from 'primevue/chart'
 
 const loading = ref(false)
 const loadingExtras = ref(false)
@@ -229,6 +230,88 @@ const categorias = [
   { key: 'n_frequenta', label: 'Ñ Frequenta', color: 'bg-slate-50 text-slate-700' }
 ]
 
+const chartPalette = [
+  '#10b981',
+  '#3b82f6',
+  '#ef4444',
+  '#f97316',
+  '#f59e0b',
+  '#64748b'
+]
+
+const geralChartData = computed(() => {
+  if (!relatorio.value?.totais) return null
+
+  return {
+    labels: categorias.map(cat => cat.label),
+    datasets: [
+      {
+        data: categorias.map(cat => relatorio.value?.totais?.[cat.key] || 0),
+        backgroundColor: chartPalette,
+        borderWidth: 0
+      }
+    ]
+  }
+})
+
+const geralChartOptions = {
+  plugins: {
+    legend: { position: 'bottom' }
+  },
+  cutout: '60%'
+}
+
+const presencasChartData = computed(() => {
+  const totais = relatorioPresencas.value?.meta?.totais
+  if (!totais) return null
+
+  return {
+    labels: ['Presentes', 'Falta Justificada', 'Falta Injustificada', 'Cancelados'],
+    datasets: [
+      {
+        data: [
+          totais.presentes || 0,
+          totais.falta_justificada || 0,
+          totais.falta_injustificada || 0,
+          totais.cancelados || 0
+        ],
+        backgroundColor: ['#10b981', '#3b82f6', '#ef4444', '#f59e0b'],
+        borderWidth: 0
+      }
+    ]
+  }
+})
+
+const presencasChartOptions = {
+  plugins: {
+    legend: { position: 'bottom' }
+  },
+  cutout: '60%'
+}
+
+const extrasChartData = computed(() => {
+  const resumo = estatisticasExtras.value?.resumo
+  if (!resumo) return null
+
+  return {
+    labels: ['Aprovados', 'Aguardando', 'Rejeitados'],
+    datasets: [
+      {
+        data: [resumo.aprovados || 0, resumo.aguardando || 0, resumo.rejeitados || 0],
+        backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+        borderWidth: 0
+      }
+    ]
+  }
+})
+
+const extrasChartOptions = {
+  plugins: {
+    legend: { position: 'bottom' }
+  },
+  cutout: '60%'
+}
+
 const activeTab = ref('geral')
 
 const tabOptions = [
@@ -315,6 +398,20 @@ watch(activeTab, (newTab) => {
                       <p class="text-[10px] font-black text-slate-600 uppercase">Aproveitamento</p>
                       <p class="text-2xl font-black text-slate-700">{{ statsDashboard.taxa_presenca?.porcentagem || '0%' }}</p>
                    </div>
+                </div>
+
+                <div v-if="geralChartData" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                  <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
+                    <h4 class="text-sm font-black text-slate-700 mb-4">Distribuição Mensal</h4>
+                    <Chart type="doughnut" :data="geralChartData" :options="geralChartOptions" />
+                  </div>
+                  <div class="p-6 bg-slate-50 rounded-xl border border-slate-200">
+                    <h4 class="text-sm font-black text-slate-700 mb-3">Leitura Rápida</h4>
+                    <p class="text-sm text-slate-600 leading-relaxed">
+                      Este gráfico consolida o total do mês por categoria para comparação imediata
+                      do volume de refeições e faltas.
+                    </p>
+                  </div>
                 </div>
 
                 <div class="min-w-[800px]">
@@ -427,6 +524,20 @@ watch(activeTab, (newTab) => {
                 <div class="p-4 bg-slate-100 rounded-xl border border-slate-200 text-center">
                   <p class="text-[10px] font-bold text-slate-600 uppercase">Total</p>
                   <p class="text-2xl font-black text-slate-700">{{ relatorioPresencas.meta.totais.total_registros }}</p>
+                </div>
+              </div>
+
+              <div v-if="presencasChartData" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
+                  <h4 class="text-sm font-black text-slate-700 mb-4">Distribuição de Presenças</h4>
+                  <Chart type="doughnut" :data="presencasChartData" :options="presencasChartOptions" />
+                </div>
+                <div class="p-6 bg-slate-50 rounded-xl border border-slate-200">
+                  <h4 class="text-sm font-black text-slate-700 mb-3">Observações</h4>
+                  <p class="text-sm text-slate-600 leading-relaxed">
+                    Use esta visão para identificar rapidamente a proporção de faltas e cancelamentos
+                    no período selecionado.
+                  </p>
                 </div>
               </div>
 
@@ -554,6 +665,20 @@ watch(activeTab, (newTab) => {
                 <div class="p-4 bg-red-50 rounded-xl border border-red-100 text-center">
                   <p class="text-[10px] font-bold text-red-600 uppercase">Rejeitados</p>
                   <p class="text-2xl font-black text-red-700">{{ estatisticasExtras.resumo.rejeitados || 0 }}</p>
+                </div>
+              </div>
+
+              <div v-if="extrasChartData" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
+                  <h4 class="text-sm font-black text-slate-700 mb-4">Status das Inscrições</h4>
+                  <Chart type="doughnut" :data="extrasChartData" :options="extrasChartOptions" />
+                </div>
+                <div class="p-6 bg-slate-50 rounded-xl border border-slate-200">
+                  <h4 class="text-sm font-black text-slate-700 mb-3">Leitura Rápida</h4>
+                  <p class="text-sm text-slate-600 leading-relaxed">
+                    Acompanhe o equilíbrio entre aprovações, aguardando e rejeições para
+                    ajustar a gestão da fila de extras.
+                  </p>
                 </div>
               </div>
 

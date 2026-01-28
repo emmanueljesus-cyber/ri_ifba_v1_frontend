@@ -11,6 +11,9 @@
   "dependencies": {
     "@primeuix/themes": "^2.0.2",
     "axios": "^1.13.2",
+    "chart.js": "^4.4.9",
+    "date-fns": "^4.1.0",
+    "html5-qrcode": "^2.3.8",
     "pinia": "^3.0.4",
     "primeicons": "^7.0.0",
     "primevue": "^4.0.0",

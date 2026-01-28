@@ -46,7 +46,13 @@ const carregarCardapioSemanal = async () => {
 const carregarCardapioHoje = async () => {
   loadingHoje.value = true
   try {
-    cardapioHoje.value = await cardapioService.hoje()
+    // Usar rota pública se não estiver logado, rota autenticada se estiver
+    if (isLoggedIn.value) {
+      cardapioHoje.value = await cardapioService.hoje()
+    } else {
+      // Usar rota pública
+      cardapioHoje.value = await cardapioService.hojePublico()
+    }
   } catch (err: any) {
     if (err?.response?.status === 404) {
       cardapioHoje.value = null

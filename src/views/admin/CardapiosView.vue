@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { FilterMatchMode } from '@primevue/core/api'
 import { useToast } from 'primevue/usetoast'
 import { cardapioService } from '../../services/cardapio'
@@ -275,6 +275,18 @@ const irParaHoje = () => {
   calendarioAno.value = new Date().getFullYear()
 }
 
+// Computed para cardápios filtrados por mês/ano (para o calendário)
+const cardapiosMesAtual = computed(() => {
+  const mes = calendarioMes.value
+  const ano = calendarioAno.value
+
+  return cardapios.value.filter(c => {
+    if (!c.data_do_cardapio) return false
+    const data = new Date(c.data_do_cardapio + 'T12:00:00')
+    return data.getMonth() === mes && data.getFullYear() === ano
+  })
+})
+
 // Lógica para o calendário mensal
 const diasCalendario = computed(() => {
   const mes = calendarioMes.value
@@ -294,8 +306,8 @@ const diasCalendario = computed(() => {
   // Dias do mês
   for (let d = 1; d <= ultimoDia.getDate(); d++) {
     const dataString = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-    // Buscar cardápio pelo campo data_do_cardapio
-    const cardapio = cardapios.value.find(c => {
+    // Buscar cardápio no array filtrado do mês
+    const cardapio = cardapiosMesAtual.value.find(c => {
       // Comparação direta de string
       return c.data_do_cardapio === dataString
     })
@@ -499,9 +511,14 @@ onMounted(() => {
           <div class="flex items-center gap-4">
             <div class="flex items-center gap-2">
               <Button icon="pi pi-chevron-left" text rounded severity="secondary" @click="navegarMes(-1)" class="!w-10 !h-10" />
-              <h3 class="text-xl font-bold text-slate-700 min-w-[200px] text-center capitalize">
-                {{ mesAnoAtual }}
-              </h3>
+              <div class="min-w-[240px] text-center">
+                <h3 class="text-xl font-bold text-slate-700 capitalize">
+                  {{ mesAnoAtual }}
+                </h3>
+                <p class="text-xs text-slate-500 mt-0.5">
+                  {{ cardapiosMesAtual.length }} cardápio(s) cadastrado(s)
+                </p>
+              </div>
               <Button icon="pi pi-chevron-right" text rounded severity="secondary" @click="navegarMes(1)" class="!w-10 !h-10" />
             </div>
             <Button label="Hoje" icon="pi pi-calendar" text severity="primary" size="small" @click="irParaHoje" class="!rounded-lg" />

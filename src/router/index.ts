@@ -53,6 +53,11 @@ const router = createRouter({
           component: () => import('../views/estudante/HistoricoView.vue')
         },
         {
+          path: 'notificacoes',
+          name: 'notificacoes',
+          component: () => import('../views/estudante/NotificacoesView.vue')
+        },
+        {
           path: 'perfil',
           name: 'perfil',
           component: () => import('../views/estudante/PerfilView.vue')
@@ -61,6 +66,12 @@ const router = createRouter({
           path: 'justificativas',
           name: 'justificativas',
           component: () => import('../views/estudante/JustificativasView.vue'),
+          meta: { bolsistaOnly: true }
+        },
+        {
+          path: 'carteirinha',
+          name: 'carteirinha',
+          component: () => import('../views/estudante/CarteirinhaView.vue'),
           meta: { bolsistaOnly: true }
         },
         {

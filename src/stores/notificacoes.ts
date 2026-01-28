@@ -1,14 +1,25 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { notificacoesService } from '../services/notificacoes'
+import { useAuthStore } from './auth'
 import type { Notificacao } from '../types/notificacao'
 
 export const useNotificacoesStore = defineStore('notificacoes', () => {
   const notificacoes = ref<Notificacao[]>([])
   const loading = ref(false)
 
-  const naoLidas = computed(() => notificacoes.value.filter(n => !n.lida))
+  const naoLidas = computed(() => notificacoes.value.filter(n => !n.lida_em))
   const contador = computed(() => naoLidas.value.length)
+
+  // Helper para verificar se é admin
+  function isAdmin(): boolean {
+    try {
+      const authStore = useAuthStore()
+      return authStore.user?.perfil === 'admin'
+    } catch {
+      return false
+    }
+  }
 
   async function carregarNaoLidas() {
     // Prevent multiple simultaneous calls
@@ -16,9 +27,12 @@ export const useNotificacoesStore = defineStore('notificacoes', () => {
 
     loading.value = true
     try {
-      notificacoes.value = await notificacoesService.naoLidas()
+      const admin = isAdmin()
+      console.log('[Notificacoes] Carregando para perfil:', admin ? 'admin' : 'estudante')
+      notificacoes.value = await notificacoesService.naoLidas(admin)
+      console.log('[Notificacoes] Carregadas:', notificacoes.value.length)
     } catch (error) {
-      console.error('Erro ao carregar notificações:', error)
+      console.error('[Notificacoes] Erro ao carregar:', error)
       // Silenciar erro - não é crítico para o funcionamento do app
       notificacoes.value = []
     } finally {
@@ -28,10 +42,9 @@ export const useNotificacoesStore = defineStore('notificacoes', () => {
 
   async function marcarComoLida(id: number) {
     try {
-      await notificacoesService.marcarComoLida(id)
+      await notificacoesService.marcarComoLida(id, isAdmin())
       const notif = notificacoes.value.find(n => n.id === id)
       if (notif) {
-        notif.lida = true
         notif.lida_em = new Date().toISOString()
       }
     } catch (error) {
@@ -41,9 +54,8 @@ export const useNotificacoesStore = defineStore('notificacoes', () => {
 
   async function marcarTodasComoLidas() {
     try {
-      await notificacoesService.marcarTodasComoLidas()
+      await notificacoesService.marcarTodasComoLidas(isAdmin())
       notificacoes.value.forEach(n => {
-        n.lida = true
         n.lida_em = new Date().toISOString()
       })
     } catch (error) {

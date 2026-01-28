@@ -25,9 +25,11 @@ const cardapio = ref<CardapioDia | null>(null)
 const minhasInscricoes = ref<FilaExtra[]>([])
 const posicoesNaFila = ref<PosicaoFila[]>([])
 const presencaHoje = ref<any>(null)
+const carteirinha = ref<any>(null)
 const loadingCardapio = ref(false)
 const loadingInscricoes = ref(false)
 const loadingPresenca = ref(false)
+const loadingCarteirinha = ref(false)
 const errorCardapio = ref('')
 const displayQrCode = ref(false)
 
@@ -61,8 +63,7 @@ const carregarCardapio = async () => {
   loadingCardapio.value = true
   errorCardapio.value = ''
   try {
-    const result = await cardapioService.hoje()
-    cardapio.value = result
+    cardapio.value = await cardapioService.hoje()
   } catch (err: any) {
       // Se for 404, não é erro - simplesmente não há cardápio para hoje
     if (err?.response?.status === 404) {
@@ -94,13 +95,43 @@ const carregarInscricoes = async () => {
 }
 
 const carregarPresencaHoje = async () => {
+  // Presença só faz sentido para bolsistas
+  if (!isBolsista.value) {
+    presencaHoje.value = null
+    return
+  }
+
   loadingPresenca.value = true
   try {
     presencaHoje.value = await cardapioService.presencaHoje()
-  } catch (err) {
-    console.error('Nenhuma presença para hoje')
+  } catch (err: any) {
+    // 404 é esperado quando não há presença registrada para hoje
+    if (err?.response?.status === 404) {
+      presencaHoje.value = null
+      console.log('Nenhuma presença registrada para hoje')
+    } else {
+      console.error('Erro ao carregar presença:', err)
+    }
   } finally {
     loadingPresenca.value = false
+  }
+}
+
+const carregarCarteirinha = async () => {
+  // Carteirinha só para bolsistas
+  if (!isBolsista.value) {
+    carteirinha.value = null
+    return
+  }
+
+  loadingCarteirinha.value = true
+  try {
+    carteirinha.value = await cardapioService.carteirinha()
+  } catch (err: any) {
+    console.error('Erro ao carregar carteirinha:', err)
+    carteirinha.value = null
+  } finally {
+    loadingCarteirinha.value = false
   }
 }
 
@@ -108,6 +139,7 @@ onMounted(() => {
   carregarCardapio()
   carregarInscricoes()
   carregarPresencaHoje()
+  carregarCarteirinha()
 })
 </script>
 
@@ -120,24 +152,41 @@ onMounted(() => {
       :breadcrumbs="[]"
     />
 
-    <div v-if="presencaHoje && presencaHoje.status !== 'presente'" class="flex justify-end -mt-16 relative z-10">
-      <Button label="Meu QR Code" icon="pi pi-qrcode" severity="success" @click="displayQrCode = true" class="!rounded-xl shadow-md" />
+    <div v-if="isBolsista && carteirinha" class="flex justify-end -mt-16 relative z-10">
+      <Button label="Minha Carteirinha" icon="pi pi-qrcode" severity="success" @click="router.push('/dashboard/carteirinha')" class="!rounded-xl shadow-md" />
     </div>
 
     <!-- Dialog QR Code -->
-    <Dialog v-model:visible="displayQrCode" header="Meu QR Code para Refeição" :style="{ width: '350px' }" modal>
+    <Dialog v-model:visible="displayQrCode" header="Minha Carteirinha Digital" :style="{ width: '400px' }" modal>
       <div class="flex flex-col items-center py-4 space-y-4">
         <div class="bg-white p-4 rounded-xl shadow-md">
           <img 
-            :src="`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${presencaHoje?.token}`" 
+            :src="`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${carteirinha?.qr_token}`" 
             alt="QR Code"
             class="w-48 h-48"
           />
         </div>
-        <div class="text-center">
-          <p class="font-bold text-slate-800 uppercase">{{ presencaHoje?.refeicao.turno }}</p>
-          <p class="text-sm text-slate-500">{{ formatarData(presencaHoje?.refeicao.data) }}</p>
+        <div class="text-center space-y-1">
+          <p class="font-bold text-slate-900 text-lg">{{ carteirinha?.nome }}</p>
+          <p class="text-sm text-slate-600 font-mono">{{ carteirinha?.matricula }}</p>
+          <p class="text-xs text-slate-500">{{ carteirinha?.curso }}</p>
+          <div class="pt-2">
+            <Tag 
+              :value="carteirinha?.turno_refeicao === 'almoco' ? 'Almoço' : 'Jantar'" 
+              :severity="carteirinha?.turno_refeicao === 'almoco' ? 'warning' : 'info'"
+              class="!rounded-full"
+            />
+          </div>
         </div>
+        
+        <!-- Token para digitação manual -->
+        <div class="w-full p-3 bg-slate-50 rounded-xl border border-slate-200">
+          <p class="text-xs text-slate-500 font-bold mb-1 text-center">TOKEN PARA DIGITAÇÃO MANUAL</p>
+          <p class="text-center font-mono text-sm font-bold text-slate-800 select-all break-all">
+            {{ carteirinha?.qr_token }}
+          </p>
+        </div>
+        
         <Message severity="info" :closable="false" class="text-xs">
           Apresente este código ao servidor no momento da refeição.
         </Message>
@@ -205,11 +254,11 @@ onMounted(() => {
                   <div class="grid grid-cols-2 gap-2">
                     <div class="flex flex-col gap-1">
                       <span class="text-[10px] font-bold text-amber-600">OP 1</span>
-                      <p class="text-xs text-amber-800">{{ cardapio.almoco.acompanhamento.split(',')[0].trim() }}</p>
+                      <p class="text-xs text-amber-800">{{ cardapio.almoco.acompanhamento?.split(',')[0]?.trim() }}</p>
                     </div>
-                    <div v-if="cardapio.almoco.acompanhamento.includes(',')" class="flex flex-col gap-1">
+                    <div v-if="cardapio.almoco.acompanhamento?.includes(',')" class="flex flex-col gap-1">
                       <span class="text-[10px] font-bold text-amber-600">OP 2</span>
-                      <p class="text-xs text-amber-800">{{ cardapio.almoco.acompanhamento.split(',')[1].trim() }}</p>
+                      <p class="text-xs text-amber-800">{{ cardapio.almoco.acompanhamento?.split(',')[1]?.trim() }}</p>
                     </div>
                   </div>
                 </div>
@@ -294,11 +343,11 @@ onMounted(() => {
                   <div class="grid grid-cols-2 gap-2">
                     <div class="flex flex-col gap-1">
                       <span class="text-[10px] font-bold text-indigo-600">OP 1</span>
-                      <p class="text-xs text-indigo-800">{{ cardapio.jantar.acompanhamento.split(',')[0].trim() }}</p>
+                      <p class="text-xs text-indigo-800">{{ cardapio.jantar.acompanhamento?.split(',')[0]?.trim() }}</p>
                     </div>
-                    <div v-if="cardapio.jantar.acompanhamento.includes(',')" class="flex flex-col gap-1">
+                    <div v-if="cardapio.jantar.acompanhamento?.includes(',')" class="flex flex-col gap-1">
                       <span class="text-[10px] font-bold text-indigo-600">OP 2</span>
-                      <p class="text-xs text-indigo-800">{{ cardapio.jantar.acompanhamento.split(',')[1].trim() }}</p>
+                      <p class="text-xs text-indigo-800">{{ cardapio.jantar.acompanhamento?.split(',')[1]?.trim() }}</p>
                     </div>
                   </div>
                 </div>
@@ -432,7 +481,8 @@ onMounted(() => {
                   class="!text-[10px]"
                 />
               </div>
-              <div class="mt-3 pt-3 border-t border-slate-200/50 flex justify-between items-center">
+
+              <div v-if="!inscricao.confirmado && !inscricao.cancelado && inscricao.posicao" class="mt-3 pt-3 border-t border-slate-200/50 flex justify-between items-center">
                  <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Sua Posição</span>
                  <span class="text-sm font-black text-emerald-600">{{ inscricao.posicao }}º</span>
               </div>

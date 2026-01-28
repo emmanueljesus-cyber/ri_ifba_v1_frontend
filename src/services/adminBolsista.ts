@@ -24,8 +24,9 @@ export const adminBolsistaService = {
     await api.post(`/admin/bolsistas/${id}/desligar`, { motivo })
   },
 
-  async reativar(id: number) {
-    await api.post(`/admin/bolsistas/${id}/reativar`)
+  async reativar(id: number, motivo?: string) {
+    const payload = motivo ? { motivo } : {}
+    await api.post(`/admin/bolsistas/${id}/reativar`, payload)
   },
 
   async reativarAprovado(id: number) {

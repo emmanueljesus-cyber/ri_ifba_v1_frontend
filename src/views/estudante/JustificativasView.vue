@@ -1,19 +1,3 @@
-                          <img v-else role="presentation" :alt="file.name" :src="(file as any).objectURL || URL.createObjectURL(file)" width="100" class="rounded-lg shadow-sm" />
-    const mensagemErro = err?.response?.data?.message || err?.message || 'Falha ao enviar justificativa'
-    refeicoesDisponiveis.value = data.map(c => ({
-      id: c.id,
-      cardapio_id: c.id,
-      data_do_cardapio: c.data_do_cardapio,
-      turno: c.turno,
-      prato_principal: c.prato_principal_ptn01,
-      prato_principal_ptn02: c.prato_principal_ptn02 || '',
-      acompanhamento: c.acompanhamento_01,
-      guarnicao: c.guarnicao,
-      salada: c.salada,
-      sobremesa: c.sobremesa,
-      suco: c.suco,
-      ovo_lacto_vegetariano: c.ovo_lacto_vegetariano || ''
-    }))
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import { FilterMatchMode } from '@primevue/core/api'
@@ -41,6 +25,7 @@ import Accordion from 'primevue/accordion'
 import AccordionPanel from 'primevue/accordionpanel'
 import AccordionHeader from 'primevue/accordionheader'
 import AccordionContent from 'primevue/accordioncontent'
+import DatePicker from 'primevue/datepicker'
 
 
 const toast = useToast()
@@ -63,7 +48,9 @@ const totalSizePercent = ref(0)
 
 const novaJustificativa = ref({
   refeicao_id: null as number | null,
-  tipo: 'posterior' as TipoJustificativa,
+  data_selecionada: new Date() as Date | null,
+  turno_selecionado: '' as string,
+  tipo: 'antecipada' as TipoJustificativa,
   motivo: '',
   motivo_categoria: '' as string,
   quantidade_dias: 1,
@@ -121,11 +108,52 @@ const motivosCategorias = [
 // Computed para verificar se é justificativa posterior
 const isPosterior = computed(() => novaJustificativa.value.tipo === 'posterior')
 
+// Computed para data mínima permitida no DatePicker
+const minDate = computed(() => {
+  if (novaJustificativa.value.tipo === 'antecipada') {
+    // Antecipada: a partir de hoje
+    return new Date()
+  } else {
+    // Posterior: sem limite mínimo (pode ser qualquer data passada)
+    return undefined
+  }
+})
+
+// Computed para data máxima permitida no DatePicker
+const maxDate = computed(() => {
+  if (novaJustificativa.value.tipo === 'posterior') {
+    // Posterior: até ontem (não pode ser hoje ou futuro)
+    const ontem = new Date()
+    ontem.setDate(ontem.getDate() - 1)
+    return ontem
+  } else {
+    // Antecipada: sem limite máximo
+    return undefined
+  }
+})
+
+// Computed para obter o turno do bolsista
+const turnoBolsistaFormatado = computed(() => {
+  if (!authStore.user?.turno_refeicao) return null
+  const turno = authStore.user.turno_refeicao.toLowerCase()
+  return turno === 'almoço' || turno === 'almoco' ? 'Almoço' : 'Jantar'
+})
+
 // Watch para limpar campos ao mudar tipo
-watch(() => novaJustificativa.value.tipo, () => {
+watch(() => novaJustificativa.value.tipo, (novoTipo) => {
   novaJustificativa.value.motivo_categoria = ''
   novaJustificativa.value.anexo = null
   novaJustificativa.value.quantidade_dias = 1
+
+  // Resetar data baseado no tipo
+  if (novoTipo === 'antecipada') {
+    novaJustificativa.value.data_selecionada = new Date() // Hoje
+  } else {
+    // Posterior: setar para ontem
+    const ontem = new Date()
+    ontem.setDate(ontem.getDate() - 1)
+    novaJustificativa.value.data_selecionada = ontem
+  }
 })
 
 const getStatusSeverity = (status: string) => {
@@ -171,9 +199,6 @@ const carregarRefeicoes = async () => {
   }
 }
 
-// Computed para verificar se é bolsista
-const isBolsista = computed(() => authStore.user?.bolsista === true)
-
 // Computed para obter o turno do bolsista
 const turnoBolsista = computed(() => {
   if (!authStore.user?.turno_refeicao) return null
@@ -181,16 +206,12 @@ const turnoBolsista = computed(() => {
   return turno === 'almoço' ? 'almoco' : turno
 })
 
-// Computed para filtrar refeições pelo turno do bolsista
-const refeicoesParaBolsista = computed(() => {
-  if (!turnoBolsista.value) return refeicoesDisponiveis.value
-  return refeicoesDisponiveis.value.filter(r => r.turno === turnoBolsista.value)
-})
-
 const abrirNovo = () => {
   novaJustificativa.value = {
     refeicao_id: null,
-    tipo: 'posterior',
+    data_selecionada: new Date(), // Hoje
+    turno_selecionado: turnoBolsista.value || 'almoco',
+    tipo: 'antecipada', // Antecipada como padrão
     motivo: '',
     motivo_categoria: '',
     quantidade_dias: 1,
@@ -199,13 +220,6 @@ const abrirNovo = () => {
   totalSize.value = 0
   totalSizePercent.value = 0
 
-  // Se for bolsista, pré-seleciona automaticamente a primeira refeição do turno dele
-  if (isBolsista.value && refeicoesParaBolsista.value.length > 0) {
-    const primeiraRefeicao = refeicoesParaBolsista.value[0]
-    if (primeiraRefeicao) {
-      novaJustificativa.value.refeicao_id = primeiraRefeicao.id
-    }
-  }
 
   displayDialog.value = true
 }
@@ -215,8 +229,8 @@ const enviarJustificativa = async () => {
   if (enviando.value) return
 
   // Validações
-  if (!novaJustificativa.value.refeicao_id) {
-    toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Selecione a refeição', life: 3000 })
+  if (!novaJustificativa.value.data_selecionada) {
+    toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Selecione a data da refeição', life: 3000 })
     return
   }
 
@@ -239,6 +253,15 @@ const enviarJustificativa = async () => {
   enviando.value = true
 
   try {
+    // Formatar data para YYYY-MM-DD (sem usar toISOString que pode mudar o dia por timezone)
+    const dataSelecionada = novaJustificativa.value.data_selecionada
+    const ano = dataSelecionada.getFullYear()
+    const mes = String(dataSelecionada.getMonth() + 1).padStart(2, '0')
+    const dia = String(dataSelecionada.getDate()).padStart(2, '0')
+    const dataFormatada = `${ano}-${mes}-${dia}`
+
+    const turnoUsuario = turnoBolsista.value || 'almoco'
+
     // Montar motivo completo para posterior
     let motivoFinal = novaJustificativa.value.motivo
     if (isPosterior.value) {
@@ -249,18 +272,35 @@ const enviarJustificativa = async () => {
       }
     }
 
+    // Enviar data e turno diretamente (backend busca a refeição)
     await justificativaService.enviar({
-      refeicao_id: novaJustificativa.value.refeicao_id,
+      data: dataFormatada,
+      turno: turnoUsuario,
       tipo: novaJustificativa.value.tipo,
       motivo: motivoFinal,
       anexo: novaJustificativa.value.anexo
-    })
+    } as any)
 
     displayDialog.value = false
     toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Justificativa enviada com sucesso!', life: 4000 })
     await carregarJustificativas()
   } catch (err: any) {
-    const mensagemErro = err?.response?.data?.message || err?.message || 'Falha ao enviar justificativa'
+    console.error('Erro ao enviar justificativa:', err)
+
+    // Extrair mensagem de erro detalhada
+    let mensagemErro = 'Falha ao enviar justificativa'
+    if (err?.response?.data?.errors) {
+      const errors = err.response.data.errors
+      const primeiroErro = Object.values(errors)[0]
+      if (Array.isArray(primeiroErro) && primeiroErro.length > 0) {
+        mensagemErro = primeiroErro[0] as string
+      }
+    } else if (err?.response?.data?.message) {
+      mensagemErro = err.response.data.message
+    } else if (err?.message) {
+      mensagemErro = err.message
+    }
+
     toast.add({ severity: 'error', summary: 'Erro', detail: mensagemErro, life: 5000 })
   } finally {
     enviando.value = false
@@ -466,36 +506,41 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- Seleção de Data - para BOLSISTAS (turno já é conhecido) -->
+        <!-- Seleção de Data com DatePicker -->
         <div class="flex flex-col gap-2">
-<!--          <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-lg mb-2">-->
-<!--            <p class="text-sm text-emerald-700 flex items-center gap-2">-->
-<!--              <i :class="turnoBolsista === 'almoco' ? 'pi pi-sun text-amber-500' : 'pi pi-moon text-indigo-500'"></i>-->
-<!--              <span>Seu turno: <strong class="capitalize">{{ turnoBolsista === 'almoco' ? 'Almoço' : 'Jantar' }}</strong></span>-->
-<!--            </p>-->
-<!--          </div>-->
           <label class="text-sm font-bold text-slate-700 flex items-center gap-2">
             <i class="pi pi-calendar text-emerald-600"></i> Data da Refeição *
           </label>
-          <Select
-            v-model="novaJustificativa.refeicao_id"
-            :options="refeicoesParaBolsista"
-            optionLabel="id"
+
+          <!-- Mostrar turno do bolsista -->
+          <div v-if="turnoBolsistaFormatado" class="p-3 bg-slate-50 border border-slate-200 rounded-lg mb-2">
+            <p class="text-sm text-slate-700 flex items-center gap-2">
+              <i :class="turnoBolsista === 'almoco' ? 'pi pi-sun text-amber-500' : 'pi pi-moon text-indigo-500'"></i>
+              <span>Seu turno: <strong>{{ turnoBolsistaFormatado }}</strong></span>
+            </p>
+          </div>
+
+          <DatePicker
+            v-model="novaJustificativa.data_selecionada"
+            :minDate="minDate"
+            :maxDate="maxDate"
+            dateFormat="dd/mm/yy"
+            showIcon
+            iconDisplay="input"
+            :showButtonBar="true"
             placeholder="Selecione a data"
-            optionValue="id"
-          >
-            <template #option="slotProps">
-              <div class="flex items-center gap-2">
-                 <span>{{ slotProps.option.data_do_cardapio ? slotProps.option.data_do_cardapio.split('-').reverse().join('/') : '-' }}</span>
-              </div>
-            </template>
-            <template #value="slotProps">
-              <div v-if="slotProps.value" class="flex items-center gap-2">
-                <span>{{ refeicoesParaBolsista.find(r => r.id === slotProps.value)?.data_do_cardapio?.split('-').reverse().join('/') || '-' }}</span>
-              </div>
-              <span v-else>Selecione a data</span>
-            </template>
-          </Select>
+            class="!rounded-xl w-full"
+          />
+
+          <!-- Mensagem de ajuda baseada no tipo -->
+          <p v-if="novaJustificativa.tipo === 'antecipada'" class="text-xs text-emerald-600 flex items-center gap-1">
+            <i class="pi pi-info-circle"></i>
+            Justificativa antecipada: selecione hoje ou uma data futura
+          </p>
+          <p v-else class="text-xs text-amber-600 flex items-center gap-1">
+            <i class="pi pi-info-circle"></i>
+            Justificativa posterior: selecione uma data passada (precisa de atestado)
+          </p>
         </div>
 
         <!-- CAMPOS PARA JUSTIFICATIVA POSTERIOR -->
@@ -548,7 +593,7 @@ onMounted(() => {
                       <div v-for="(file, index) of files" :key="file.name + file.type + file.size" class="p-4 rounded-xl flex flex-row justif border border-slate-200 items-center gap-5 bg-slate-50 w-full">
                         <div>
                           <i v-if="file.type.includes('pdf')" class="pi pi-file-pdf text-4xl text-red-500"></i>
-                          <img v-else role="presentation" :alt="file.name" :src="(file as any).objectURL || URL.createObjectURL(file)" width="100" class="rounded-lg shadow-sm" />
+                          <img v-else role="presentation" :alt="file.name" :src="(file as any).objectURL" width="100" class="rounded-lg shadow-sm" />
                         </div>
                         <span class="font-bold text-sm text-ellipsis max-w-40 whitespace-nowrap overflow-hidden text-slate-800">{{ file.name }}</span>
                         <div class="text-[10px] font-black text-xs text-slate-500 uppercase">{{ formatSize(file.size) }}</div>
