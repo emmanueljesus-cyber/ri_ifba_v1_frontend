@@ -14,12 +14,12 @@ export default defineConfig({
     host: true, // Listen on all network interfaces
     proxy: {
       '/api': {
-        target: 'http://172.26.0.1:8000', // WSL backend IP
+        target: 'http://127.0.0.1:8000', // Backend local
         changeOrigin: true,
         secure: false,
       },
       '/storage': {
-        target: 'http://172.26.0.1:8000', // WSL backend IP
+        target: 'http://127.0.0.1:8000', // Backend local - fotos
         changeOrigin: true,
         secure: false,
       }
