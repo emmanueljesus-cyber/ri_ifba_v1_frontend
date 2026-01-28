@@ -123,6 +123,16 @@ const router = createRouter({
           component: () => import('../views/admin/RelatoriosView.vue')
         },
         {
+          path: 'relatorios/extras',
+          name: 'admin-relatorios-extras',
+          component: () => import('../views/admin/RelatoriosExtrasView.vue')
+        },
+        {
+          path: 'relatorios/bolsistas',
+          name: 'admin-relatorios-bolsistas',
+          component: () => import('../views/admin/RelatoriosBolsistasView.vue')
+        },
+        {
           path: 'usuarios',
           name: 'admin-usuarios',
           component: () => import('../views/admin/UsuariosView.vue')

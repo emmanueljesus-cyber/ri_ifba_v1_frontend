@@ -101,8 +101,17 @@ onMounted(() => {
       <DataTable :value="solicitacoes" :loading="loading" paginator :rows="10" 
         v-model:filters="filters"
         :globalFilterFields="['user.nome', 'user.matricula']"
-        class="p-datatable-sm" responsiveLayout="stack" breakpoint="960px">
-        
+        class="p-datatable-sm" responsiveLayout="stack" breakpoint="960px"
+        emptyMessage="Nenhuma solicitação pendente no momento.">
+
+        <template #empty>
+          <div class="flex flex-col items-center justify-center py-12 text-slate-400">
+            <i class="pi pi-inbox text-6xl mb-4 text-slate-200"></i>
+            <p class="text-lg font-semibold text-slate-500">Nenhuma solicitação pendente</p>
+            <p class="text-sm text-slate-400 mt-1">Quando os bolsistas solicitarem mudança de dias, aparecerão aqui.</p>
+          </div>
+        </template>
+
         <template #header>
           <div class="flex flex-col md:flex-row justify-between gap-4 mb-2">
             <span class="text-xl font-bold text-slate-700">Solicitações Pendentes</span>

@@ -159,7 +159,8 @@ const getStatusLabel = (status: string | null, temFaltaAntecipada = false) => {
   switch (status) {
     case 'presente': return 'PRESENTE'
     case 'falta_justificada': return 'FALTA JUSTIFICADA'
-    case 'falta_injustificada': return 'FALTA'
+    case 'falta_injustificada': return 'AUSENTE' // Falta injustificada = Ausente
+    case 'ausente': return 'AUSENTE'
     case 'cancelado': return 'CANCELADO'
     default: return status.replace('_', ' ').toUpperCase()
   }
@@ -487,7 +488,7 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
           <template #title>
              <div class="flex items-center gap-2">
                 <i class="pi pi-qrcode text-primary-600"></i>
-                <span class="text-lg font-bold text-slate-700">Validação de QR Code</span>
+                <span class="text-lg font-bold text-slate-700">Presença por QR Code</span>
              </div>
           </template>
           <template #content>

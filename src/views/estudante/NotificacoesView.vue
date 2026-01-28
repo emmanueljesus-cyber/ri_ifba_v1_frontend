@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useNotificacoesStore } from '@/stores/notificacoes'
+import { useAuthStore } from '@/stores/auth'
 import { notificacoesService } from '@/services/notificacoes'
 import type { Notificacao } from '@/types/notificacao'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -10,10 +12,15 @@ import Badge from 'primevue/badge'
 import Skeleton from 'primevue/skeleton'
 import Message from 'primevue/message'
 
+const router = useRouter()
 const notificacoesStore = useNotificacoesStore()
+const authStore = useAuthStore()
 const notificacoes = ref<Notificacao[]>([])
 const loading = ref(false)
 const error = ref('')
+
+// Helper para verificar se é admin
+const isAdmin = computed(() => authStore.user?.perfil === 'admin')
 
 const naoLidas = computed(() => notificacoes.value.filter(n => !n.lida_em))
 const lidas = computed(() => notificacoes.value.filter(n => n.lida_em))
@@ -77,7 +84,7 @@ const carregarNotificacoes = async () => {
   loading.value = true
   error.value = ''
   try {
-    notificacoes.value = await notificacoesService.listar()
+    notificacoes.value = await notificacoesService.listar(isAdmin.value)
   } catch (err: any) {
     console.error('Erro ao carregar notificações:', err)
     error.value = err?.response?.data?.message || 'Erro ao carregar notificações'
@@ -90,7 +97,7 @@ const marcarComoLida = async (notificacao: Notificacao) => {
   if (notificacao.lida_em) return
 
   try {
-    await notificacoesService.marcarComoLida(notificacao.id)
+    await notificacoesService.marcarComoLida(notificacao.id, isAdmin.value)
     notificacao.lida_em = new Date().toISOString()
     notificacoesStore.carregarNaoLidas() // Atualizar badge no header
   } catch (err) {
@@ -100,7 +107,7 @@ const marcarComoLida = async (notificacao: Notificacao) => {
 
 const marcarTodasComoLidas = async () => {
   try {
-    await notificacoesService.marcarTodasComoLidas()
+    await notificacoesService.marcarTodasComoLidas(isAdmin.value)
     notificacoes.value.forEach(n => {
       if (!n.lida_em) {
         n.lida_em = new Date().toISOString()
@@ -110,6 +117,38 @@ const marcarTodasComoLidas = async () => {
   } catch (err) {
     console.error('Erro ao marcar todas como lidas:', err)
   }
+}
+
+// Retorna a rota de destino baseada no tipo da notificação
+const getNotifRoute = (tipo: string): string => {
+  const routeMap: Record<string, string> = {
+    // Justificativas
+    'justificativa_aprovada': '/dashboard/justificativas',
+    'justificativa_rejeitada': '/dashboard/justificativas',
+    'aviso': isAdmin.value ? '/admin/justificativas' : '/dashboard/justificativas',
+    // Fila de extras
+    'fila_confirmada': '/dashboard/fila-extras',
+    'fila_posicao_alterada': '/dashboard/fila-extras',
+    'fila_aprovada': '/dashboard/fila-extras',
+    'fila_rejeitada': '/dashboard/fila-extras',
+    // Cadastro
+    'cadastro_confirmado': '/dashboard/perfil',
+    // Solicitações
+    'solicitacao_aprovada': '/dashboard/perfil',
+    'solicitacao_rejeitada': '/dashboard/perfil',
+    // Geral e sucesso
+    'sucesso': '/dashboard',
+    'geral': '/dashboard',
+  }
+
+  return routeMap[tipo] || '/dashboard'
+}
+
+// Ao clicar na notificação não lida: marca como lida e navega
+const handleNotifClick = async (notif: Notificacao) => {
+  await marcarComoLida(notif)
+  const destino = getNotifRoute(notif.tipo)
+  router.push(destino)
 }
 
 onMounted(() => {
@@ -175,7 +214,7 @@ onMounted(() => {
               'border-l-yellow-500': getSeverityByTipo(notif.tipo) === 'warn',
               'border-l-red-500': getSeverityByTipo(notif.tipo) === 'danger',
             }"
-            @click="marcarComoLida(notif)"
+            @click="handleNotifClick(notif)"
           >
             <template #content>
               <div class="flex items-start gap-4">
@@ -193,7 +232,10 @@ onMounted(() => {
                 <div class="flex-1 min-w-0">
                   <div class="flex items-start justify-between gap-2">
                     <h3 class="font-bold text-slate-800">{{ notif.titulo }}</h3>
-                    <Badge value="Nova" severity="danger" class="flex-shrink-0" />
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                      <Badge value="Nova" severity="danger" />
+                      <i class="pi pi-chevron-right text-slate-400"></i>
+                    </div>
                   </div>
                   <p class="text-slate-600 mt-1 text-sm">{{ notif.mensagem }}</p>
                   <p class="text-xs text-slate-400 mt-2">{{ formatarTempo(notif.created_at) }}</p>

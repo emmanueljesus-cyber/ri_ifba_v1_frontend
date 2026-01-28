@@ -274,20 +274,29 @@ onMounted(() => {
 
     <Dialog 
       v-model:visible="displayDialog" 
-      header="Analisar Justificativa" 
-      :style="{ width: '90%', maxWidth: '500px' }" 
+      :header="selectedJustificativa?.status_justificativa === 'pendente' ? 'Rejeitar Justificativa' : 'Detalhes da Justificativa'"
+      :style="{ width: '90%', maxWidth: '500px' }"
       modal
       class="!rounded-xl overflow-hidden"
     >
       <div v-if="selectedJustificativa" class="space-y-6 py-4">
+        <!-- Info do Aluno -->
+        <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+          <Avatar :label="getInitials(selectedJustificativa.usuario?.nome)" shape="circle" size="normal" class="shadow-sm" :style="getAvatarStyle(selectedJustificativa.usuario?.nome)" />
+          <div>
+            <p class="font-bold text-slate-800">{{ selectedJustificativa.usuario?.nome }}</p>
+            <p class="text-xs text-slate-500">{{ selectedJustificativa.usuario?.matricula }}</p>
+          </div>
+        </div>
+
         <div class="flex items-center justify-between px-1">
           <div class="flex flex-col">
             <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tipo de Falta</span>
             <Tag :value="selectedJustificativa.tipo" :severity="getTipoSeverity(selectedJustificativa.tipo)" class="!rounded-full px-3 uppercase text-[10px] font-black w-fit mt-1" />
           </div>
           <div class="flex flex-col items-end">
-            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status Atual</span>
-            <Tag :value="selectedJustificativa.status_justificativa" :severity="getStatusSeverity(selectedJustificativa.status_justificativa)" class="!rounded-full px-3 uppercase text-[10px] font-black w-fit mt-1" />
+            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Refeição</span>
+            <span class="text-sm font-bold text-slate-700 mt-1">{{ selectedJustificativa.refeicao?.data }} - {{ selectedJustificativa.refeicao?.turno }}</span>
           </div>
         </div>
 
@@ -306,23 +315,77 @@ onMounted(() => {
           />
         </div>
 
+        <!-- Área de Rejeição (apenas para pendentes) -->
         <div v-if="selectedJustificativa.status_justificativa === 'pendente'" class="space-y-4 pt-4 border-t border-slate-100">
+          <div class="p-3 bg-red-50 border border-red-200 rounded-xl">
+            <p class="text-red-700 text-sm flex items-center gap-2">
+              <i class="pi pi-exclamation-triangle"></i>
+              <span>Você está prestes a <strong>rejeitar</strong> esta justificativa.</span>
+            </p>
+          </div>
+
           <div class="flex flex-col gap-2">
-            <label class="text-xs font-black text-red-500 uppercase tracking-widest">Motivo da Rejeição (se aplicável)</label>
-            <Textarea 
+            <label class="text-xs font-black text-red-600 uppercase tracking-widest flex items-center gap-1">
+              <i class="pi pi-comment"></i>
+              Motivo da Rejeição *
+            </label>
+            <Textarea
               v-model="motivoRejeicao" 
               rows="3" 
-              placeholder="Descreva o motivo caso vá rejeitar..." 
-              class="w-full !rounded-xl" 
+              placeholder="Explique o motivo da rejeição para o aluno..."
+              class="w-full !rounded-xl"
             />
           </div>
+
           <div class="flex gap-3 pt-2">
-            <Button label="Rejeitar" icon="pi pi-times" severity="danger" outlined @click="rejeitar" :loading="loadingAction" class="flex-1 !rounded-xl" />
-            <Button label="Aprovar" icon="pi pi-check" severity="success" @click="aprovar" :loading="loadingAction" class="flex-1 !rounded-xl" />
+            <Button
+              label="Cancelar"
+              icon="pi pi-arrow-left"
+              severity="secondary"
+              outlined
+              @click="displayDialog = false"
+              class="flex-1 !rounded-xl"
+            />
+            <Button
+              label="Confirmar Rejeição"
+              icon="pi pi-times"
+              severity="danger"
+              @click="rejeitar"
+              :loading="loadingAction"
+              :disabled="!motivoRejeicao.trim()"
+              class="flex-1 !rounded-xl"
+            />
           </div>
         </div>
-        <div v-else class="bg-blue-50 p-4 rounded-xl border border-blue-100 text-center">
-          <p class="text-blue-700 text-sm font-medium italic">Esta justificativa já foi {{ selectedJustificativa.status_justificativa }}.</p>
+
+        <!-- Info para justificativas já processadas -->
+        <div v-else class="space-y-4 pt-4 border-t border-slate-100">
+          <div
+            class="p-4 rounded-xl border text-center"
+            :class="selectedJustificativa.status_justificativa === 'aprovada' ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'"
+          >
+            <i
+              class="text-3xl mb-2"
+              :class="selectedJustificativa.status_justificativa === 'aprovada' ? 'pi pi-check-circle text-emerald-500' : 'pi pi-times-circle text-red-500'"
+            ></i>
+            <p
+              class="font-medium"
+              :class="selectedJustificativa.status_justificativa === 'aprovada' ? 'text-emerald-700' : 'text-red-700'"
+            >
+              Esta justificativa foi {{ selectedJustificativa.status_justificativa === 'aprovada' ? 'aprovada' : 'rejeitada' }}.
+            </p>
+            <p v-if="selectedJustificativa.observacao_admin" class="text-sm mt-2 text-slate-600">
+              <strong>Observação:</strong> {{ selectedJustificativa.observacao_admin }}
+            </p>
+          </div>
+          <Button
+            label="Fechar"
+            icon="pi pi-times"
+            severity="secondary"
+            outlined
+            @click="displayDialog = false"
+            class="w-full !rounded-xl"
+          />
         </div>
       </div>
     </Dialog>

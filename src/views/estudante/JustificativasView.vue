@@ -206,6 +206,87 @@ const turnoBolsista = computed(() => {
   return turno === 'almoço' ? 'almoco' : turno
 })
 
+// Computed para obter os dias da semana em que o bolsista é beneficiário
+// Retorna array de números: 0=Domingo, 1=Segunda, ..., 6=Sábado
+const diasSemanaBeneficiario = computed((): number[] => {
+  const user = authStore.user
+  if (!user?.dias_semana || !Array.isArray(user.dias_semana)) {
+    // Se não tiver dias definidos, assume dias úteis (segunda a sexta)
+    return [1, 2, 3, 4, 5]
+  }
+
+  // Mapear os dias do backend para números do JavaScript Date
+  const mapeamento: Record<string, number> = {
+    'domingo': 0,
+    'segunda': 1,
+    'terca': 2,
+    'quarta': 3,
+    'quinta': 4,
+    'sexta': 5,
+    'sabado': 6,
+    // Alternativas
+    'segunda-feira': 1,
+    'terça-feira': 2,
+    'terça': 2,
+    'quarta-feira': 3,
+    'quinta-feira': 4,
+    'sexta-feira': 5,
+    'sábado': 6,
+  }
+
+  return user.dias_semana
+    .map((dia: any) => {
+      const diaStr = (typeof dia === 'string' ? dia : dia.dia_semana || dia.nome || '').toLowerCase()
+      return mapeamento[diaStr] ?? -1
+    })
+    .filter((d: number) => d >= 0)
+})
+
+// Computed para obter datas com justificativas pendentes
+const datasComJustificativaPendente = computed((): string[] => {
+  return justificativas.value
+    .filter(j => j.status === 'pendente')
+    .map(j => {
+      // A data pode vir no formato "dd/mm/yyyy" ou como objeto
+      if (j.refeicao?.data) {
+        // Formato brasileiro dd/mm/yyyy -> yyyy-mm-dd
+        const partes = j.refeicao.data.split('/')
+        if (partes.length === 3) {
+          return `${partes[2]}-${partes[1]}-${partes[0]}`
+        }
+        return j.refeicao.data
+      }
+      return ''
+    })
+    .filter(d => d)
+})
+
+// Computed para dias da semana que devem ser desabilitados no calendário
+// PrimeVue DatePicker usa 0=Domingo, 1=Segunda, ..., 6=Sábado
+const diasSemanaDesabilitados = computed((): number[] => {
+  const todosDias = [0, 1, 2, 3, 4, 5, 6]
+  // Retorna os dias que NÃO estão na lista de beneficiário
+  return todosDias.filter(d => !diasSemanaBeneficiario.value.includes(d))
+})
+
+// Computed para array de datas que têm justificativas pendentes (para desabilitar no calendário)
+const datasJustificativasPendentes = computed((): Date[] => {
+  return justificativas.value
+    .filter(j => j.status === 'pendente')
+    .map(j => {
+      // A data pode vir no formato "dd/mm/yyyy" ou como string ISO
+      if (j.refeicao?.data) {
+        const partes = j.refeicao.data.split('/')
+        if (partes.length === 3) {
+          // Formato brasileiro dd/mm/yyyy
+          return new Date(parseInt(partes[2]), parseInt(partes[1]) - 1, parseInt(partes[0]))
+        }
+      }
+      return null
+    })
+    .filter((d): d is Date => d !== null)
+})
+
 const abrirNovo = () => {
   novaJustificativa.value = {
     refeicao_id: null,
@@ -524,6 +605,8 @@ onMounted(() => {
             v-model="novaJustificativa.data_selecionada"
             :minDate="minDate"
             :maxDate="maxDate"
+            :disabledDays="diasSemanaDesabilitados"
+            :disabledDates="datasJustificativasPendentes"
             dateFormat="dd/mm/yy"
             showIcon
             iconDisplay="input"
@@ -541,6 +624,12 @@ onMounted(() => {
             <i class="pi pi-info-circle"></i>
             Justificativa posterior: selecione uma data passada (precisa de atestado)
           </p>
+
+          <!-- Legenda de dias disponíveis -->
+          <div class="text-xs text-slate-500 flex items-center gap-1 mt-1">
+            <i class="pi pi-calendar-times text-slate-400"></i>
+            <span>Apenas dias em que você é beneficiário estão disponíveis</span>
+          </div>
         </div>
 
         <!-- CAMPOS PARA JUSTIFICATIVA POSTERIOR -->

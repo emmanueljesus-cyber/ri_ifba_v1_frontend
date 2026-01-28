@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { adminDashboardService } from '../../services/adminDashboard'
 import { adminPresencaService } from '../../services/adminPresenca'
 import { useAvatar } from '../../composables/useAvatar'
@@ -24,12 +24,24 @@ const loadingBolsistas = ref(false)
 const bolsistasHoje = ref<any[]>([])
 const turnoSelecionado = ref('almoco')
 const buscaRapida = ref('')
+const buscaBolsista = ref('')
 const validandoToken = ref(false)
 
 const turnoOptions = [
   { label: 'Almoço', value: 'almoco' },
   { label: 'Jantar', value: 'jantar' }
 ]
+
+// Filtrar bolsistas por nome ou matrícula
+const bolsistasFiltrados = computed(() => {
+  if (!buscaBolsista.value) return bolsistasHoje.value
+
+  const termo = buscaBolsista.value.toLowerCase()
+  return bolsistasHoje.value.filter(b =>
+    b.nome?.toLowerCase().includes(termo) ||
+    b.matricula?.toLowerCase().includes(termo)
+  )
+})
 
 const carregarDados = async () => {
   loading.value = true
@@ -156,25 +168,43 @@ onMounted(() => {
       <div class="lg:col-span-2">
         <Card class="!rounded-xl !border-slate-200 overflow-hidden shadow-sm">
           <template #title>
-            <div class="flex justify-between items-center">
-              <div>
-                <h3 class="text-lg font-black text-slate-700 uppercase tracking-wider">Bolsistas do Dia</h3>
-                <p class="text-xs text-slate-500 font-medium mt-1">Lista de quem tem direito à refeição hoje.</p>
+            <div class="flex flex-col gap-4">
+              <div class="flex flex-wrap justify-between items-start gap-4">
+                <div>
+                  <div class="flex items-center gap-3">
+                    <h3 class="text-lg font-black text-slate-700 uppercase tracking-wider">Bolsistas do Dia</h3>
+                    <span class="px-3 py-1 bg-primary-100 text-primary-700 text-sm font-bold rounded-full">
+                      {{ bolsistasHoje.length }} esperados
+                    </span>
+                  </div>
+                  <p class="text-xs text-slate-500 font-medium mt-1">Lista de quem tem direito à refeição hoje.</p>
+                </div>
+                <SelectButton
+                  v-model="turnoSelecionado"
+                  :options="turnoOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                  :unselectable="false"
+                  class="!rounded-xl"
+                />
               </div>
-              <SelectButton 
-                v-model="turnoSelecionado" 
-                :options="turnoOptions" 
-                optionLabel="label" 
-                optionValue="value" 
-                :unselectable="false"
-                class="!rounded-xl"
-              />
+              <!-- Filtro de busca -->
+              <div class="flex items-center gap-2">
+                <IconField class="flex-1">
+                  <InputIcon class="pi pi-search" />
+                  <InputText
+                    v-model="buscaBolsista"
+                    placeholder="Buscar por nome ou matrícula..."
+                    class="w-full !rounded-xl"
+                  />
+                </IconField>
+              </div>
             </div>
           </template>
           <template #content>
             <DataTable 
-              :value="bolsistasHoje" 
-              :loading="loadingBolsistas" 
+              :value="bolsistasFiltrados"
+              :loading="loadingBolsistas"
               paginator 
               :rows="10" 
               class="p-datatable-sm"
@@ -228,17 +258,17 @@ onMounted(() => {
               <div class="flex items-center gap-2">
                 <i class="pi pi-chart-bar text-emerald-600"></i>
                 <span class="text-xs font-bold text-emerald-700 uppercase tracking-widest">
-                  Ocupação do {{ resumo.refeicao_atual.turno }}:
+                  Presenças do {{ resumo.refeicao_atual.turno }}:
                 </span>
               </div>
               <div class="flex items-center gap-3">
                 <span class="text-sm font-black text-emerald-800">
-                  {{ resumo.refeicao_atual.confirmados }} / {{ resumo.refeicao_atual.capacidade }}
+                  {{ resumo.refeicao_atual.confirmados }} / {{ bolsistasHoje.length }} confirmados
                 </span>
                 <div class="w-32 h-2.5 bg-emerald-200 rounded-full overflow-hidden">
                   <div 
                     class="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300" 
-                    :style="{ width: Math.min(100, (resumo.refeicao_atual.confirmados / resumo.refeicao_atual.capacidade) * 100) + '%' }"
+                    :style="{ width: bolsistasHoje.length > 0 ? Math.min(100, (resumo.refeicao_atual.confirmados / bolsistasHoje.length) * 100) + '%' : '0%' }"
                   ></div>
                 </div>
               </div>
@@ -251,17 +281,17 @@ onMounted(() => {
       <div class="space-y-6">
         <Card class="!rounded-xl !border-slate-200 overflow-hidden shadow-sm">
           <template #title>
-             <span class="text-base font-black text-slate-700 uppercase tracking-wider">Validação Rápida</span>
+             <span class="text-base font-black text-slate-700 uppercase tracking-wider">Registrar Presença</span>
           </template>
           <template #content>
             <div class="space-y-4">
-              <p class="text-xs text-slate-500">Digite a matrícula para confirmar presença manualmente.</p>
+              <p class="text-xs text-slate-500">Digite a matrícula do bolsista para registrar presença manualmente.</p>
               <div class="flex flex-col gap-3">
                 <IconField iconPosition="left">
                   <InputIcon class="pi pi-user" />
-                  <InputText v-model="buscaRapida" placeholder="Matrícula..." class="w-full !rounded-xl" @keyup.enter="validarMatriculaRapida" />
+                  <InputText v-model="buscaRapida" placeholder="Matrícula do bolsista..." class="w-full !rounded-xl" @keyup.enter="validarMatriculaRapida" />
                 </IconField>
-                <Button label="Validar Matrícula" icon="pi pi-check" class="w-full !rounded-xl shadow-md" severity="success" :loading="validandoToken" @click="validarMatriculaRapida" />
+                <Button label="Confirmar Presença" icon="pi pi-check" class="w-full !rounded-xl shadow-md" severity="success" :loading="validandoToken" @click="validarMatriculaRapida" />
               </div>
               
               <div class="relative py-2">

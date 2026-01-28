@@ -28,13 +28,15 @@ export const useNotificacoesStore = defineStore('notificacoes', () => {
     loading.value = true
     try {
       const admin = isAdmin()
-      console.log('[Notificacoes] Carregando para perfil:', admin ? 'admin' : 'estudante')
-      notificacoes.value = await notificacoesService.naoLidas(admin)
-      console.log('[Notificacoes] Carregadas:', notificacoes.value.length)
+      const novasNotificacoes = await notificacoesService.naoLidas(admin)
+
+      // Só atualiza se houver mudança para evitar re-renders desnecessários
+      if (JSON.stringify(novasNotificacoes) !== JSON.stringify(notificacoes.value)) {
+        notificacoes.value = novasNotificacoes
+      }
     } catch (error) {
-      console.error('[Notificacoes] Erro ao carregar:', error)
       // Silenciar erro - não é crítico para o funcionamento do app
-      notificacoes.value = []
+      // Manter lista anterior em caso de erro
     } finally {
       loading.value = false
     }
