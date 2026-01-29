@@ -42,7 +42,10 @@ export const cardapioService = {
 
   // Admin methods
   async listarAdmin(): Promise<Cardapio[]> {
-    const { data } = await api.get<ApiResponse<Cardapio[]>>('/admin/cardapios')
+    // Buscar todos os cardápios (per_page grande para pegar todos)
+    const { data } = await api.get<ApiResponse<Cardapio[]>>('/admin/cardapios', {
+      params: { per_page: 500 }
+    })
     return data.data
   },
 
