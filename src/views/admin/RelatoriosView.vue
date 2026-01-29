@@ -53,33 +53,6 @@ const filtroDataInicio = ref(new Date(dataAtual.getFullYear(), dataAtual.getMont
 const filtroDataFim = ref(new Date())
 const filtroTurno = ref('todos')
 
-// Funções de filtros rápidos
-const aplicarFiltroHoje = () => {
-  const hoje = new Date()
-  filtroDataInicio.value = new Date(hoje.setHours(0, 0, 0, 0))
-  filtroDataFim.value = new Date()
-  if (activeTab.value === 'presencas') carregarPresencas()
-  if (activeTab.value === 'extras') carregarExtras()
-}
-
-const aplicarFiltroSemana = () => {
-  const hoje = new Date()
-  const primeiroDia = new Date(hoje)
-  primeiroDia.setDate(hoje.getDate() - hoje.getDay()) // Domingo
-  filtroDataInicio.value = primeiroDia
-  filtroDataFim.value = new Date()
-  if (activeTab.value === 'presencas') carregarPresencas()
-  if (activeTab.value === 'extras') carregarExtras()
-}
-
-const aplicarFiltroMes = () => {
-  const hoje = new Date()
-  filtroDataInicio.value = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
-  filtroDataFim.value = new Date()
-  if (activeTab.value === 'presencas') carregarPresencas()
-  if (activeTab.value === 'extras') carregarExtras()
-}
-
 const turnos = [
   { label: 'Todos', value: 'todos' },
   { label: 'Almoço', value: 'almoco' },
@@ -107,9 +80,9 @@ const carregarPresencas = async () => {
   try {
     const inicio = filtroDataInicio.value.toISOString().split('T')[0]
     const fim = filtroDataFim.value.toISOString().split('T')[0]
-    const turno = filtroTurno.value === 'todos' ? '' : filtroTurno.value
+    const turno = filtroTurno.value === 'todos' ? undefined : filtroTurno.value
 
-    relatorioPresencas.value = await relatorioService.presencas(inicio, fim, turno || undefined)
+    relatorioPresencas.value = await relatorioService.presencas(inicio, fim, turno)
   } catch (error) {
     console.error('Erro ao carregar presenças:', error)
   } finally {
@@ -153,9 +126,9 @@ const exportarGeral = async () => {
   try {
     const inicio = filtroDataInicio.value.toISOString().split('T')[0]
     const fim = filtroDataFim.value.toISOString().split('T')[0]
-    const turno = filtroTurno.value === 'todos' ? '' : filtroTurno.value
+    const turno = filtroTurno.value === 'todos' ? undefined : filtroTurno.value
 
-    const blob = await relatorioService.exportarGeral(inicio, fim, turno || undefined)
+    const blob = await relatorioService.exportarGeral(inicio, fim, turno)
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
@@ -283,14 +256,35 @@ const geralChartData = computed(() => {
 
 const geralChartOptions = {
   plugins: {
-    legend: { position: 'bottom' }
+    legend: {
+      position: 'bottom',
+      labels: {
+        usePointStyle: true,
+        padding: 20,
+        font: { size: 12, weight: 'bold' }
+      }
+    },
+    tooltip: {
+      backgroundColor: '#1e293b',
+      titleFont: { size: 14, weight: 'bold' },
+      bodyFont: { size: 13 },
+      padding: 12,
+      cornerRadius: 8
+    }
   },
-  cutout: '60%'
+  cutout: '65%',
+  responsive: true,
+  maintainAspectRatio: true
 }
 
 const presencasChartData = computed(() => {
   const totais = relatorioPresencas.value?.meta?.totais
   if (!totais) return null
+
+  const total = (totais.presentes || 0) + (totais.falta_justificada || 0) +
+                (totais.falta_injustificada || 0) + (totais.cancelados || 0)
+
+  if (total === 0) return null
 
   return {
     labels: ['Presentes', 'Falta Justificada', 'Falta Injustificada', 'Cancelados'],
@@ -303,7 +297,9 @@ const presencasChartData = computed(() => {
           totais.cancelados || 0
         ],
         backgroundColor: ['#10b981', '#3b82f6', '#ef4444', '#f59e0b'],
-        borderWidth: 0
+        hoverBackgroundColor: ['#059669', '#2563eb', '#dc2626', '#d97706'],
+        borderWidth: 0,
+        borderRadius: 4
       }
     ]
   }
@@ -311,14 +307,42 @@ const presencasChartData = computed(() => {
 
 const presencasChartOptions = {
   plugins: {
-    legend: { position: 'bottom' }
+    legend: {
+      position: 'bottom',
+      labels: {
+        usePointStyle: true,
+        padding: 20,
+        font: { size: 12, weight: 'bold' }
+      }
+    },
+    tooltip: {
+      backgroundColor: '#1e293b',
+      titleFont: { size: 14, weight: 'bold' },
+      bodyFont: { size: 13 },
+      padding: 12,
+      cornerRadius: 8,
+      callbacks: {
+        label: function(context: any) {
+          const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0)
+          const value = context.raw
+          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0
+          return `${context.label}: ${value} (${percentage}%)`
+        }
+      }
+    }
   },
-  cutout: '60%'
+  cutout: '65%',
+  responsive: true,
+  maintainAspectRatio: true
 }
+
 
 const extrasChartData = computed(() => {
   const resumo = estatisticasExtras.value?.resumo
   if (!resumo) return null
+
+  const total = (resumo.aprovados || 0) + (resumo.aguardando || 0) + (resumo.rejeitados || 0)
+  if (total === 0) return null
 
   return {
     labels: ['Aprovados', 'Aguardando', 'Rejeitados'],
@@ -326,6 +350,7 @@ const extrasChartData = computed(() => {
       {
         data: [resumo.aprovados || 0, resumo.aguardando || 0, resumo.rejeitados || 0],
         backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+        hoverBackgroundColor: ['#059669', '#d97706', '#dc2626'],
         borderWidth: 0
       }
     ]
@@ -334,9 +359,33 @@ const extrasChartData = computed(() => {
 
 const extrasChartOptions = {
   plugins: {
-    legend: { position: 'bottom' }
+    legend: {
+      position: 'bottom',
+      labels: {
+        usePointStyle: true,
+        padding: 20,
+        font: { size: 12, weight: 'bold' }
+      }
+    },
+    tooltip: {
+      backgroundColor: '#1e293b',
+      titleFont: { size: 14, weight: 'bold' },
+      bodyFont: { size: 13 },
+      padding: 12,
+      cornerRadius: 8,
+      callbacks: {
+        label: function(context: any) {
+          const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0)
+          const value = context.raw
+          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0
+          return `${context.label}: ${value} (${percentage}%)`
+        }
+      }
+    }
   },
-  cutout: '60%'
+  cutout: '65%',
+  responsive: true,
+  maintainAspectRatio: true
 }
 
 const activeTab = ref('geral')
