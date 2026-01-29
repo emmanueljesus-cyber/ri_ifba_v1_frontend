@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { FilterMatchMode } from '@primevue/core/api'
 import { useFilaExtrasStore } from '../../stores/filaExtras'
 import { useToast } from 'primevue/usetoast'
@@ -14,6 +14,23 @@ import InputText from 'primevue/inputtext'
 
 const filaStore = useFilaExtrasStore()
 const toast = useToast()
+const errorMessage = ref('')
+
+// Computed para filtrar apenas inscrições relevantes (hoje ou futuras)
+const inscricoesRelevantes = computed(() => {
+  const hoje = new Date()
+  hoje.setHours(0, 0, 0, 0)
+  
+  return filaStore.minhasInscricoes.filter(inscricao => {
+    if (!inscricao.refeicao?.data) return false
+    
+    const dataInscricao = new Date(inscricao.refeicao.data)
+    dataInscricao.setHours(0, 0, 0, 0)
+    
+    // Mostrar apenas inscrições de hoje ou futuras
+    return dataInscricao >= hoje
+  })
+})
 
 const filters = ref({
   global: { value: null, matchMode: FilterMatchMode.CONTAINS }
@@ -53,7 +70,12 @@ const confirmarInscricao = async () => {
       life: 3000
     })
     dialogInscricao.value = false
-    await filaStore.carregarMinhasInscricoes()
+    // Recarregar dados para sincronizar UI
+    await Promise.all([
+      filaStore.carregarMinhasInscricoes(),
+      filaStore.carregarRefeicoesDisponiveis(),
+      filaStore.carregarPosicoes()
+    ])
   } catch (err: any) {
     toast.add({
       severity: 'error',
@@ -76,6 +98,12 @@ const cancelarInscricao = async (inscricaoId: number) => {
       detail: 'Inscrição cancelada',
       life: 3000
     })
+    // Recarregar dados para sincronizar UI
+    await Promise.all([
+      filaStore.carregarMinhasInscricoes(),
+      filaStore.carregarRefeicoesDisponiveis(),
+      filaStore.carregarPosicoes()
+    ])
   } catch (err: any) {
     toast.add({
       severity: 'error',
@@ -89,11 +117,22 @@ const cancelarInscricao = async (inscricaoId: number) => {
 }
 
 onMounted(async () => {
-  await Promise.all([
-    filaStore.carregarRefeicoesDisponiveis(),
-    filaStore.carregarMinhasInscricoes(),
-    filaStore.carregarPosicoes()
-  ])
+  try {
+    await Promise.all([
+      filaStore.carregarRefeicoesDisponiveis(),
+      filaStore.carregarMinhasInscricoes(),
+      filaStore.carregarPosicoes()
+    ])
+  } catch (err: any) {
+    errorMessage.value = err?.response?.data?.message || 'Erro ao carregar dados'
+    console.error('❌ Erro ao carregar dados da fila de extras:', err)
+    toast.add({
+      severity: 'error',
+      summary: 'Erro ao Carregar',
+      detail: errorMessage.value,
+      life: 5000
+    })
+  }
 })
 </script>
 
@@ -107,83 +146,6 @@ onMounted(async () => {
       :breadcrumbs="[{ label: 'Dashboard', route: '/dashboard' }, { label: 'Fila de Extras' }]"
     />
 
-    <!-- Minhas Inscrições (Cards Horizontais) -->
-    <section>
-      <div class="flex items-center gap-2 mb-4">
-        <div class="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center">
-          <i class="pi pi-ticket text-primary-600"></i>
-        </div>
-        <h2 class="text-xl font-black text-slate-800 lato-black">Minhas Inscrições Ativas</h2>
-      </div>
-
-      <div v-if="filaStore.loading && filaStore.minhasInscricoes.length === 0" class="grid gap-4 sm:grid-cols-2">
-        <Skeleton height="120px" border-radius="1.5rem" />
-        <Skeleton height="120px" border-radius="1.5rem" />
-      </div>
-
-      <div v-else-if="filaStore.minhasInscricoes.length === 0">
-        <div class="bg-white border border-dashed border-slate-300 rounded-xl p-8 text-center">
-           <p class="text-slate-500">Você não possui inscrições ativas no momento.</p>
-        </div>
-      </div>
-
-      <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div 
-          v-for="inscricao in filaStore.minhasInscricoes" 
-          :key="inscricao.id"
-          class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
-        >
-          <div class="flex justify-between items-start mb-4">
-            <div>
-              <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{{ inscricao.refeicao?.turno ? formatarTurno(inscricao.refeicao.turno) : '' }}</p>
-              <p class="font-bold text-slate-800">{{ inscricao.refeicao?.data ? formatarData(inscricao.refeicao.data) : '' }}</p>
-            </div>
-            <Tag
-              v-if="inscricao.confirmado"
-              value="Confirmado"
-              severity="success"
-              class="!rounded-full"
-            />
-            <Tag
-              v-else-if="inscricao.cancelado"
-              value="Cancelado"
-              severity="danger"
-              class="!rounded-full"
-            />
-            <Tag
-              v-else
-              value="Aguardando"
-              severity="warn"
-              class="!rounded-full"
-            />
-          </div>
-          
-          <div class="bg-slate-50 rounded-xl p-3 mb-4">
-            <p class="text-sm text-slate-700 font-medium line-clamp-1">
-              {{ inscricao.refeicao?.cardapio?.prato_principal || 'Refeição do dia' }}
-            </p>
-          </div>
-
-          <div class="flex justify-between items-center">
-            <div class="flex flex-col">
-               <span class="text-[10px] text-slate-400 uppercase font-black">Sua Posição</span>
-               <span class="text-lg font-black text-primary-600">{{ inscricao.posicao }}º</span>
-            </div>
-            <Button
-              v-if="!inscricao.confirmado && !inscricao.cancelado"
-              label="Cancelar"
-              severity="danger"
-              text
-              size="small"
-              icon="pi pi-times"
-              class="!rounded-xl"
-              :loading="loadingAcao"
-              @click="cancelarInscricao(inscricao.id)"
-            />
-          </div>
-        </div>
-      </div>
-    </section>
 
     <!-- Refeições Disponíveis -->
     <section>
@@ -201,7 +163,21 @@ onMounted(async () => {
       <div v-else-if="filaStore.refeicoesDisponiveis.length === 0">
         <div class="bg-slate-50 border border-slate-200 rounded-xl p-12 text-center">
            <i class="pi pi-calendar-times text-4xl text-slate-300 mb-4"></i>
-           <p class="text-slate-500 font-medium">Não há refeições disponíveis para inscrição no momento.</p>
+           <p class="text-slate-600 font-medium mb-2">Não há refeições disponíveis para inscrição no momento</p>
+           <p class="text-slate-400 text-sm mb-3">As inscrições só estão disponíveis no dia da refeição, dentro do horário permitido:</p>
+           <div class="space-y-2 mb-4">
+             <p class="text-slate-500 text-sm font-medium">
+               <i class="pi pi-sun text-amber-500 mr-2"></i>
+               Almoço: disponível até 13:30
+             </p>
+             <p class="text-slate-500 text-sm font-medium">
+               <i class="pi pi-moon text-indigo-500 mr-2"></i>
+               Jantar: disponível até 19:00
+             </p>
+           </div>
+           <p class="text-slate-400 text-xs">
+             💡 Volte mais tarde ou verifique se há cardápio cadastrado para hoje
+           </p>
         </div>
       </div>
 
@@ -222,7 +198,7 @@ onMounted(async () => {
               <InputText v-model="filters['global'].value" placeholder="Filtrar..." />
             </div>
           </template>
-          <Column header="Refeição">
+          <Column header="Refeição" style="min-width: 150px">
             <template #body="{ data }">
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-lg">
@@ -235,12 +211,7 @@ onMounted(async () => {
               </div>
             </template>
           </Column>
-          <Column header="Prato Principal" class="font-medium text-slate-700">
-            <template #body="{ data }">
-              {{ data.cardapio.prato_principal_ptn01 }}
-            </template>
-          </Column>
-          <Column header="Disponibilidade">
+          <Column header="Disponibilidade" style="min-width: 120px">
             <template #body="{ data }">
               <div class="flex flex-col gap-1">
                  <Tag
@@ -252,7 +223,39 @@ onMounted(async () => {
               </div>
             </template>
           </Column>
-          <Column header="Ações" class="text-right">
+          <Column header="Posição" style="min-width: 100px; text-align: center" headerStyle="text-align: center">
+            <template #body="{ data }">
+              <div v-if="data.inscrito" class="flex flex-col items-center">
+                <span class="text-2xl font-black text-primary-600">{{ data.posicao_fila }}º</span>
+                <span class="text-[9px] text-slate-400 uppercase font-bold">na fila</span>
+              </div>
+              <span v-else class="text-slate-300 text-sm">—</span>
+            </template>
+          </Column>
+          <Column header="Status" style="min-width: 120px">
+            <template #body="{ data }">
+              <Tag
+                v-if="data.inscrito && data.status_inscricao === 'aprovado'"
+                value="Confirmado"
+                severity="success"
+                class="!rounded-full"
+              />
+              <Tag
+                v-else-if="data.inscrito && data.status_inscricao === 'rejeitado'"
+                value="Cancelado"
+                severity="danger"
+                class="!rounded-full"
+              />
+              <Tag
+                v-else-if="data.inscrito"
+                value="Aguardando"
+                severity="warn"
+                class="!rounded-full"
+              />
+              <span v-else class="text-slate-300 text-sm">—</span>
+            </template>
+          </Column>
+          <Column header="Ações" style="min-width: 150px; text-align: right" headerStyle="text-align: right">
             <template #body="{ data }">
               <Button
                 v-if="data.pode_inscrever && !data.inscrito"
@@ -261,11 +264,23 @@ onMounted(async () => {
                 size="small"
                 class="!rounded-xl"
                 severity="success"
+                :loading="loadingAcao"
                 @click="abrirDialogInscricao(data)"
               />
-              <div v-else-if="data.inscrito" class="flex items-center justify-end gap-2 text-primary-600 font-bold text-sm">
+              <Button
+                v-else-if="data.inscrito && data.status_inscricao === 'inscrito'"
+                label="Cancelar"
+                icon="pi pi-times"
+                size="small"
+                class="!rounded-xl"
+                severity="danger"
+                outlined
+                :loading="loadingAcao"
+                @click="cancelarInscricao(data.inscricao_id)"
+              />
+              <div v-else-if="data.inscrito && data.status_inscricao === 'aprovado'" class="flex items-center justify-end gap-2 text-green-600 font-bold text-sm">
                  <i class="pi pi-check-circle"></i>
-                 Inscrito
+                 Confirmado
               </div>
               <Tag v-else value="Expirado" severity="danger" class="!rounded-full" />
             </template>

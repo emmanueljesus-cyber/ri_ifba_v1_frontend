@@ -299,6 +299,15 @@ onMounted(() => {
           </template>
         </Column>
 
+        <Column field="atendido_em" header="Atendido em" style="width: 140px">
+          <template #body="{ data }">
+            <div v-if="data.atendido_em && data.status === 'aprovado'" class="flex items-center gap-2">
+              <span class="text-sm">{{ formatarDataHora(data.atendido_em) }}</span>
+            </div>
+            <span v-else class="text-slate-300 text-sm">-</span>
+          </template>
+        </Column>
+
         <Column field="status" header="Status" style="width: 140px">
           <template #body="{ data }">
             <div class="flex items-center gap-2">
@@ -308,7 +317,7 @@ onMounted(() => {
                 'pi pi-clock text-amber-500'
               ]"></i>
               <span :class="[
-                'font-semibold',
+                'font-bold',
                 data.status === 'aprovado' ? 'text-emerald-600' :
                 data.status === 'rejeitado' ? 'text-red-500' :
                 'text-amber-500'
@@ -317,36 +326,29 @@ onMounted(() => {
           </template>
         </Column>
 
-        <Column header="Ações" style="width: 200px">
+        <Column header="Ações" style="width: 200px; text-align: right" headerStyle="text-align: right">
           <template #body="{ data }">
-            <div class="flex items-center gap-2">
+            <div class="flex items-center justify-end gap-2">
               <Button
                 v-if="data.status === 'inscrito'"
                 label="Atender"
                 icon="pi pi-check"
                 severity="success"
                 size="small"
-                class="!py-1.5 !px-3"
+                class="!py-1.5 !px-3 !rounded-lg"
                 @click="atenderExtra(data)"
               />
               <Button
                 v-if="data.status === 'inscrito'"
                 icon="pi pi-times"
-                severity="secondary"
+                severity="danger"
                 variant="outlined"
                 size="small"
-                class="!w-8 !h-8 !p-0"
+                class="!w-8 !h-8 !p-0 !flex !items-center !justify-center !rounded-lg" 
                 title="Não compareceu"
                 @click="marcarNaoCompareceu(data)"
               />
-              <div v-if="data.status === 'aprovado'" class="flex items-center gap-1.5 text-emerald-600 font-semibold">
-                <i class="pi pi-check-circle text-lg"></i>
-                <span>Atendido</span>
-              </div>
-              <div v-if="data.status === 'rejeitado'" class="flex items-center gap-1.5 text-red-500 font-semibold">
-                <i class="pi pi-times-circle text-lg"></i>
-                <span>Não veio</span>
-              </div>
+
             </div>
           </template>
         </Column>

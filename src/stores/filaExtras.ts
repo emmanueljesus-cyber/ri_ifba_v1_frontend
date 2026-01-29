@@ -23,9 +23,9 @@ export const useFilaExtrasStore = defineStore('filaExtras', () => {
     }
   }
 
-  async function carregarRefeicoesDisponiveis() {
-    // Prevent multiple simultaneous calls
-    if (loading.value) return
+  async function carregarRefeicoesDisponiveis(force = false) {
+    // Prevent multiple simultaneous calls (unless forced)
+    if (!force && loading.value) return
 
     loading.value = true
     try {
@@ -33,13 +33,20 @@ export const useFilaExtrasStore = defineStore('filaExtras', () => {
       // Ensure we always set an array
       if (Array.isArray(response)) {
         refeicoesDisponiveis.value = response
+        console.log(`✅ ${response.length} refeição(ões) disponível(is) carregada(s)`)
       } else {
-        console.warn('API retornou formato inesperado:', response)
+        console.warn('⚠️ API retornou formato inesperado:', response)
         refeicoesDisponiveis.value = []
       }
-    } catch (error) {
-      console.error('Erro ao carregar refeições disponíveis:', error)
+    } catch (error: any) {
+      console.error('❌ Erro ao carregar refeições disponíveis:', {
+        status: error?.response?.status,
+        message: error?.response?.data?.message || error.message,
+        timestamp: new Date().toISOString()
+      })
       refeicoesDisponiveis.value = []
+      // Re-throw para que o componente possa tratar
+      throw error
     } finally {
       loading.value = false
     }
@@ -50,9 +57,17 @@ export const useFilaExtrasStore = defineStore('filaExtras', () => {
     try {
       const novaInscricao = await filaExtrasService.inscrever({ refeicao_id: refeicaoId })
       minhasInscricoes.value.push(novaInscricao)
-      // Recarregar disponíveis para atualizar status
-      await carregarRefeicoesDisponiveis()
+      console.log('✅ Inscrição realizada com sucesso:', novaInscricao)
+      // Recarregar disponíveis para atualizar status (forçar reload)
+      await carregarRefeicoesDisponiveis(true)
       return novaInscricao
+    } catch (error: any) {
+      console.error('❌ Erro ao inscrever:', {
+        refeicaoId,
+        status: error?.response?.status,
+        message: error?.response?.data?.message || error.message
+      })
+      throw error
     } finally {
       loading.value = false
     }
@@ -63,7 +78,8 @@ export const useFilaExtrasStore = defineStore('filaExtras', () => {
     try {
       await filaExtrasService.cancelar(inscricaoId)
       minhasInscricoes.value = minhasInscricoes.value.filter(i => i.id !== inscricaoId)
-      await carregarRefeicoesDisponiveis()
+      // Recarregar disponíveis para atualizar status (forçar reload)
+      await carregarRefeicoesDisponiveis(true)
     } finally {
       loading.value = false
     }

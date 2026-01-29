@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { FilterMatchMode } from '@primevue/core/api'
 import { useAuthStore } from '../../stores/auth'
 import { historicoService } from '../../services/historico'
@@ -10,7 +11,11 @@ import Tag from 'primevue/tag'
 import Skeleton from 'primevue/skeleton'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
+import Button from 'primevue/button'
+import Message from 'primevue/message'
 import type { HistoricoRefeicao, ResumoHistorico } from '../../types/historico'
+
+const router = useRouter()
 
 const auth = useAuthStore()
 const historico = ref<HistoricoRefeicao[]>([])
@@ -36,6 +41,7 @@ const statusOptions = [
 
 // safer: use the boolean field `bolsista` if available on the authenticated user
 const isBolsista = computed(() => !!auth.user?.bolsista)
+const temDados = computed(() => historico.value && historico.value.length > 0)
 
 const formatarData = (data: string) => {
   if (!data) return '-'
@@ -91,8 +97,8 @@ onMounted(() => {
       :breadcrumbs="[{ label: 'Dashboard', route: '/dashboard' }, { label: 'Histórico' }]"
     />
 
-    <!-- Resumo (Cards Estilizados) -->
-    <div v-if="resumo" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <!-- Resumo (Cards Estilizados) - Apenas se houver dados -->
+    <div v-if="resumo && temDados" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex items-center gap-4">
         <div class="w-14 h-14 rounded-xl bg-primary-100 flex items-center justify-center text-primary-600">
            <i class="pi pi-check-circle text-2xl"></i>
@@ -146,9 +152,60 @@ onMounted(() => {
       </div>
 
       <div v-else-if="historico.length === 0">
-        <div class="bg-slate-50 border border-slate-200 rounded-xl p-12 text-center">
-           <i class="pi pi-history text-4xl text-slate-300 mb-4"></i>
-           <p class="text-slate-500 font-medium">Você ainda não possui registros de refeições.</p>
+        <div class="bg-white border border-slate-200 rounded-xl p-12 text-center">
+          <i class="pi pi-history text-6xl text-slate-200 mb-4"></i>
+          <h3 class="text-xl font-bold text-slate-700 mb-2">Nenhum registro encontrado</h3>
+          <p class="text-slate-500 mb-6">Você ainda não possui registros de refeições.</p>
+          
+          <!-- Mensagem específica para não-bolsistas -->
+          <Message v-if="!isBolsista" severity="info" :closable="false" class="text-left mb-6">
+            <div class="space-y-2">
+              <p class="font-semibold">Como funciona para estudantes não bolsistas:</p>
+              <ul class="list-disc list-inside space-y-1 text-sm ml-2">
+                <li>Inscreva-se na <strong>Fila de Extras</strong> para concorrer às vagas remanescentes</li>
+                <li>As inscrições são liberadas no dia da refeição</li>
+                <li>Após ser aprovado e consumir a refeição, ela aparecerá no seu histórico</li>
+              </ul>
+            </div>
+          </Message>
+
+          <!-- Mensagem específica para bolsistas -->
+          <Message v-else severity="info" :closable="false" class="text-left mb-6">
+            <div class="space-y-2">
+              <p class="font-semibold">Como funciona para bolsistas:</p>
+              <ul class="list-disc list-inside space-y-1 text-sm ml-2">
+                <li>Suas refeições são registradas quando você confirma presença no refeitório</li>
+                <li>Apresente sua carteirinha digital ao servidor</li>
+                <li>Após a confirmação, a refeição aparecerá no seu histórico</li>
+              </ul>
+            </div>
+          </Message>
+
+          <div class="flex gap-3 justify-center flex-wrap">
+            <Button
+              v-if="!isBolsista"
+              label="Ir para Fila de Extras"
+              icon="pi pi-ticket"
+              severity="success"
+              @click="router.push('/dashboard/fila-extras')"
+              class="!rounded-xl"
+            />
+            <Button
+              v-else
+              label="Ver Minha Carteirinha"
+              icon="pi pi-qrcode"
+              severity="success"
+              @click="router.push('/dashboard/carteirinha')"
+              class="!rounded-xl"
+            />
+            <Button
+              label="Ver Cardápio"
+              icon="pi pi-calendar"
+              outlined
+              @click="router.push('/dashboard/cardapio')"
+              class="!rounded-xl"
+            />
+          </div>
         </div>
       </div>
 
