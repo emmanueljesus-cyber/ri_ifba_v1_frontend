@@ -53,6 +53,33 @@ const filtroDataInicio = ref(new Date(dataAtual.getFullYear(), dataAtual.getMont
 const filtroDataFim = ref(new Date())
 const filtroTurno = ref('todos')
 
+// Funções de filtros rápidos
+const aplicarFiltroHoje = () => {
+  const hoje = new Date()
+  filtroDataInicio.value = new Date(hoje.setHours(0, 0, 0, 0))
+  filtroDataFim.value = new Date()
+  if (activeTab.value === 'presencas') carregarPresencas()
+  if (activeTab.value === 'extras') carregarExtras()
+}
+
+const aplicarFiltroSemana = () => {
+  const hoje = new Date()
+  const primeiroDia = new Date(hoje)
+  primeiroDia.setDate(hoje.getDate() - hoje.getDay()) // Domingo
+  filtroDataInicio.value = primeiroDia
+  filtroDataFim.value = new Date()
+  if (activeTab.value === 'presencas') carregarPresencas()
+  if (activeTab.value === 'extras') carregarExtras()
+}
+
+const aplicarFiltroMes = () => {
+  const hoje = new Date()
+  filtroDataInicio.value = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
+  filtroDataFim.value = new Date()
+  if (activeTab.value === 'presencas') carregarPresencas()
+  if (activeTab.value === 'extras') carregarExtras()
+}
+
 const turnos = [
   { label: 'Todos', value: 'todos' },
   { label: 'Almoço', value: 'almoco' },

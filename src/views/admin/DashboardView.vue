@@ -120,45 +120,74 @@ onMounted(() => {
       <Button icon="pi pi-refresh" rounded outlined @click="carregarDados(); carregarBolsistasHoje()" :loading="loading || loadingBolsistas" severity="secondary" />
     </div>
 
-    <!-- Métricas Rápidas -->
-    <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-      <div class="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 sm:gap-4">
+    <!-- Métricas Rápidas - Simplificadas para 4 Essenciais -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <!-- 1. Bolsistas Ativos -->
+      <div class="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 sm:gap-4 group relative">
         <div class="p-2 sm:p-3 bg-emerald-50 rounded-xl text-emerald-600">
           <i class="pi pi-users text-xl sm:text-2xl"></i>
         </div>
-        <div>
-          <p class="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Bolsistas Ativos</p>
+        <div class="flex-1">
+          <div class="flex items-center gap-2">
+            <p class="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Bolsistas Ativos</p>
+            <i class="pi pi-info-circle text-slate-300 cursor-help text-xs" v-tooltip.top="'Total de bolsistas cadastrados e ativos no sistema'"></i>
+          </div>
           <p class="text-xl sm:text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.bolsistas_ativos || 0 }}</p>
         </div>
       </div>
 
+      <!-- 2. Presenças Hoje (com %) -->
       <div class="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 sm:gap-4">
         <div class="p-2 sm:p-3 bg-blue-50 rounded-xl text-blue-600">
           <i class="pi pi-check-circle text-xl sm:text-2xl"></i>
         </div>
-        <div>
-          <p class="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Presenças Hoje</p>
-          <p class="text-xl sm:text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.presencas_hoje || 0 }}</p>
+        <div class="flex-1">
+          <div class="flex items-center gap-2">
+            <p class="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Presenças Hoje</p>
+            <i class="pi pi-info-circle text-slate-300 cursor-help text-xs" v-tooltip.top="'Presença confirmadas hoje vs total esperado'"></i>
+          </div>
+          <div class="flex items-baseline gap-2">
+            <p class="text-xl sm:text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.presencas_hoje || 0 }}</p>
+            <span v-if="bolsistasHoje.length > 0" class="text-xs font-bold text-blue-600">
+              {{ Math.round((resumo?.metricas.presencas_hoje || 0) / bolsistasHoje.length * 100) }}%
+            </span>
+          </div>
         </div>
       </div>
 
-      <div class="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 sm:gap-4">
+      <!-- 3. Justificativas Pendentes (acionável) -->
+      <div class="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 sm:gap-4 cursor-pointer hover:shadow-md transition-shadow" @click="$router.push('/admin/justificativas')">
         <div class="p-2 sm:p-3 bg-orange-50 rounded-xl text-orange-600">
           <i class="pi pi-file-edit text-xl sm:text-2xl"></i>
         </div>
-        <div>
-          <p class="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Justificativas</p>
+        <div class="flex-1">
+          <div class="flex items-center gap-2">
+            <p class="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Pendentes</p>
+            <i class="pi pi-info-circle text-slate-300 cursor-help text-xs" v-tooltip.top="'Justificativas aguardando sua análise. Clique para revisar'"></i>
+          </div>
           <p class="text-xl sm:text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.justificativas_pendentes || 0 }}</p>
         </div>
+        <i class="pi pi-chevron-right text-slate-300 text-sm"></i>
       </div>
 
+      <!-- 4. Taxa de Aproveitamento do Mês -->
       <div class="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 sm:gap-4">
-        <div class="p-2 sm:p-3 bg-red-50 rounded-xl text-red-600">
-          <i class="pi pi-times-circle text-xl sm:text-2xl"></i>
+        <div class="p-2 sm:p-3 bg-purple-50 rounded-xl text-purple-600">
+          <i class="pi pi-chart-line text-xl sm:text-2xl"></i>
         </div>
-        <div>
-          <p class="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Faltas Hoje</p>
-          <p class="text-xl sm:text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.faltas_hoje || 0 }}</p>
+        <div class="flex-1">
+          <div class="flex items-center gap-2">
+            <p class="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Aproveitamento</p>
+            <i class="pi pi-info-circle text-slate-300 cursor-help text-xs" v-tooltip.top="'Percentual de presenças em relação ao total de refeições disponíveis no mês'"></i>
+          </div>
+          <div class="flex items-baseline gap-2">
+            <p class="text-xl sm:text-2xl font-black text-slate-800 leading-tight lato-black">
+              {{ resumo?.refeicao_atual?.confirmados && bolsistasHoje.length > 0 
+                ? Math.round((resumo.refeicao_atual.confirmados / bolsistasHoje.length) * 100) 
+                : 0 }}%
+            </p>
+            <span class="text-xs text-slate-500">do mês</span>
+          </div>
         </div>
       </div>
     </div>
