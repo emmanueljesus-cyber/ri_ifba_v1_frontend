@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { FilterMatchMode } from '@primevue/core/api'
 import api from '../../services/api'
+import { relatorioService } from '../../services/relatorios'
 import { useAvatar } from '../../composables/useAvatar'
 import PageHeader from '../../components/common/PageHeader.vue'
 import DataTable from 'primevue/datatable'
@@ -28,7 +29,7 @@ const filtroDataInicio = ref<Date | null>(null)
 const filtroDataFim = ref<Date | null>(null)
 const filtroTurno = ref<string | null>(null)
 const filtroStatus = ref<string | null>(null)
-const filtroBolsista = ref<string | null>(null)
+const filtroBolsista = ref<number | null>(null)
 const filters = ref({ global: { value: null, matchMode: FilterMatchMode.CONTAINS } })
 
 const turnoOptions = [{ label: 'Todos', value: null }, { label: 'Almoço', value: 'almoco' }, { label: 'Jantar', value: 'jantar' }]
@@ -40,7 +41,7 @@ const estatisticas = computed(() => {
   const almoco = bolsistas.value.filter(b => b.turno_refeicao === 'almoco').length
   const jantar = bolsistas.value.filter(b => b.turno_refeicao === 'jantar').length
   const ambos = bolsistas.value.filter(b => b.turno_refeicao === 'ambos').length
-  const totalFaltas = bolsistas.value.reduce((acc, b) => acc + (b.total_faltas || 0), 0)
+  const totalFaltas = presencas.value.filter(p => ['falta_injustificada', 'ausente'].includes(p.status_da_presenca)).length
   return { total, almoco, jantar, ambos, totalFaltas }
 })
 
@@ -56,10 +57,16 @@ const estatPresencas = computed(() => {
 
 // Computed - Ranking de faltas
 const rankingFaltas = computed(() => {
-  return [...bolsistas.value]
-    .filter(b => (b.total_faltas || 0) > 0)
-    .sort((a, b) => (b.total_faltas || 0) - (a.total_faltas || 0))
-    .slice(0, 10)
+  const c: Record<string, any> = {}
+  presencas.value.forEach(p => {
+    if (!p.user?.id) return
+    if (!['falta_injustificada', 'ausente'].includes(p.status_da_presenca)) return
+    if (!c[p.user.id]) {
+      c[p.user.id] = { id: p.user.id, nome: p.user.nome, matricula: p.user.matricula, foto: p.user.foto, total_faltas: 0 }
+    }
+    c[p.user.id].total_faltas++
+  })
+  return Object.values(c).sort((a: any, b: any) => b.total_faltas - a.total_faltas).slice(0, 10)
 })
 
 // Computed - Estatísticas por dia da semana
@@ -67,8 +74,9 @@ const estatsDiaSemana = computed(() => {
   const dias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => ({ dia: d, presentes: 0, ausentes: 0, total: 0 }))
   presencas.value.forEach(p => {
     const d = p.refeicao?.data ? new Date(p.refeicao.data) : null
-    if (!d) return
+    if (!d || isNaN(d.getTime())) return
     const idx = d.getDay()
+    if (idx < 0 || idx > 6) return
     dias[idx].total++
     if (p.status_da_presenca === 'presente') dias[idx].presentes++
     else dias[idx].ausentes++
@@ -78,7 +86,7 @@ const estatsDiaSemana = computed(() => {
 
 // Computed - Lista de bolsistas para filtro
 const bolsistasUnicos = computed(() => {
-  return [{ label: 'Todos', value: null }, ...bolsistas.value.map(b => ({ label: `${b.user?.nome} (${b.user?.matricula})`, value: b.user?.id }))]
+  return [{ label: 'Todos', value: null }, ...bolsistas.value.map(b => ({ label: `${b.nome} (${b.matricula})`, value: b.id }))]
 })
 
 // Computed - Presenças filtradas por bolsista
@@ -89,6 +97,16 @@ const presencasFiltradas = computed(() => {
   return lista
 })
 
+const faltasPorBolsista = computed(() => {
+  const mapa = new Map<number, number>()
+  presencas.value.forEach(p => {
+    if (!p.user?.id) return
+    if (!['falta_injustificada', 'ausente'].includes(p.status_da_presenca)) return
+    mapa.set(p.user.id, (mapa.get(p.user.id) || 0) + 1)
+  })
+  return mapa
+})
+
 // Gráficos
 const chartTurnoData = computed(() => ({ labels: ['Almoço', 'Jantar', 'Ambos'], datasets: [{ data: [estatisticas.value.almoco, estatisticas.value.jantar, estatisticas.value.ambos], backgroundColor: ['#f59e0b', '#3b82f6', '#8b5cf6'] }] }))
 const chartPresencaData = computed(() => ({ labels: ['Presentes', 'Justificadas', 'Ausentes'], datasets: [{ data: [estatPresencas.value.presentes, estatPresencas.value.justificadas, estatPresencas.value.ausentes], backgroundColor: ['#10b981', '#f59e0b', '#ef4444'] }] }))
@@ -96,7 +114,14 @@ const chartDiaData = computed(() => ({ labels: estatsDiaSemana.value.map(d => d.
 
 const chartEvolucao = computed(() => {
   const p: Record<string, { pres: number, aus: number }> = {}
-  presencas.value.forEach(i => { const d = i.refeicao?.data; if (!d) return; if (!p[d]) p[d] = { pres: 0, aus: 0 }; i.status_da_presenca === 'presente' ? p[d].pres++ : p[d].aus++ })
+  presencas.value.forEach(i => {
+    const d = i.refeicao?.data
+    if (!d) return
+    const parsed = new Date(d)
+    if (isNaN(parsed.getTime())) return
+    if (!p[d]) p[d] = { pres: 0, aus: 0 }
+    i.status_da_presenca === 'presente' ? p[d].pres++ : p[d].aus++
+  })
   const labels = Object.keys(p).sort().slice(-14)
   return { labels: labels.map(d => new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })), datasets: [{ label: 'Presentes', borderColor: '#10b981', data: labels.map(d => p[d]?.pres || 0), fill: false, tension: 0.4 }, { label: 'Ausentes', borderColor: '#ef4444', data: labels.map(d => p[d]?.aus || 0), fill: false, tension: 0.4 }] }
 })
@@ -115,11 +140,11 @@ const carregarBolsistas = async () => {
 const carregarPresencas = async () => {
   loading.value = true
   try {
-    const params: any = {}
-    if (filtroDataInicio.value) params.data_inicio = filtroDataInicio.value.toISOString().split('T')[0]
-    if (filtroDataFim.value) params.data_fim = filtroDataFim.value.toISOString().split('T')[0]
-    if (filtroTurno.value) params.turno = filtroTurno.value
-    const { data } = await api.get('/admin/presencas', { params }); presencas.value = data.data || []
+    const dataInicio = filtroDataInicio.value ? filtroDataInicio.value.toISOString().split('T')[0] : undefined
+    const dataFim = filtroDataFim.value ? filtroDataFim.value.toISOString().split('T')[0] : undefined
+    const turno = filtroTurno.value || undefined
+    if (!dataInicio || !dataFim) { presencas.value = []; return }
+    presencas.value = await relatorioService.presencasDetalhadas(dataInicio, dataFim, turno, true) || []
   } catch { toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar presenças' }) }
   finally { loading.value = false }
 }
@@ -127,8 +152,12 @@ const carregarPresencas = async () => {
 const exportarBolsistas = async () => {
   loadingExport.value = true
   try {
-    const response = await api.get('/admin/bolsistas/export', { responseType: 'blob' })
-    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const dataInicio = filtroDataInicio.value ? filtroDataInicio.value.toISOString().split('T')[0] : undefined
+    const dataFim = filtroDataFim.value ? filtroDataFim.value.toISOString().split('T')[0] : undefined
+    const turno = filtroTurno.value || undefined
+    if (!dataInicio || !dataFim) throw new Error('Período inválido')
+    const blob = await relatorioService.exportarGeral(dataInicio, dataFim, turno, 'xlsx', true)
+    const url = window.URL.createObjectURL(new Blob([blob]))
     const link = document.createElement('a'); link.href = url; link.setAttribute('download', `bolsistas_${new Date().toISOString().split('T')[0]}.xlsx`)
     document.body.appendChild(link); link.click(); link.remove()
     toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Exportado!' })
@@ -193,8 +222,8 @@ onMounted(() => {
             <div class="space-y-2">
               <div v-for="(b, i) in rankingFaltas" :key="i" class="flex items-center gap-3 p-2 bg-white rounded-lg border">
                 <span class="w-7 h-7 rounded-full flex items-center justify-center text-white text-sm font-bold" :class="i < 3 ? 'bg-red-500' : 'bg-slate-300'">{{ i + 1 }}</span>
-                <Avatar v-if="b.user?.foto" :image="b.user.foto" shape="circle" size="small" /><Avatar v-else :label="getInitials(b.user?.nome)" shape="circle" size="small" :style="getAvatarStyle(b.user?.nome)" />
-                <div class="flex-1"><p class="font-bold text-sm">{{ b.user?.nome }}</p><p class="text-[10px] text-slate-400">{{ b.user?.matricula }}</p></div>
+                <Avatar v-if="b.foto" :image="b.foto" shape="circle" size="small" /><Avatar v-else :label="getInitials(b.nome)" shape="circle" size="small" :style="getAvatarStyle(b.nome)" />
+                <div class="flex-1"><p class="font-bold text-sm">{{ b.nome }}</p><p class="text-[10px] text-slate-400">{{ b.matricula }}</p></div>
                 <div class="text-right"><p class="text-lg font-black text-red-500">{{ b.total_faltas }}</p><p class="text-[10px] text-slate-400">faltas</p></div>
               </div>
               <div v-if="!rankingFaltas.length" class="text-center py-4 text-slate-400"><i class="pi pi-check-circle text-2xl mb-2"></i><p>Nenhuma falta registrada</p></div>
@@ -230,14 +259,14 @@ onMounted(() => {
 
       <TabPanel header="Lista Bolsistas">
         <div class="p-4">
-          <DataTable v-model:filters="filters" :value="bolsistas" :loading="loading" paginator :rows="15" :globalFilterFields="['user.nome', 'user.matricula', 'user.curso']">
+          <DataTable v-model:filters="filters" :value="bolsistas" :loading="loading" paginator :rows="15" :globalFilterFields="['nome', 'matricula', 'curso']">
             <template #header><div class="flex justify-between"><span class="font-bold">Bolsistas Ativos</span><InputText v-model="filters['global'].value" placeholder="Buscar..." class="w-64" /></div></template>
             <template #empty><div class="text-center py-8 text-slate-400"><i class="pi pi-users text-4xl mb-2"></i><p>Nenhum bolsista</p></div></template>
-            <Column field="user.nome" header="Estudante" :sortable="true"><template #body="{ data }"><div class="flex items-center gap-2"><Avatar v-if="data.user?.foto" :image="data.user.foto" shape="circle" size="small" /><Avatar v-else :label="getInitials(data.user?.nome)" shape="circle" size="small" :style="getAvatarStyle(data.user?.nome)" /><div><p class="font-bold text-sm">{{ data.user?.nome }}</p><p class="text-[10px] text-slate-400">{{ data.user?.matricula }}</p></div></div></template></Column>
-            <Column header="Curso"><template #body="{ data }">{{ data.user?.curso || '-' }}</template></Column>
+            <Column field="nome" header="Estudante" :sortable="true"><template #body="{ data }"><div class="flex items-center gap-2"><Avatar v-if="data.foto_url" :image="data.foto_url" shape="circle" size="small" /><Avatar v-else :label="getInitials(data.nome)" shape="circle" size="small" :style="getAvatarStyle(data.nome)" /><div><p class="font-bold text-sm">{{ data.nome }}</p><p class="text-[10px] text-slate-400">{{ data.matricula }}</p></div></div></template></Column>
+            <Column header="Curso"><template #body="{ data }">{{ data.curso || '-' }}</template></Column>
             <Column header="Turno"><template #body="{ data }"><i :class="data.turno_refeicao === 'almoco' ? 'pi pi-sun text-amber-500' : data.turno_refeicao === 'jantar' ? 'pi pi-moon text-blue-500' : 'pi pi-sync text-purple-500'" class="mr-1"></i>{{ data.turno_refeicao === 'almoco' ? 'Almoço' : data.turno_refeicao === 'jantar' ? 'Jantar' : 'Ambos' }}</template></Column>
             <Column header="Dias"><template #body="{ data }"><span class="text-sm">{{ getDiasSemana(data.dias_semana) }}</span></template></Column>
-            <Column header="Faltas" :sortable="true" sortField="total_faltas"><template #body="{ data }"><span :class="(data.total_faltas || 0) > 3 ? 'text-red-600 font-bold' : 'text-slate-600'">{{ data.total_faltas || 0 }}</span></template></Column>
+            <Column header="Faltas"><template #body="{ data }"><span :class="(faltasPorBolsista.get(data.id) || 0) > 3 ? 'text-red-600 font-bold' : 'text-slate-600'">{{ faltasPorBolsista.get(data.id) || 0 }}</span></template></Column>
           </DataTable>
         </div>
       </TabPanel>

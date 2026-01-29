@@ -39,7 +39,7 @@ const inscricoes = computed(() => {
   return inscricoesRaw.value.map(item => {
     const dataRef = item.refeicao?.data ? new Date(item.refeicao.data) : null
     if (dataRef) dataRef.setHours(0, 0, 0, 0)
-    let statusFinal = 'inscrito', statusLabel = 'Na Fila', statusIcon = 'pi pi-clock', statusColor = 'text-amber-500'
+    let statusFinal = 'na_fila', statusLabel = 'Na Fila', statusIcon = 'pi pi-clock', statusColor = 'text-amber-500'
     if (item.status === 'aprovado') { statusFinal = 'atendido'; statusLabel = 'Atendido'; statusIcon = 'pi pi-check-circle'; statusColor = 'text-emerald-600' }
     else if (item.status === 'rejeitado') { statusFinal = 'nao_compareceu'; statusLabel = 'Não Compareceu'; statusIcon = 'pi pi-times-circle'; statusColor = 'text-red-500' }
     else if (item.status === 'inscrito' && dataRef && dataRef < hoje) { statusFinal = 'nao_atendido'; statusLabel = 'Não Atendido'; statusIcon = 'pi pi-minus-circle'; statusColor = 'text-slate-400' }
@@ -90,12 +90,26 @@ const chartBarOpts = { plugins: { legend: { position: 'top' as const } }, scales
 const carregarDados = async () => {
   loading.value = true
   try {
-    const f: any = {}; if (filtroDataInicio.value) f.data_inicio = filtroDataInicio.value.toISOString().split('T')[0]; if (filtroDataFim.value) f.data_fim = filtroDataFim.value.toISOString().split('T')[0]; if (filtroTurno.value) f.turno = filtroTurno.value
+    const f: any = {}; if (filtroDataInicio.value) f.data_inicio = filtroDataInicio.value.toISOString().split('T')[0]; if (filtroDataFim.value) f.data_fim = filtroDataFim.value.toISOString().split('T')[0]; if (filtroTurno.value) f.turno = filtroTurno.value; f.per_page = 1000
     const { data } = await adminExtrasService.listar(f); inscricoesRaw.value = data
   } catch { toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar' }) } finally { loading.value = false }
 }
 
-const exportarExcel = async () => { loadingExport.value = true; try { await adminExtrasService.exportarExcel({}); toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Exportado!' }) } catch { toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha' }) } finally { loadingExport.value = false } }
+const exportarExcel = async () => {
+  loadingExport.value = true
+  try {
+    const params: any = {}
+    if (filtroDataInicio.value) params.data_inicio = filtroDataInicio.value.toISOString().split('T')[0]
+    if (filtroDataFim.value) params.data_fim = filtroDataFim.value.toISOString().split('T')[0]
+    if (filtroTurno.value) params.turno = filtroTurno.value
+    await adminExtrasService.exportarRelatorio(params)
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Exportado!' })
+  } catch {
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha' })
+  } finally {
+    loadingExport.value = false
+  }
+}
 const limparFiltros = () => { filtroDataInicio.value = null; filtroDataFim.value = null; filtroTurno.value = null; filtroStatus.value = null; filtroUsuario.value = null; carregarDados() }
 const formatarData = (d: string) => d ? new Date(d).toLocaleDateString('pt-BR') : '-'
 const formatarDataHora = (d: string) => d ? new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'

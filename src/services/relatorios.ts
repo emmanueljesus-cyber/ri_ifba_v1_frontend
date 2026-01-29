@@ -30,14 +30,21 @@ export const relatorioService = {
     return data
   },
 
+  async presencasDetalhadas(dataInicio: string, dataFim: string, turno?: string, bolsistasOnly: boolean = false) {
+    const { data } = await api.get('/admin/relatorios/presencas-detalhado', {
+      params: { data_inicio: dataInicio, data_fim: dataFim, turno, bolsistas_only: bolsistasOnly ? 1 : 0 }
+    })
+    return data.data
+  },
+
   async dashboard(params: any = {}) {
     const { data } = await api.get('/admin/dashboard', { params })
     return data.data
   },
 
-  async exportarGeral(dataInicio: string, dataFim: string, turno?: string, formato: string = 'xlsx') {
+  async exportarGeral(dataInicio: string, dataFim: string, turno?: string, formato: string = 'xlsx', bolsistasOnly: boolean = false) {
     const response = await api.get('/admin/relatorios/exportar', {
-      params: { data_inicio: dataInicio, data_fim: dataFim, turno, formato },
+      params: { data_inicio: dataInicio, data_fim: dataFim, turno, formato, bolsistas_only: bolsistasOnly ? 1 : 0 },
       responseType: 'blob'
     })
     return response.data

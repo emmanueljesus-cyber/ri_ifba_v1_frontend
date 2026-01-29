@@ -55,6 +55,8 @@ interface PaginatedResponse<T> extends ApiResponse<T> {
 
 export interface FiltrosExtras {
   data?: string
+  data_inicio?: string
+  data_fim?: string
   turno?: 'almoco' | 'jantar'
   status?: 'inscrito' | 'aprovado' | 'rejeitado'
   per_page?: number
