@@ -26,6 +26,18 @@ const router = createRouter({
       meta: { public: true }
     },
     {
+      path: '/forgot-password',
+      name: 'forgot-password',
+      component: () => import('../views/ForgotPasswordView.vue'),
+      meta: { public: true }
+    },
+    {
+      path: '/reset-password',
+      name: 'reset-password',
+      component: () => import('../views/ResetPasswordView.vue'),
+      meta: { public: true }
+    },
+    {
       path: '/cardapio',
       name: 'cardapio',
       component: () => import('../views/estudante/CardapioView.vue'),

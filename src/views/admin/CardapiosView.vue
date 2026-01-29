@@ -423,12 +423,12 @@ onMounted(() => carregarCardapios())
         </div>
 
         <!-- Grid de Cards da Semana -->
-        <div class="p-6">
-          <div v-if="semanaAtualData" class="flex flex-wrap justify-center gap-6">
+        <div class="p-4 sm:p-6">
+          <div v-if="semanaAtualData" class="flex flex-wrap justify-center gap-4 sm:gap-6">
             <div
               v-for="card in semanaAtualData.cards"
               :key="card.id"
-              class="w-full md:w-[calc(50%-12px)] xl:w-[calc(33.333%-16px)] group bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-xl hover:border-primary-300 transition-all duration-300 cursor-pointer"
+              class="w-full sm:w-[calc(50%-8px)] lg:w-[calc(50%-12px)] xl:w-[calc(33.333%-16px)] group bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-xl hover:border-primary-300 transition-all duration-300 cursor-pointer"
               @click="editarCardapio(card)"
             >
               <!-- Header do Card com Data -->

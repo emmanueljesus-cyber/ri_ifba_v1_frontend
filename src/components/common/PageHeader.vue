@@ -64,11 +64,11 @@ const home: MenuItem = {
         severity="secondary"
         @click="goBack"
         aria-label="Voltar"
-        class="mt-1 !rounded-xl"
+        class="mt-1 !rounded-xl flex-shrink-0"
       />
-      <div class="flex-1">
-        <h1 class="text-3xl font-black text-slate-800 lato-black">{{ title }}</h1>
-        <p v-if="subtitle" class="text-slate-600 mt-1 font-medium">{{ subtitle }}</p>
+      <div class="flex-1 min-w-0">
+        <h1 class="text-xl sm:text-2xl md:text-3xl font-black text-slate-800 lato-black truncate">{{ title }}</h1>
+        <p v-if="subtitle" class="text-slate-600 mt-1 font-medium text-sm sm:text-base">{{ subtitle }}</p>
       </div>
     </div>
   </div>

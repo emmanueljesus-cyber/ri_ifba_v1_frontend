@@ -337,9 +337,9 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
       :breadcrumbs="[{ label: 'Admin', route: '/admin' }, { label: 'Controle de Presença' }]"
     />
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
       <!-- Filtros e Lista do Dia -->
-      <Card class="lg:col-span-2 overflow-hidden !rounded-xl border border-slate-200 shadow-sm">
+      <Card class="xl:col-span-2 overflow-hidden !rounded-xl border border-slate-200 shadow-sm">
         <template #title>
           <div class="flex items-center gap-2">
             <i class="pi pi-list text-primary-600"></i>

@@ -121,59 +121,59 @@ onMounted(() => {
     </div>
 
     <!-- Métricas Rápidas -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-        <div class="p-3 bg-emerald-50 rounded-xl text-emerald-600">
-          <i class="pi pi-users text-2xl"></i>
+    <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div class="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 sm:gap-4">
+        <div class="p-2 sm:p-3 bg-emerald-50 rounded-xl text-emerald-600">
+          <i class="pi pi-users text-xl sm:text-2xl"></i>
         </div>
         <div>
-          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Bolsistas Ativos</p>
-          <p class="text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.bolsistas_ativos || 0 }}</p>
+          <p class="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Bolsistas Ativos</p>
+          <p class="text-xl sm:text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.bolsistas_ativos || 0 }}</p>
         </div>
       </div>
 
-      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-        <div class="p-3 bg-blue-50 rounded-xl text-blue-600">
-          <i class="pi pi-check-circle text-2xl"></i>
+      <div class="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 sm:gap-4">
+        <div class="p-2 sm:p-3 bg-blue-50 rounded-xl text-blue-600">
+          <i class="pi pi-check-circle text-xl sm:text-2xl"></i>
         </div>
         <div>
-          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Presenças Hoje</p>
-          <p class="text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.presencas_hoje || 0 }}</p>
+          <p class="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Presenças Hoje</p>
+          <p class="text-xl sm:text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.presencas_hoje || 0 }}</p>
         </div>
       </div>
 
-      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-        <div class="p-3 bg-orange-50 rounded-xl text-orange-600">
-          <i class="pi pi-file-edit text-2xl"></i>
+      <div class="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 sm:gap-4">
+        <div class="p-2 sm:p-3 bg-orange-50 rounded-xl text-orange-600">
+          <i class="pi pi-file-edit text-xl sm:text-2xl"></i>
         </div>
         <div>
-          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Justificativas</p>
-          <p class="text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.justificativas_pendentes || 0 }}</p>
+          <p class="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Justificativas</p>
+          <p class="text-xl sm:text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.justificativas_pendentes || 0 }}</p>
         </div>
       </div>
 
-      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-        <div class="p-3 bg-red-50 rounded-xl text-red-600">
-          <i class="pi pi-times-circle text-2xl"></i>
+      <div class="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 sm:gap-4">
+        <div class="p-2 sm:p-3 bg-red-50 rounded-xl text-red-600">
+          <i class="pi pi-times-circle text-xl sm:text-2xl"></i>
         </div>
         <div>
-          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Faltas Hoje</p>
-          <p class="text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.faltas_hoje || 0 }}</p>
+          <p class="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Faltas Hoje</p>
+          <p class="text-xl sm:text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.faltas_hoje || 0 }}</p>
         </div>
       </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
       <!-- Bolsistas do Dia -->
-      <div class="lg:col-span-2">
+      <div class="xl:col-span-2">
         <Card class="!rounded-xl !border-slate-200 overflow-hidden shadow-sm">
           <template #title>
             <div class="flex flex-col gap-4">
-              <div class="flex flex-wrap justify-between items-start gap-4">
+              <div class="flex flex-col sm:flex-row justify-between items-start gap-4">
                 <div>
-                  <div class="flex items-center gap-3">
-                    <h3 class="text-lg font-black text-slate-700 uppercase tracking-wider">Bolsistas do Dia</h3>
-                    <span class="px-3 py-1 bg-primary-100 text-primary-700 text-sm font-bold rounded-full">
+                  <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <h3 class="text-base sm:text-lg font-black text-slate-700 uppercase tracking-wider">Bolsistas do Dia</h3>
+                    <span class="px-2 sm:px-3 py-1 bg-primary-100 text-primary-700 text-xs sm:text-sm font-bold rounded-full">
                       {{ bolsistasHoje.length }} esperados
                     </span>
                   </div>
@@ -185,7 +185,7 @@ onMounted(() => {
                   optionLabel="label"
                   optionValue="value"
                   :unselectable="false"
-                  class="!rounded-xl"
+                  class="!rounded-xl w-full sm:w-auto"
                 />
               </div>
               <!-- Filtro de busca -->

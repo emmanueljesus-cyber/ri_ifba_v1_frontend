@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { FilterMatchMode } from '@primevue/core/api'
 import { useToast } from 'primevue/usetoast'
 import { adminBolsistaService } from '../../services/adminBolsista'
@@ -12,10 +12,8 @@ import FileUpload from 'primevue/fileupload'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
-import IconField from 'primevue/iconfield'
-import InputIcon from 'primevue/inputicon'
+import Checkbox from 'primevue/checkbox'
 import Avatar from 'primevue/avatar'
-import SelectButton from 'primevue/selectbutton'
 import Select from 'primevue/select'
 
 const toast = useToast()
@@ -200,23 +198,50 @@ onMounted(() => {
               <span v-else class="text-slate-400 text-xs italic">Não informado</span>
             </template>
           </Column>
-          <Column field="preferencia_alimentar" header="Preferência">
+          <Column field="preferencia_alimentar" header="Saúde e Restrições">
             <template #body="{ data }">
-              <Tag v-if="data.is_ovolactovegetariano" severity="success" class="!rounded-full px-3 uppercase text-[10px] font-black">
-                <i class="pi pi-leaf mr-1"></i>
-                Ovolacto
-              </Tag>
-              <span v-else class="text-slate-400 text-xs">Comum</span>
-            </template>
-          </Column>
-          <Column field="restricoes_alimentares" header="Restrições">
-            <template #body="{ data }">
-              <div v-if="data.restricoes_alimentares && data.restricoes_alimentares.length > 0" class="flex flex-wrap gap-1">
-                <Tag v-for="restricao in data.restricoes_alimentares" :key="restricao" severity="warn" class="!rounded-full px-2 text-[9px] font-medium">
-                  {{ restricao }}
-                </Tag>
+              <div class="space-y-1.5">
+                <!-- Ovolactovegetariano -->
+                <div class="flex items-center gap-2">
+                  <Checkbox :modelValue="data.is_ovolactovegetariano" :binary="true" disabled class="!cursor-default" />
+                  <span class="text-xs" :class="data.is_ovolactovegetariano ? 'text-green-700 font-semibold' : 'text-slate-400'">
+                    <i class="pi pi-leaf mr-1" :class="data.is_ovolactovegetariano ? 'text-green-500' : 'text-slate-300'"></i>
+                    Ovolactovegetariano
+                  </span>
+                </div>
+
+                <!-- Restrições Alimentares -->
+                <div class="flex items-center gap-2">
+                  <Checkbox :modelValue="data.restricoes_alimentares && data.restricoes_alimentares.length > 0" :binary="true" disabled class="!cursor-default" />
+                  <div class="flex-1">
+                    <span class="text-xs" :class="data.restricoes_alimentares?.length ? 'text-amber-700 font-semibold' : 'text-slate-400'">
+                      <i class="pi pi-exclamation-circle mr-1" :class="data.restricoes_alimentares?.length ? 'text-amber-500' : 'text-slate-300'"></i>
+                      Restrições
+                    </span>
+                    <div v-if="data.restricoes_alimentares && data.restricoes_alimentares.length > 0" class="flex flex-wrap gap-1 mt-1">
+                      <Tag v-for="restricao in data.restricoes_alimentares" :key="restricao" severity="warn" class="!rounded-full px-2 text-[9px]">
+                        {{ restricao }}
+                      </Tag>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Alergias -->
+                <div class="flex items-center gap-2">
+                  <Checkbox :modelValue="!!data.alergias" :binary="true" disabled class="!cursor-default" />
+                  <div class="flex-1">
+                    <span class="text-xs" :class="data.alergias ? 'text-red-700 font-semibold' : 'text-slate-400'">
+                      <i class="pi pi-heart mr-1" :class="data.alergias ? 'text-red-500' : 'text-slate-300'"></i>
+                      Alergias
+                    </span>
+                    <div v-if="data.alergias" class="mt-1">
+                      <Tag severity="danger" class="!rounded-full px-2 text-[9px]">
+                        {{ data.alergias }}
+                      </Tag>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <span v-else class="text-slate-400 text-xs italic">Nenhuma</span>
             </template>
           </Column>
           <Column field="ativo" header="Status">

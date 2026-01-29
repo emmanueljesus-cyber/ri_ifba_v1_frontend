@@ -77,9 +77,9 @@ const handleSubmit = async () => {
             <label class="text-xs font-black text-slate-400 uppercase tracking-widest" for="senha">
               Senha
             </label>
-            <a class="text-xs text-primary-600 font-bold hover:text-primary-700 transition-colors" href="#">
+            <RouterLink to="/forgot-password" class="text-xs text-primary-600 font-bold hover:text-primary-700 transition-colors">
               Esqueceu a senha?
-            </a>
+            </RouterLink>
           </div>
           <div class="relative group">
             <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-600 transition-colors z-10">

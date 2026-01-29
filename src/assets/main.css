@@ -652,3 +652,126 @@ a:active,
 body {
   font-family: "Lato", sans-serif;
 }
+
+/* ===== RESPONSIVIDADE GLOBAL ===== */
+
+/* DataTable responsiva */
+@media (max-width: 768px) {
+  .p-datatable .p-datatable-thead > tr > th,
+  .p-datatable .p-datatable-tbody > tr > td {
+    padding: 0.5rem !important;
+    font-size: 0.8125rem !important;
+  }
+
+  .p-datatable .p-datatable-header {
+    padding: 0.75rem !important;
+  }
+
+  .p-paginator {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding: 0.5rem !important;
+  }
+
+  .p-paginator .p-paginator-pages {
+    display: none;
+  }
+}
+
+/* Dialog responsiva */
+@media (max-width: 640px) {
+  .p-dialog {
+    width: calc(100vw - 2rem) !important;
+    max-width: calc(100vw - 2rem) !important;
+    margin: 1rem !important;
+  }
+
+  .p-dialog .p-dialog-header {
+    padding: 1rem !important;
+  }
+
+  .p-dialog .p-dialog-content {
+    padding: 1rem !important;
+  }
+
+  .p-dialog .p-dialog-footer {
+    padding: 0.75rem 1rem !important;
+  }
+}
+
+/* OverlayPanel responsiva */
+@media (max-width: 640px) {
+  .p-overlaypanel {
+    max-width: calc(100vw - 1rem) !important;
+    left: 0.5rem !important;
+    right: 0.5rem !important;
+  }
+
+  .notif-panel {
+    left: 0.5rem !important;
+    right: 0.5rem !important;
+    width: calc(100vw - 1rem) !important;
+  }
+}
+
+/* Cards em mobile */
+@media (max-width: 640px) {
+  .p-card .p-card-title {
+    font-size: 1rem !important;
+  }
+
+  .p-card .p-card-content {
+    padding: 0.75rem !important;
+  }
+
+  .p-card .p-card-body {
+    padding: 0.75rem !important;
+  }
+}
+
+/* Inputs em mobile */
+@media (max-width: 640px) {
+  .p-inputtext,
+  .p-select,
+  .p-datepicker {
+    font-size: 16px !important; /* Previne zoom no iOS */
+  }
+}
+
+/* Ajuste para SelectButton em mobile */
+@media (max-width: 640px) {
+  .p-selectbutton .p-button {
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.75rem !important;
+  }
+}
+
+/* Breadcrumb em mobile */
+@media (max-width: 640px) {
+  .p-breadcrumb {
+    font-size: 0.75rem !important;
+  }
+
+  .p-breadcrumb .p-breadcrumb-list {
+    flex-wrap: wrap;
+  }
+}
+
+/* Tags menores em mobile */
+@media (max-width: 640px) {
+  .p-tag {
+    font-size: 0.625rem !important;
+    padding: 0.25rem 0.5rem !important;
+  }
+}
+
+/* Esconder texto em botões no mobile, mostrar apenas ícone */
+@media (max-width: 480px) {
+  .hide-label-mobile .p-button-label {
+    display: none;
+  }
+
+  .hide-label-mobile .p-button {
+    padding: 0.5rem !important;
+  }
+}

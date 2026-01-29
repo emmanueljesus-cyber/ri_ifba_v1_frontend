@@ -108,7 +108,7 @@ const formatarTempoNotificacao = (dataStr: string): string => {
 }
 
 // Retorna a rota de destino baseada no tipo da notificação
-const getNotifRoute = (tipo: string, dados?: any): string => {
+const getNotifRoute = (tipo: string): string => {
   const isAdminUser = auth.user?.perfil === 'admin'
 
   const routeMap: Record<string, string> = {
@@ -144,7 +144,7 @@ const handleNotifClick = async (notif: any) => {
   await notificacoes.marcarComoLida(notif.id)
 
   // Navegar para o destino
-  const destino = getNotifRoute(notif.tipo, notif.dados)
+  const destino = getNotifRoute(notif.tipo)
   router.push(destino)
 }
 
@@ -218,8 +218,8 @@ onUnmounted(() => {
               {{ notificacoes.contador > 9 ? '9+' : notificacoes.contador }}
             </span>
           </button>
-          <OverlayPanel ref="notifPanel" class="!rounded-2xl !shadow-2xl !border-0">
-            <div class="w-96 max-h-[500px] overflow-hidden flex flex-col">
+          <OverlayPanel ref="notifPanel" class="!rounded-2xl !shadow-2xl !border-0 notif-panel">
+            <div class="w-[calc(100vw-2rem)] sm:w-96 max-w-96 max-h-[70vh] sm:max-h-[500px] overflow-hidden flex flex-col">
               <!-- Header do Painel -->
               <div class="p-4 bg-gradient-to-r from-primary-600 to-primary-700 text-white">
                 <div class="flex items-center justify-between">
