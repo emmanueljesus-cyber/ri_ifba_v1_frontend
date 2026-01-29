@@ -200,6 +200,25 @@ onMounted(() => {
               <span v-else class="text-slate-400 text-xs italic">Não informado</span>
             </template>
           </Column>
+          <Column field="preferencia_alimentar" header="Preferência">
+            <template #body="{ data }">
+              <Tag v-if="data.is_ovolactovegetariano" severity="success" class="!rounded-full px-3 uppercase text-[10px] font-black">
+                <i class="pi pi-leaf mr-1"></i>
+                Ovolacto
+              </Tag>
+              <span v-else class="text-slate-400 text-xs">Comum</span>
+            </template>
+          </Column>
+          <Column field="restricoes_alimentares" header="Restrições">
+            <template #body="{ data }">
+              <div v-if="data.restricoes_alimentares && data.restricoes_alimentares.length > 0" class="flex flex-wrap gap-1">
+                <Tag v-for="restricao in data.restricoes_alimentares" :key="restricao" severity="warn" class="!rounded-full px-2 text-[9px] font-medium">
+                  {{ restricao }}
+                </Tag>
+              </div>
+              <span v-else class="text-slate-400 text-xs italic">Nenhuma</span>
+            </template>
+          </Column>
           <Column field="ativo" header="Status">
             <template #body="{ data }">
               <Tag :value="data.ativo ? 'Ativo' : 'Inativo'" :severity="data.ativo ? 'success' : 'danger'" />

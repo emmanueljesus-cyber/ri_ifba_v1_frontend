@@ -70,7 +70,7 @@ const turnos: Array<{label: string, value: TurnoType}> = [
   { label: 'Jantar', value: 'jantar' }
 ]
 
-const getTurnoAtual = (): string => turnoFiltro.value || 'almoco'
+const getTurnoAtual = (): 'almoco' | 'jantar' => turnoFiltro.value || 'almoco'
 
 const semRefeicao = ref(false)
 const mensagemSemRefeicao = ref('')
@@ -438,23 +438,42 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
             <Column header="Ações" class="text-center">
               <template #body="{ data }">
                 <!-- Se tem falta antecipada, ações desabilitadas -->
-                <div v-if="data.tem_falta_antecipada" class="text-xs text-slate-400 italic">
-                  <i class="pi pi-lock mr-1"></i> Justificado
+                <div v-if="data.tem_falta_antecipada" class="flex justify-center gap-1">
+                  <Tag severity="info" class="!rounded-full px-2 text-[9px]">
+                    <i class="pi pi-lock mr-1"></i> Justificado
+                  </Tag>
                 </div>
-                <!-- Se já está presente, só mostra indicador -->
-                <div v-else-if="data.presenca_atual?.status_da_presenca === 'presente'" class="text-xs text-green-600 font-bold">
-                  <i class="pi pi-check-circle mr-1"></i> Presente
+                <!-- Se já está presente, mostrar botão para desfazer -->
+                <div v-else-if="data.presenca_atual?.status_da_presenca === 'presente'" class="flex justify-center gap-1">
+                  <Button
+                    icon="pi pi-times"
+                    severity="secondary"
+                    text
+                    size="small"
+                    @click="marcarFaltaManual(data.id, false)"
+                    v-tooltip.top="'Desfazer Presença'"
+                    class="!rounded-lg"
+                  />
                 </div>
-                <!-- Se já está com falta marcada, mostra status -->
-                <div v-else-if="data.presenca_atual?.status_da_presenca === 'falta_justificada' || data.presenca_atual?.status_da_presenca === 'falta_injustificada'" class="text-xs text-slate-500 font-bold">
-                  <i class="pi pi-info-circle mr-1"></i> Registrada
+                <!-- Se já está com falta marcada, mostrar botão para confirmar presença -->
+                <div v-else-if="data.presenca_atual?.status_da_presenca === 'falta_justificada' || data.presenca_atual?.status_da_presenca === 'falta_injustificada'" class="flex justify-center gap-1">
+                  <Button
+                    icon="pi pi-check-circle"
+                    severity="success"
+                    text
+                    size="small"
+                    @click="confirmarPresencaManual(data.id)"
+                    v-tooltip.top="'Confirmar Presença'"
+                    class="!rounded-lg"
+                  />
                 </div>
-                <!-- Ações disponíveis -->
+                <!-- Ações disponíveis (pendente/sem registro) -->
                 <div v-else class="flex justify-center gap-1">
                   <Button
                     icon="pi pi-check-circle"
                     severity="success" 
                     outlined
+                    size="small"
                     @click="confirmarPresencaManual(data.id)"
                     v-tooltip.top="'Confirmar Presença'"
                     class="!rounded-lg"
@@ -463,6 +482,7 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
                     icon="pi pi-times-circle"
                     severity="danger" 
                     outlined
+                    size="small"
                     v-tooltip.top="'Marcar Falta'"
                     @click="marcarFaltaManual(data.id, false)"
                     class="!rounded-lg"
@@ -471,6 +491,7 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
                     icon="pi pi-file-edit"
                     severity="info"
                     outlined
+                    size="small"
                     v-tooltip.top="'Falta Justificada'"
                     @click="marcarFaltaManual(data.id, true)"
                     class="!rounded-lg"
