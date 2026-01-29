@@ -83,9 +83,9 @@ onMounted(() => {
         <div class="carteirinha-header bg-ifba-verde text-white p-4 sm:px-6 sm:py-4">
           <div class="flex flex-col sm:flex-row items-center sm:justify-between gap-3 sm:gap-4">
             <div class="flex items-center gap-3 sm:gap-4">
-              <div class="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
+              <div class="w-10 h-10 sm:w-12 sm:h-12  rounded-lg flex items-center justify-center flex-shrink-0">
                 <img
-                  src="../../assets/image/logo_ifba_vector.svg"
+                  src="../../assets/image/logo_ifba_negativo_branco.svg"
                   alt="IFBA"
                   class="w-7 h-7 sm:w-9 sm:h-9"
                 />
@@ -96,8 +96,7 @@ onMounted(() => {
               </div>
             </div>
             <div class="text-center sm:text-right">
-              <p class="text-[9px] sm:text-[10px] text-white/70 uppercase tracking-wider">Assistência Estudantil</p>
-              <p class="text-sm sm:text-base font-bold">Programa de Alimentação</p>
+              <p class="text-[9px] sm:text-[12px] text-white/70 uppercase tracking-wider text-sm  font-bold">Assistência Estudantil</p>
             </div>
           </div>
         </div>
@@ -160,17 +159,17 @@ onMounted(() => {
               </div>
             </div>
 
-            <!-- QR Code -->
-            <div class="flex flex-col items-center justify-center order-1 sm:order-2 sm:w-44 flex-shrink-0">
-              <div class="border-2 border-slate-300 rounded-lg p-2 bg-white">
+            <!-- QR Code - Destaque Principal -->
+            <div class="flex flex-col items-center justify-center order-1 sm:order-2 sm:w-52 flex-shrink-0">
+              <div class="border-2 border-ifba-verde rounded-xl p-3 bg-white shadow-sm">
                 <img
-                  :src="`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(carteirinha.qr_token)}&ecc=H&margin=1`"
+                  :src="`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(carteirinha.qr_token)}&ecc=H&margin=1`"
                   alt="QR Code de Identificação"
-                  class="w-32 h-32 sm:w-36 sm:h-36"
+                  class="w-40 h-40 sm:w-44 sm:h-44"
                 />
               </div>
-              <p class="text-[8px] sm:text-[9px] text-slate-500 mt-2 text-center font-medium">
-                Código de validação
+              <p class="text-[9px] sm:text-[10px] text-slate-600 mt-2 text-center font-semibold uppercase tracking-wider">
+                Apresente este código
               </p>
             </div>
           </div>
@@ -178,9 +177,8 @@ onMounted(() => {
 
         <!-- Rodapé -->
         <div class="bg-slate-50 border-t border-slate-200 px-4 sm:px-6 py-2 sm:py-3">
-          <div class="flex flex-col sm:flex-row items-center justify-between gap-1 text-[9px] sm:text-[10px] text-slate-600 text-center sm:text-left">
+          <div class="flex flex-col sm:flex-row items-center justify-center gap-1 text-[10px] sm:text-[10px] text-slate-600 text-center sm:text-left">
             <p>Documento válido para acesso ao Restaurante Institucional do IFBA.</p>
-            <p class="font-semibold">ifba.edu.br</p>
           </div>
         </div>
 
@@ -206,48 +204,93 @@ onMounted(() => {
   </div>
 </template>
 
-<style scoped>
+<style>
+/* Estilos normais (tela) */
 .carteirinha-container {
   min-height: 100vh;
   background: #f1f5f9;
   padding: 2rem 0;
 }
 
+/* ==================== IMPRESSÃO ==================== */
 @media print {
-  .carteirinha-container {
-    min-height: auto;
-    background: white;
-    padding: 0;
-  }
-
+  /* Configuração da página */
   @page {
-    size: 210mm 148mm; /* A5 landscape */
-    margin: 10mm;
+    size: A5 landscape;
+    margin: 8mm;
   }
 
+  /* Oculta TUDO por padrão */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Mostra apenas o container da carteirinha e seus filhos */
+  .carteirinha-container,
+  .carteirinha-container * {
+    visibility: visible !important;
+  }
+
+  /* Posiciona a carteirinha no topo esquerdo */
+  .carteirinha-container {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    min-height: auto !important;
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Oculta header, footer, sidebar, menus */
+  header,
+  footer,
+  nav,
+  aside,
+  .p-toast,
+  .p-dialog-mask,
+  .p-overlaypanel,
+  [class*="sidebar"],
+  [class*="Sidebar"] {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Oculta elementos que não devem ser impressos (class print:hidden do Tailwind) */
+  [class*="print:hidden"],
+  .no-print {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Força cores exatas */
   * {
     print-color-adjust: exact !important;
     -webkit-print-color-adjust: exact !important;
     color-adjust: exact !important;
   }
 
+  /* Card da carteirinha */
   #carteirinha-print {
     width: 100% !important;
-    max-width: 100% !important;
+    max-width: 180mm !important;
+    margin: 0 auto !important;
     box-shadow: none !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
 
   .carteirinha-card {
-    border: 2px solid #248c35;
-    border-radius: 8px;
+    border: 2px solid #248c35 !important;
+    border-radius: 8px !important;
   }
 
   .carteirinha-header {
     padding: 12px 16px !important;
   }
 
+  /* Cores */
   .bg-ifba-verde {
     background-color: #248c35 !important;
   }
@@ -268,7 +311,7 @@ onMounted(() => {
     background-color: #f8fafc !important;
   }
 
-  /* Ajustes de fonte para impressão */
+  /* Fontes para impressão */
   .carteirinha-card p,
   .carteirinha-card span {
     font-size: 11px !important;
@@ -287,10 +330,17 @@ onMounted(() => {
     font-size: 10px !important;
   }
 
-  /* QR Code na impressão */
+  /* QR Code - Destaque na impressão */
   .carteirinha-card img[alt="QR Code de Identificação"] {
-    width: 120px !important;
-    height: 120px !important;
+    width: 130px !important;
+    height: 130px !important;
+  }
+
+  /* Remove margin/padding extras */
+  .max-w-2xl {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 }
 </style>

@@ -775,3 +775,30 @@ body {
     padding: 0.5rem !important;
   }
 }
+
+/* ==================== IMPRESSÃO GLOBAL ==================== */
+@media print {
+  /* Oculta header, footer, sidebar do layout principal */
+  header,
+  footer,
+  nav,
+  aside,
+  .p-toast,
+  .p-dialog-mask,
+  .p-overlaypanel {
+    display: none !important;
+  }
+
+  /* Remove background do body */
+  body {
+    background: white !important;
+  }
+
+  /* Remove margins/paddings do layout */
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+}
+
