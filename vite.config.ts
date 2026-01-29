@@ -24,5 +24,10 @@ export default defineConfig({
         secure: false,
       }
     }
+  },
+  preview: {
+    host: true,
+    port: parseInt(process.env.PORT || '3000'),
+    strictPort: true
   }
 })
