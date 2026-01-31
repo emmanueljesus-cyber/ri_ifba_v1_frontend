@@ -381,13 +381,13 @@ onUnmounted(() => {
                     </div>
                   </div>
 
-                  <!-- Acordeão: Cadastros -->
+                  <!-- Acordeão: Gerenciamento -->
                   <div class="pt-1">
                     <button
                       class="flex items-center justify-between w-full px-3 py-2 text-left hover:bg-slate-50 rounded-lg transition-all"
                       @click="toggleAccordion('cadastros')"
                     >
-                      <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Cadastros</span>
+                      <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Gerenciamento</span>
                       <i :class="['pi text-xs text-slate-400 transition-transform duration-200', menuAccordion.cadastros ? 'pi-chevron-up' : 'pi-chevron-down']"></i>
                     </button>
                     <div v-show="menuAccordion.cadastros" class="space-y-1 mt-1">

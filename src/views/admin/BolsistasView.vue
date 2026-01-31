@@ -12,7 +12,6 @@ import FileUpload from 'primevue/fileupload'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
-import Checkbox from 'primevue/checkbox'
 import Avatar from 'primevue/avatar'
 import Select from 'primevue/select'
 
@@ -132,6 +131,20 @@ const downloadTemplate = () => {
   window.open(url, '_blank')
 }
 
+// Função para abreviar dias da semana
+const getDiaSemanaAbrev = (dia: number) => {
+  const dias: Record<number, string> = {
+    0: 'Dom',
+    1: 'Seg',
+    2: 'Ter',
+    3: 'Qua',
+    4: 'Qui',
+    5: 'Sex',
+    6: 'Sáb'
+  }
+  return dias[dia] || '-'
+}
+
 onMounted(() => {
   carregarBolsistas()
 })
@@ -200,53 +213,63 @@ onMounted(() => {
           </Column>
           <Column field="preferencia_alimentar" header="Saúde e Restrições">
             <template #body="{ data }">
-              <div class="space-y-1.5">
+              <div v-if="data.is_ovolactovegetariano || (data.restricoes_alimentares && data.restricoes_alimentares.length > 0) || data.alergias" class="space-y-1.5">
                 <!-- Ovolactovegetariano -->
-                <div class="flex items-center gap-2">
-                  <Checkbox :modelValue="data.is_ovolactovegetariano" :binary="true" disabled class="!cursor-default" />
-                  <span class="text-xs" :class="data.is_ovolactovegetariano ? 'text-green-700 font-semibold' : 'text-slate-400'">
-                    <i class="pi pi-leaf mr-1" :class="data.is_ovolactovegetariano ? 'text-green-500' : 'text-slate-300'"></i>
-                    Ovolactovegetariano
-                  </span>
+                <div v-if="data.is_ovolactovegetariano" class="flex items-center gap-2">
+                  <i class="pi pi-leaf text-green-500"></i>
+                  <span class="text-xs text-green-700 font-semibold">Ovolactovegetariano</span>
                 </div>
 
                 <!-- Restrições Alimentares -->
-                <div class="flex items-center gap-2">
-                  <Checkbox :modelValue="data.restricoes_alimentares && data.restricoes_alimentares.length > 0" :binary="true" disabled class="!cursor-default" />
-                  <div class="flex-1">
-                    <span class="text-xs" :class="data.restricoes_alimentares?.length ? 'text-amber-700 font-semibold' : 'text-slate-400'">
-                      <i class="pi pi-exclamation-circle mr-1" :class="data.restricoes_alimentares?.length ? 'text-amber-500' : 'text-slate-300'"></i>
-                      Restrições
-                    </span>
-                    <div v-if="data.restricoes_alimentares && data.restricoes_alimentares.length > 0" class="flex flex-wrap gap-1 mt-1">
-                      <Tag v-for="restricao in data.restricoes_alimentares" :key="restricao" severity="warn" class="!rounded-full px-2 text-[9px]">
-                        {{ restricao }}
-                      </Tag>
-                    </div>
+                <div v-if="data.restricoes_alimentares && data.restricoes_alimentares.length > 0">
+                  <div class="flex flex-wrap gap-1">
+                    <Tag v-for="restricao in data.restricoes_alimentares" :key="restricao" severity="warn" class="!rounded-full px-2 text-[9px]">
+                      {{ restricao }}
+                    </Tag>
                   </div>
                 </div>
 
                 <!-- Alergias -->
-                <div class="flex items-center gap-2">
-                  <Checkbox :modelValue="!!data.alergias" :binary="true" disabled class="!cursor-default" />
-                  <div class="flex-1">
-                    <span class="text-xs" :class="data.alergias ? 'text-red-700 font-semibold' : 'text-slate-400'">
-                      <i class="pi pi-heart mr-1" :class="data.alergias ? 'text-red-500' : 'text-slate-300'"></i>
-                      Alergias
-                    </span>
-                    <div v-if="data.alergias" class="mt-1">
-                      <Tag severity="danger" class="!rounded-full px-2 text-[9px]">
-                        {{ data.alergias }}
-                      </Tag>
-                    </div>
-                  </div>
+                <div v-if="data.alergias" class="flex items-center gap-1">
+                  <i class="pi pi-exclamation-triangle text-red-500 text-xs"></i>
+                  <Tag severity="danger" class="!rounded-full px-2 text-[9px]">
+                    {{ data.alergias }}
+                  </Tag>
                 </div>
               </div>
+              <span v-else class="text-slate-300 text-xs">-</span>
             </template>
           </Column>
+          <Column field="dias_semana" header="Dias de Uso">
+            <template #body="{ data }">
+              <div v-if="data.dias_semana_texto" class="text-xs text-slate-700">
+
+                  {{ data.dias_semana_texto }}
+
+              </div>
+              <div v-else-if="data.dias_semana && data.dias_semana.length > 0" class="flex flex-wrap gap-1">
+                <Tag v-for="dia in data.dias_semana" :key="dia" severity="secondary" class="!rounded-full px-2 text-[9px]">
+                  {{ getDiaSemanaAbrev(dia) }}
+                </Tag>
+              </div>
+              <span v-else class="text-slate-300 text-xs">-</span>
+            </template>
+          </Column>
+
           <Column field="ativo" header="Status">
             <template #body="{ data }">
               <Tag :value="data.ativo ? 'Ativo' : 'Inativo'" :severity="data.ativo ? 'success' : 'danger'" />
+            </template>
+          </Column>
+          <Column field="total_faltas" header="Faltas">
+            <template #body="{ data }">
+              <div class="flex items-center gap-2">
+                <Tag
+                    :value="String(data.total_faltas ?? 0)"
+                    :severity="(data.total_faltas ?? 0) === 0 ? 'info' : (data.total_faltas ?? 0) <= 3 ? 'warn' : 'danger'"
+                    class="!rounded-full px-3 font-black"
+                />
+              </div>
             </template>
           </Column>
           <Column header="Ações">

@@ -23,14 +23,14 @@ export const relatorioService = {
     return response.data
   },
 
-  async presencas(dataInicio: string, dataFim: string, turno?: string) {
+  async presencas(dataInicio: string, dataFim: string, turno?: string | undefined) {
     const { data } = await api.get('/admin/relatorios/presencas', {
       params: { data_inicio: dataInicio, data_fim: dataFim, turno }
     })
     return data
   },
 
-  async presencasDetalhadas(dataInicio: string, dataFim: string, turno?: string, bolsistasOnly: boolean = false) {
+  async presencasDetalhadas(dataInicio: string, dataFim: string, turno?: string | undefined, bolsistasOnly: boolean = false) {
     const { data } = await api.get('/admin/relatorios/presencas-detalhado', {
       params: { data_inicio: dataInicio, data_fim: dataFim, turno, bolsistas_only: bolsistasOnly ? 1 : 0 }
     })
@@ -42,7 +42,7 @@ export const relatorioService = {
     return data.data
   },
 
-  async exportarGeral(dataInicio: string, dataFim: string, turno?: string, formato: string = 'xlsx', bolsistasOnly: boolean = false) {
+  async exportarGeral(dataInicio: string, dataFim: string, turno?: string | undefined, formato: string = 'xlsx', bolsistasOnly: boolean = false) {
     const response = await api.get('/admin/relatorios/exportar', {
       params: { data_inicio: dataInicio, data_fim: dataFim, turno, formato, bolsistas_only: bolsistasOnly ? 1 : 0 },
       responseType: 'blob'

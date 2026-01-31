@@ -15,6 +15,7 @@ import Select from 'primevue/select'
 import Chart from 'primevue/chart'
 import TabView from 'primevue/tabview'
 import TabPanel from 'primevue/tabpanel'
+import AutoComplete from 'primevue/autocomplete'
 
 const toast = useToast()
 const { getInitials, getAvatarStyle } = useAvatar()
@@ -27,7 +28,7 @@ const filtroDataInicio = ref<Date | null>(null)
 const filtroDataFim = ref<Date | null>(null)
 const filtroTurno = ref<string | null>(null)
 const filtroStatus = ref<string | null>(null)
-const filtroUsuario = ref<string | null>(null)
+const filtroUsuario = ref<any>(null) // Pode ser objeto completo do usuário
 const filters = ref({ global: { value: null, matchMode: FilterMatchMode.CONTAINS } })
 
 const turnoOptions = [{ label: 'Todos', value: null }, { label: 'Almoço', value: 'almoco' }, { label: 'Jantar', value: 'jantar' }]
@@ -56,21 +57,64 @@ const estatisticas = computed(() => {
 
 const rankingUsuarios = computed(() => {
   const c: Record<string, any> = {}
-  inscricoes.value.forEach(i => { if (!i.user?.id) return; if (!c[i.user.id]) c[i.user.id] = { nome: i.user.nome, matricula: i.user.matricula, foto: i.user.foto, total: 0, atendidos: 0 }; c[i.user.id].total++; if (i.statusFinal === 'atendido') c[i.user.id].atendidos++ })
+  inscricoes.value.forEach(i => { 
+    if (!i.user?.id) return; 
+    if (!c[i.user.id]) c[i.user.id] = { 
+      id: i.user.id, // <--- ADICIONADO: ID explícito aqui
+      nome: i.user.nome, 
+      matricula: i.user.matricula, 
+      foto: i.user.foto, 
+      total: 0, 
+      atendidos: 0 
+    }; 
+    c[i.user.id].total++; 
+    if (i.statusFinal === 'atendido') c[i.user.id].atendidos++ 
+  })
   return Object.values(c).sort((a: any, b: any) => b.total - a.total).slice(0, 10)
 })
 
 const usuariosUnicos = computed(() => {
-  const u = new Map(); inscricoesRaw.value.forEach(i => { if (i.user?.id && !u.has(i.user.id)) u.set(i.user.id, { label: `${i.user.nome} (${i.user.matricula})`, value: i.user.id }) })
-  return [{ label: 'Todos', value: null }, ...Array.from(u.values())]
+  const u = new Map(); inscricoesRaw.value.forEach(i => { if (i.user?.id && !u.has(i.user.id)) u.set(i.user.id, { id: i.user.id, nome: i.user.nome, matricula: i.user.matricula }) })
+  return Array.from(u.values())
 })
 
-const inscricoesPorUsuario = computed(() => filtroUsuario.value ? inscricoes.value.filter(i => i.user?.id === filtroUsuario.value) : inscricoes.value)
+const usuariosAutoComplete = ref<any[]>([])
+const filtrarUsuarios = (event: any) => {
+  const query = event.query.toLowerCase()
+  usuariosAutoComplete.value = usuariosUnicos.value.filter(u => 
+    u.nome.toLowerCase().includes(query) || u.matricula.toLowerCase().includes(query)
+  )
+}
+
+const inscricoesPorUsuario = computed(() => {
+  if (!filtroUsuario.value) return inscricoes.value
+  const userId = typeof filtroUsuario.value === 'object' ? filtroUsuario.value.id : filtroUsuario.value
+  return inscricoes.value.filter(i => i.user?.id === userId)
+})
 
 const estatsDiaSemana = computed(() => {
-  const dias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => ({ dia: d, total: 0, atendidos: 0, almoco: 0, jantar: 0 }))
-  inscricoes.value.forEach(i => { const d = i.refeicao?.data ? new Date(i.refeicao.data) : null; if (!d) return; const idx = d.getDay(); dias[idx].total++; if (i.statusFinal === 'atendido') dias[idx].atendidos++; i.refeicao?.turno === 'almoco' ? dias[idx].almoco++ : dias[idx].jantar++ })
-  return dias
+  const diasMap = new Map<number, { dia: string, total: number, atendidos: number, almoco: number, jantar: number }>()
+  const diasNomes = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+  
+  inscricoes.value.forEach(i => {
+    const d = i.refeicao?.data ? new Date(i.refeicao.data) : null
+    if (!d) return
+    
+    const idx = d.getDay()
+    if (!diasMap.has(idx)) {
+      diasMap.set(idx, { dia: diasNomes[idx], total: 0, atendidos: 0, almoco: 0, jantar: 0 })
+    }
+    
+    const diaStats = diasMap.get(idx)!
+    diaStats.total++
+    if (i.statusFinal === 'atendido') diaStats.atendidos++
+    i.refeicao?.turno === 'almoco' ? diaStats.almoco++ : diaStats.jantar++
+  })
+  
+  // Retornar apenas os dias que têm dados, ordenados por dia da semana
+  return Array.from(diasMap.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([_, stats]) => stats)
 })
 
 const chartStatusData = computed(() => ({ labels: ['Atendidos', 'Na Fila', 'Não Atendidos', 'Não Compareceram'], datasets: [{ data: [estatisticas.value.atendidos, estatisticas.value.naFila, estatisticas.value.naoAtendidos, estatisticas.value.naoCompareceram], backgroundColor: ['#10b981', '#f59e0b', '#94a3b8', '#ef4444'] }] }))
@@ -95,21 +139,194 @@ const carregarDados = async () => {
   } catch { toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar' }) } finally { loading.value = false }
 }
 
-const exportarExcel = async () => {
+// Validação de intervalo de datas (máximo 30 dias)
+const validarIntervaloDatas = (dataInicio: Date | null, dataFim: Date | null): boolean => {
+  if (!dataInicio || !dataFim) {
+    toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Selecione o período de início e fim.', life: 5000 })
+    return false
+  }
+  
+  const diferencaDias = Math.ceil((dataFim.getTime() - dataInicio.getTime()) / (1000 * 60 * 60 * 24))
+  
+  if (diferencaDias < 0) {
+    toast.add({ severity: 'warn', summary: 'Intervalo Inválido', detail: 'A data de início deve ser anterior à data de fim.', life: 5000 })
+    return false
+  }
+  
+  if (diferencaDias > 30) {
+    toast.add({ severity: 'warn', summary: 'Intervalo Muito Grande', detail: 'O intervalo máximo permitido é de 30 dias.', life: 5000 })
+    return false
+  }
+  
+  return true
+}
+
+// Exportação principal - Todos os dados
+const exportarGeral = async () => {
+  console.log('🔷 exportarGeral chamada')
   loadingExport.value = true
   try {
+    if (!validarIntervaloDatas(filtroDataInicio.value, filtroDataFim.value)) {
+      loadingExport.value = false
+      return
+    }
+    
     const params: any = {}
     if (filtroDataInicio.value) params.data_inicio = filtroDataInicio.value.toISOString().split('T')[0]
     if (filtroDataFim.value) params.data_fim = filtroDataFim.value.toISOString().split('T')[0]
     if (filtroTurno.value) params.turno = filtroTurno.value
+    params.tipo_relatorio = 'geral'
+    
+    console.log('📦 Parâmetros exportarGeral:', params)
     await adminExtrasService.exportarRelatorio(params)
-    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Exportado!' })
-  } catch {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha' })
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Relatório geral exportado com sucesso!', life: 3000 })
+  } catch (error: any) {
+    console.error('❌ Erro ao exportar:', error)
+    toast.add({ severity: 'error', summary: 'Erro', detail: error?.response?.data?.message || 'Falha ao exportar relatório.', life: 5000 })
   } finally {
     loadingExport.value = false
   }
 }
+
+// Exportação por usuário
+const exportarPorUsuario = async () => {
+  console.log('👤 exportarPorUsuario chamada')
+  loadingExport.value = true
+  try {
+    if (!validarIntervaloDatas(filtroDataInicio.value, filtroDataFim.value)) {
+      loadingExport.value = false
+      return
+    }
+    
+    if (!filtroUsuario.value) {
+      toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Selecione um usuário para exportar.', life: 4000 })
+      loadingExport.value = false
+      return
+    }
+    
+    const params: any = {}
+    if (filtroDataInicio.value) params.data_inicio = filtroDataInicio.value.toISOString().split('T')[0]
+    if (filtroDataFim.value) params.data_fim = filtroDataFim.value.toISOString().split('T')[0]
+    if (filtroTurno.value) params.turno = filtroTurno.value
+    
+    // Extrai ID do usuário (pode ser objeto ou número)
+    const userId = typeof filtroUsuario.value === 'object' ? filtroUsuario.value.id: filtroUsuario.value
+    params.user_id = userId
+    params.tipo_relatorio = 'por_usuario'
+    
+    console.log('📦 Parâmetros exportarPorUsuario:', params)
+    console.warn('⚠️ ATENÇÃO: Backend pode estar ignorando user_id!')
+    await adminExtrasService.exportarRelatorio(params)
+    toast.add({ 
+      severity: 'success', 
+      summary: 'Exportado', 
+      detail: `Relatório do usuário ID ${userId} exportado. Verifique se o Excel contém apenas dados deste usuário.`, 
+      life: 5000 
+    })
+  } catch (error: any) {
+    console.error('❌ Erro ao exportar:', error)
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao exportar.', life: 5000 })
+  } finally {
+    loadingExport.value = false
+  }
+}
+
+// Exportação por dia
+const exportarPorDia = async () => {
+  loadingExport.value = true
+  try {
+    if (!validarIntervaloDatas(filtroDataInicio.value, filtroDataFim.value)) {
+      loadingExport.value = false
+      return
+    }
+    
+    const params: any = {}
+    if (filtroDataInicio.value) params.data_inicio = filtroDataInicio.value.toISOString().split('T')[0]
+    if (filtroDataFim.value) params.data_fim = filtroDataFim.value.toISOString().split('T')[0]
+    if (filtroTurno.value) params.turno = filtroTurno.value
+    params.agrupamento = 'dia'
+    params.tipo_relatorio = 'por_dia'
+    
+    console.log('📦 Parâmetros exportarPorDia:', params)
+    console.warn('⚠️ ATENÇÃO: Backend pode estar ignorando agrupamento!')
+    await adminExtrasService.exportarRelatorio(params)
+    toast.add({ 
+      severity: 'success', 
+      summary: 'Exportado', 
+      detail: 'Relatório por dia exportado. Verifique se está agrupado por dia.', 
+      life: 5000 
+    })
+  } catch (error: any) {
+    console.error('Erro ao exportar:', error)
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao exportar.', life: 5000 })
+  } finally {
+    loadingExport.value = false
+  }
+}
+
+// Exportação detalhada
+const exportarDetalhado = async () => {
+  loadingExport.value = true
+  try {
+    if (!validarIntervaloDatas(filtroDataInicio.value, filtroDataFim.value)) {
+      loadingExport.value = false
+      return
+    }
+    
+    const params: any = {}
+    if (filtroDataInicio.value) params.data_inicio = filtroDataInicio.value.toISOString().split('T')[0]
+    if (filtroDataFim.value) params.data_fim = filtroDataFim.value.toISOString().split('T')[0]
+    if (filtroTurno.value) params.turno = filtroTurno.value
+    if (filtroStatus.value) params.status_final = filtroStatus.value
+    params.detalhado = 1
+    params.tipo_relatorio = 'detalhado'
+    
+    console.log('📦 Parâmetros exportarDetalhado:', params)
+    console.warn('⚠️ ATENÇÃO: Backend pode estar ignorando detalhado e status_final!')
+    await adminExtrasService.exportarRelatorio(params)
+    toast.add({ 
+      severity: 'success', 
+      summary: 'Exportado', 
+      detail: 'Relatório detalhado exportado. Verifique se contém todos os campos.', 
+      life: 5000 
+    })
+  } catch (error: any) {
+    console.error('Erro ao exportar:', error)
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao exportar.', life: 5000 })
+  } finally {
+    loadingExport.value = false
+  }
+}
+
+// Função dinâmica que chama a exportação correta baseada na aba ativa
+const exportarExcel = async () => {
+  console.log('📊 exportarExcel chamada. Aba ativa:', activeTab.value)
+  switch (activeTab.value) {
+    case 0: // Visão Geral
+      console.log('➡️ Exportando Visão Geral')
+      await exportarGeral()
+      break
+    case 1: // Por Usuário
+      console.log('➡️ Exportando Por Usuário')
+      await exportarPorUsuario()
+      break
+    case 2: // Por Dia
+      console.log('➡️ Exportando Por Dia')
+      await exportarPorDia()
+      break
+    case 3: // Detalhado
+      console.log('➡️ Exportando Detalhado')
+      await exportarDetalhado()
+      break
+    default:
+      console.log('➡️ Exportando Geral (default)')
+      await exportarGeral()
+  }
+}
+const selecionarUsuario = (usuario: any) => {
+  filtroUsuario.value = usuario
+}
+
 const limparFiltros = () => { filtroDataInicio.value = null; filtroDataFim.value = null; filtroTurno.value = null; filtroStatus.value = null; filtroUsuario.value = null; carregarDados() }
 const formatarData = (d: string) => d ? new Date(d).toLocaleDateString('pt-BR') : '-'
 const formatarDataHora = (d: string) => d ? new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'
@@ -140,7 +357,16 @@ onMounted(() => { const h = new Date(), t = new Date(); t.setDate(h.getDate() - 
       <div class="bg-gradient-to-br from-indigo-500 to-purple-600 p-3 rounded-xl text-white flex items-center gap-2"><div class="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center"><i class="pi pi-percentage"></i></div><div><p class="text-xl font-black">{{ estatisticas.taxa }}%</p><p class="text-[9px] uppercase opacity-80">Taxa</p></div></div>
     </div>
 
-    <TabView v-model:activeIndex="activeTab" class="bg-white rounded-xl shadow-sm border">
+
+    <TabView 
+      v-model:activeIndex="activeTab" 
+      class="bg-white rounded-xl shadow-sm border"
+      :pt="{
+        nav: { class: 'bg-slate-50 border-b-2 border-slate-200' },
+        inkbar: { class: 'bg-indigo-600 h-1' },
+        panelContainer: { class: 'bg-white' }
+      }"
+    >
       <TabPanel header="Visão Geral">
         <div class="p-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div class="bg-slate-50 p-4 rounded-xl"><h3 class="text-sm font-bold mb-3"><i class="pi pi-chart-pie text-indigo-500 mr-2"></i>Status</h3><div class="h-56"><Chart type="pie" :data="chartStatusData" :options="chartOpts" class="h-full" /></div></div>
@@ -152,11 +378,53 @@ onMounted(() => { const h = new Date(), t = new Date(); t.setDate(h.getDate() - 
 
       <TabPanel header="Por Usuário">
         <div class="p-4 space-y-4">
-          <Select v-model="filtroUsuario" :options="usuariosUnicos" optionLabel="label" optionValue="value" filter class="w-80" placeholder="Selecione um estudante" />
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold text-slate-500">Selecione um estudante</label>
+            <AutoComplete 
+              v-model="filtroUsuario" 
+              :suggestions="usuariosAutoComplete" 
+              @complete="filtrarUsuarios"
+              optionLabel="nome"
+              placeholder="Digite o nome ou matrícula..."
+              class="w-full"
+              forceSelection
+              :pt="{
+                input: { class: 'w-full' },
+                panel: { class: 'max-h-80 overflow-auto' }
+              }"
+            >
+              <template #item="{ item }">
+                <div class="flex items-center gap-2 p-2">
+                  <Avatar v-if="item.foto" :image="item.foto" shape="circle" size="small" />
+                  <Avatar v-else :label="getInitials(item.nome)" shape="circle" size="small" :style="getAvatarStyle(item.nome)" />
+                  <div>
+                    <p class="font-bold text-sm">{{ item.nome }}</p>
+                    <p class="text-xs text-slate-400">{{ item.matricula }}</p>
+                  </div>
+                </div>
+              </template>
+            </AutoComplete>
+          </div>
+            <div v-if="filtroUsuario" class="bg-indigo-50 p-3 rounded-xl flex items-center justify-between mb-4">
+              <div class="flex items-center gap-2">
+                <Avatar v-if="filtroUsuario.foto" :image="filtroUsuario.foto" shape="circle" size="small" />
+                <Avatar v-else :label="getInitials(filtroUsuario.nome)" shape="circle" size="small" :style="getAvatarStyle(filtroUsuario.nome)" />
+                <div>
+                  <p class="font-bold text-indigo-700">{{ filtroUsuario.nome }}</p>
+                  <p class="text-xs text-indigo-600">{{ filtroUsuario.matricula }} - {{ inscricoesPorUsuario.length }} inscrições</p>
+                </div>
+              </div>
+              <Button label="Limpar" size="small" text @click="filtroUsuario = null" />
+            </div>
           <div v-if="!filtroUsuario" class="bg-slate-50 p-4 rounded-xl">
-            <h3 class="text-sm font-bold mb-3"><i class="pi pi-trophy text-amber-500 mr-2"></i>Top 10 Usuários</h3>
+            <h3 class="text-sm font-bold mb-3"><i class="pi pi-trophy text-amber-500 mr-2"></i>Top 10 Usuários (Clique para selecionar)</h3>
             <div class="space-y-2">
-              <div v-for="(u, i) in rankingUsuarios" :key="i" class="flex items-center gap-3 p-2 bg-white rounded-lg border">
+              <div 
+                v-for="(u, i) in rankingUsuarios" 
+                :key="i" 
+                class="flex items-center gap-3 p-2 bg-white rounded-lg border hover:bg-indigo-50 hover:border-indigo-300 transition-all cursor-pointer"
+                @click="selecionarUsuario({ id: u.id, nome: u.nome, matricula: u.matricula, foto: u.foto })"
+              >
                 <span class="w-7 h-7 rounded-full flex items-center justify-center text-white text-sm font-bold" :class="i === 0 ? 'bg-amber-500' : i === 1 ? 'bg-slate-400' : i === 2 ? 'bg-amber-700' : 'bg-slate-300'">{{ i + 1 }}</span>
                 <Avatar v-if="u.foto" :image="u.foto" shape="circle" size="small" /><Avatar v-else :label="getInitials(u.nome)" shape="circle" size="small" :style="getAvatarStyle(u.nome)" />
                 <div class="flex-1"><p class="font-bold text-sm">{{ u.nome }}</p><p class="text-[10px] text-slate-400">{{ u.matricula }}</p></div>

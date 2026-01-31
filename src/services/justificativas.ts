@@ -47,8 +47,12 @@ export const justificativaService = {
 
   // Admin methods
   async listarTodasAdmin(params?: any): Promise<{ data: Justificativa[], meta: any }> {
-    const { data } = await api.get<ApiResponse<Justificativa[]>>('/admin/justificativas', { params })
-    return { data: data.data, meta: (data as any).meta }
+    const { data } = await api.get<any>('/admin/justificativas', { params })
+
+    // Check if data.data is the array or if it's nested in a pagination object
+    const items = Array.isArray(data.data) ? data.data : (data.data?.data || [])
+
+    return { data: items, meta: data.meta }
   },
 
   async aprovarAdmin(id: number): Promise<void> {

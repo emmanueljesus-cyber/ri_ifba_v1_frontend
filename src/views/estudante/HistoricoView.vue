@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { FilterMatchMode } from '@primevue/core/api'
+import { FilterMatchMode, FilterService } from '@primevue/core/api'
 import { useAuthStore } from '../../stores/auth'
 import { historicoService } from '../../services/historico'
 import PageHeader from '../../components/common/PageHeader.vue'
@@ -11,6 +11,7 @@ import Tag from 'primevue/tag'
 import Skeleton from 'primevue/skeleton'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
+import DatePicker from 'primevue/datepicker'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import type { HistoricoRefeicao, ResumoHistorico } from '../../types/historico'
@@ -24,10 +25,27 @@ const loading = ref(false)
 
 const filters = ref({
   global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-  data: { value: null, matchMode: FilterMatchMode.CONTAINS },
+  data: { value: null, matchMode: 'dateFilter' },
   turno: { value: null, matchMode: FilterMatchMode.EQUALS },
   presente: { value: null, matchMode: FilterMatchMode.EQUALS }
 })
+
+// Função para comparar data do filtro (Date) com data do registro (string YYYY-MM-DD)
+const dateFilterFunction = (value: string, filter: Date | null) => {
+  if (!filter) return true
+  if (!value) return false
+
+  // Converte a data do filtro para string YYYY-MM-DD
+  const filterYear = filter.getFullYear()
+  const filterMonth = String(filter.getMonth() + 1).padStart(2, '0')
+  const filterDay = String(filter.getDate()).padStart(2, '0')
+  const filterDateStr = `${filterYear}-${filterMonth}-${filterDay}`
+
+  return value === filterDateStr
+}
+
+// Registra o filtro customizado no PrimeVue
+FilterService.register('dateFilter', dateFilterFunction)
 
 const turnoOptions = [
   { label: 'Almoço', value: 'almoco' },
@@ -97,57 +115,9 @@ onMounted(() => {
       :breadcrumbs="[{ label: 'Dashboard', route: '/dashboard' }, { label: 'Histórico' }]"
     />
 
-    <!-- Resumo (Cards Estilizados) - Apenas se houver dados -->
-    <div v-if="resumo && temDados" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex items-center gap-4">
-        <div class="w-14 h-14 rounded-xl bg-primary-100 flex items-center justify-center text-primary-600">
-           <i class="pi pi-check-circle text-2xl"></i>
-        </div>
-        <div>
-          <p class="text-2xl font-black text-slate-800 leading-tight">
-            {{ isBolsista ? resumo.total_extras : resumo.total_refeicoes }}
-          </p>
-          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-            Total Consumido
-          </p>
-        </div>
-      </div>
-
-      <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex items-center gap-4">
-        <div class="w-14 h-14 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600">
-           <i class="pi pi-calendar text-2xl"></i>
-        </div>
-        <div>
-          <p class="text-2xl font-black text-slate-800 leading-tight">
-            {{ isBolsista ? resumo.mes_atual?.extras : resumo.mes_atual?.refeicoes }}
-          </p>
-          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-            Neste Mês
-          </p>
-        </div>
-      </div>
-
-      <div class="hidden lg:flex bg-gradient-to-br from-primary-600 to-primary-700 rounded-xl p-6 shadow-md  items-center gap-4 text-white">
-        <div class="w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center">
-           <i class="pi pi-bolt text-2xl"></i>
-        </div>
-        <div>
-          <p class="text-lg font-bold leading-tight">Frequência</p>
-          <p class="text-[10px] font-medium opacity-80 uppercase tracking-widest">
-            Excelente aproveitamento
-          </p>
-        </div>
-      </div>
-    </div>
-
     <!-- Tabela de Histórico (Visual Clean) -->
     <section>
-      <div class="flex items-center gap-2 mb-4 px-2">
-        <div class="w-2 h-6 bg-primary-500 rounded-full"></div>
-        <h2 class="text-xl font-black text-slate-800 lato-black">Detalhamento</h2>
-      </div>
-
-      <div v-if="loading && historico.length === 0" class="space-y-4">
+        <div v-if="loading && historico.length === 0" class="space-y-4">
         <Skeleton v-for="i in 3" :key="i" height="70px" border-radius="1.5rem" />
       </div>
 
@@ -228,32 +198,25 @@ onMounted(() => {
               <InputText v-model="filters['global'].value" placeholder="Buscar..." class="!rounded-xl" />
             </div>
           </template>
-          <Column header="Data" field="data" :sortable="true" :showFilterMenu="false">
+          <Column header="Data" field="data" :sortable="true" :showFilterMenu="false" :filterMatchModeOptions="[{ label: 'Data', value: 'dateFilter' }]">
             <template #body="{ data }">
               <span class="font-semibold text-slate-700">{{ formatarData(data.data) }}</span>
             </template>
             <template #filter="{ filterModel, filterCallback }">
-              <InputText v-model="filterModel.value" type="text" @input="filterCallback()" placeholder="Filtrar data" class="!text-sm !py-1.5 !rounded-lg" />
+              <DatePicker
+                v-model="filterModel.value"
+                dateFormat="dd/mm/yy"
+                @date-select="filterCallback()"
+                placeholder="Filtrar data"
+                showIcon
+                showButtonBar
+                class="!text-sm w-full"
+                @clear-click="filterCallback()"
+              />
             </template>
           </Column>
 
-          <Column header="Turno" field="turno" :showFilterMenu="false">
-            <template #body="{ data }">
-              <div class="flex items-center gap-2">
-                <i :class="data.turno === 'almoco' ? 'pi pi-sun text-amber-500' : 'pi pi-moon text-indigo-500'"></i>
-                <span class="capitalize font-medium">{{ data.turno === 'almoco' ? 'Almoço' : 'Jantar' }}</span>
-              </div>
-            </template>
-            <template #filter="{ filterModel, filterCallback }">
-              <Select v-model="filterModel.value" :options="turnoOptions" optionLabel="label" optionValue="value" placeholder="Todos" @change="filterCallback()" class="!text-sm" showClear />
-            </template>
-          </Column>
 
-          <Column header="Refeição" field="prato_principal">
-            <template #body="{ data }">
-              <span class="text-sm text-slate-600">{{ data.prato_principal || 'Refeição RI' }}</span>
-            </template>
-          </Column>
 
           <Column header="Status" field="presente" :showFilterMenu="false">
             <template #body="{ data }">

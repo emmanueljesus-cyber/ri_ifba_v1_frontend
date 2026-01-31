@@ -6,17 +6,15 @@ import { justificativaService } from '../../services/justificativas'
 import { useAvatar } from '../../composables/useAvatar'
 import PageHeader from '../../components/common/PageHeader.vue'
 import type { Justificativa } from '../../types/justificativa'
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 import Textarea from 'primevue/textarea'
 import Avatar from 'primevue/avatar'
-import IconField from 'primevue/iconfield'
-import InputIcon from 'primevue/inputicon'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
+import Chart from 'primevue/chart'
+import { computed } from 'vue'
 
 const toast = useToast()
 const { getInitials, getAvatarStyle } = useAvatar()
@@ -42,9 +40,9 @@ const statusOptions = ref([
 ])
 
 const filters = ref({
-  global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-  tipo: { value: null, matchMode: FilterMatchMode.EQUALS },
-  status: { value: null, matchMode: FilterMatchMode.EQUALS }
+  global: { value: null as string | null, matchMode: FilterMatchMode.CONTAINS },
+  tipo: { value: null as string | null, matchMode: FilterMatchMode.EQUALS },
+  status: { value: null as string | null, matchMode: FilterMatchMode.EQUALS }
 })
 
 const getStatusSeverity = (status: string) => {
@@ -134,6 +132,176 @@ const rejeitar = async () => {
   }
 }
 
+// Configuração de cores para os gráficos
+const chartColors = {
+  pendente: '#f59e0b',
+  aprovada: '#10b981',
+  rejeitada: '#ef4444'
+}
+
+// Dados para gráfico de pizza/donut por status
+const statusChartData = computed(() => {
+  if (!stats.value) return null
+  
+  const data = [
+    stats.value.pendentes || 0,
+    stats.value.aprovadas || 0,
+    stats.value.rejeitadas || 0
+  ]
+  
+  const total = data.reduce((a, b) => a + b, 0)
+  if (total === 0) return null
+  
+  return {
+    labels: ['Pendentes', 'Aprovadas', 'Rejeitadas'],
+    datasets: [{
+      data,
+      backgroundColor: [chartColors.pendente, chartColors.aprovada, chartColors.rejeitada],
+      borderWidth: 0
+    }]
+  }
+})
+
+const statusChartOptions = {
+  plugins: {
+    legend: {
+      position: 'right',
+      labels: {
+        usePointStyle: true,
+        padding: 15,
+        font: { size: 13, weight: '600' },
+        generateLabels: (chart: any) => {
+          const data = chart.data
+          if (data.labels.length && data.datasets.length) {
+            const dataset = data.datasets[0]
+            const total = dataset.data.reduce((a: number, b: number) => a + b, 0)
+            
+            return data.labels.map((label: string, i: number) => {
+              const value = dataset.data[i]
+              const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0'
+              
+              return {
+                text: `${label}: ${value} (${percentage}%)`,
+                fillStyle: dataset.backgroundColor[i],
+                hidden: false,
+                index: i
+              }
+            })
+          }
+          return []
+        }
+      }
+    },
+    tooltip: {
+      backgroundColor: '#1e293b',
+      titleFont: { size: 14, weight: 'bold' },
+      bodyFont: { size: 13 },
+      padding: 12,
+      cornerRadius: 8,
+      callbacks: {
+        label: function(context: any) {
+          const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0)
+          const value = context.raw
+          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0'
+          return `${context.label}: ${value} (${percentage}%)`
+        }
+      }
+    }
+  },
+  cutout: '65%',
+  responsive: true,
+  maintainAspectRatio: true
+}
+
+// Dados para gráfico de barras por status
+const statusBarChartData = computed(() => {
+  if (!stats.value) return null
+  
+  const data = [
+    stats.value.pendentes || 0,
+    stats.value.aprovadas || 0,
+    stats.value.rejeitadas || 0
+  ]
+  
+  const total = data.reduce((a, b) => a + b, 0)
+  if (total === 0) return null
+  
+  return {
+    labels: ['Pendentes', 'Aprovadas', 'Rejeitadas'],
+    datasets: [{
+      label: 'Quantidade de Justificativas',
+      data,
+      backgroundColor: [chartColors.pendente, chartColors.aprovada, chartColors.rejeitada],
+      borderWidth: 0,
+      borderRadius: 6
+    }]
+  }
+})
+
+const statusBarChartOptions = {
+  plugins: {
+    legend: {
+      display: false
+    },
+    tooltip: {
+      backgroundColor: '#1e293b',
+      titleFont: { size: 14, weight: 'bold' },
+      bodyFont: { size: 13 },
+      padding: 12,
+      cornerRadius: 8,
+      callbacks: {
+        label: function(context: any) {
+          const total = context.chart.data.datasets[0].data.reduce((a: number, b: number) => a + b, 0)
+          const value = context.raw
+          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0'
+          return `${context.label}: ${value} (${percentage}%)`
+        }
+      }
+    }
+  },
+  scales: {
+    y: {
+      beginAtZero: true,
+      ticks: {
+        font: { size: 12, weight: '600' },
+        color: '#64748b'
+      },
+      grid: {
+        color: '#e2e8f0'
+      }
+    },
+    x: {
+      ticks: {
+        font: { size: 12, weight: '600' },
+        color: '#64748b'
+      },
+      grid: {
+        display: false
+      }
+    }
+  },
+  responsive: true,
+  maintainAspectRatio: true
+}
+
+// Legenda externa customizada com porcentagens
+const legendasComPorcentagem = computed(() => {
+  if (!stats.value) return []
+  
+  const data = [
+    { label: 'Pendentes', value: stats.value.pendentes || 0, color: chartColors.pendente },
+    { label: 'Aprovadas', value: stats.value.aprovadas || 0, color: chartColors.aprovada },
+    { label: 'Rejeitadas', value: stats.value.rejeitadas || 0, color: chartColors.rejeitada }
+  ]
+  
+  const total = data.reduce((acc, item) => acc + item.value, 0)
+  
+  return data.map(item => ({
+    ...item,
+    percentage: total > 0 ? ((item.value / total) * 100).toFixed(1) : '0'
+  }))
+})
+
 onMounted(() => {
   carregarJustificativas()
 })
@@ -147,6 +315,40 @@ onMounted(() => {
       :show-back-button="true"
       :breadcrumbs="[{ label: 'Admin', route: '/admin' }, { label: 'Justificativas' }]"
     />
+
+    <!-- Seção de Gráficos -->
+    <div v-if="stats" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <!-- Gráfico de Barras -->
+      <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+        <h3 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">📊 Gráfico de Barras - Status</h3>
+        <Chart v-if="statusBarChartData" type="bar" :data="statusBarChartData" :options="statusBarChartOptions" class="h-64" />
+        <div v-else class="flex items-center justify-center h-64 text-slate-400">
+          <p>Sem dados para exibir</p>
+        </div>
+        <!-- Legenda externa com porcentagem -->
+        <div class="mt-6 space-y-2">
+          <div v-for="item in legendasComPorcentagem" :key="item.label" class="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+            <div class="flex items-center gap-3">
+              <div class="w-4 h-4 rounded-full" :style="{ backgroundColor: item.color }"></div>
+              <span class="text-sm font-semibold text-slate-700">{{ item.label }}</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="text-sm font-bold text-slate-900">{{ item.value }}</span>
+              <span class="text-xs font-black text-slate-500 bg-slate-200 px-2 py-1 rounded-full">{{ item.percentage }}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gráfico de Donut/Pizza -->
+      <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+        <h3 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">🍩 Gráfico de Donut - Distribuição</h3>
+        <Chart v-if="statusChartData" type="doughnut" :data="statusChartData" :options="statusChartOptions" class="h-64" />
+        <div v-else class="flex items-center justify-center h-64 text-slate-400">
+          <p>Sem dados para exibir</p>
+        </div>
+      </div>
+    </div>
 
     <!-- Cards de Resumo -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -231,10 +433,10 @@ onMounted(() => {
           <!-- Avatar e Info Aluno -->
           <div class="flex-1 space-y-4">
             <div class="flex items-center gap-3">
-              <Avatar :label="getInitials(just.usuario.nome)" shape="circle" size="normal" class="shadow-sm flex-shrink-0" :style="getAvatarStyle(just.usuario.nome)" />
+              <Avatar :label="getInitials(just.usuario?.nome || 'N/A')" shape="circle" size="normal" class="shadow-sm flex-shrink-0" :style="getAvatarStyle(just.usuario?.nome || '')" />
               <div class="flex items-baseline gap-2">
-                <span class="text-lg font-black text-slate-700">{{ just.usuario.nome }}</span>
-                <span class="text-xs text-slate-400 font-bold">({{ just.usuario.matricula }})</span>
+                <span class="text-lg font-black text-slate-700">{{ just.usuario?.nome || 'Usuário não encontrado' }}</span>
+                <span class="text-xs text-slate-400 font-bold">({{ just.usuario?.matricula || '-' }})</span>
               </div>
             </div>
 

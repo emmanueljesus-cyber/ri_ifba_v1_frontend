@@ -40,6 +40,16 @@ export const adminPresencaService = {
     return res.data
   },
 
+  async listarDoDiaComMeta(data: string, turno: string) {
+    const { data: res } = await api.get('/admin/bolsistas/dia', {
+      params: { data, turno }
+    })
+    return {
+      bolsistas: res.data,
+      meta: res.meta
+    }
+  },
+
   async confirmarPresenca(payload: { matricula: string, turno: string, data: string }) {
     const { data } = await api.post('/admin/presencas/confirmar', payload)
     return data.data

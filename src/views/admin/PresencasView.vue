@@ -48,6 +48,7 @@ const turnoFiltro = ref<'almoco' | 'jantar'>(
   (localStorage.getItem('presencas_turno') as 'almoco' | 'jantar') || 'almoco'
 )
 const listaDia = ref<any[]>([])
+const metaDia = ref<any>(null)
 const loadingDia = ref(false)
 
 const filters = ref()
@@ -81,7 +82,9 @@ const carregarListaDia = async () => {
   mensagemSemRefeicao.value = ''
   try {
     const dataIso = dataFiltro.value.toISOString().split('T')[0]
-    listaDia.value = await adminPresencaService.listarDoDia(dataIso, getTurnoAtual())
+    const resultado = await adminPresencaService.listarDoDiaComMeta(dataIso, getTurnoAtual())
+    listaDia.value = resultado.bolsistas
+    metaDia.value = resultado.meta
   } catch (err: any) {
     console.error('Erro ao carregar lista do dia', err)
     const errorMsg = extractErrorMessage(err, '')
@@ -89,6 +92,7 @@ const carregarListaDia = async () => {
       semRefeicao.value = true
       mensagemSemRefeicao.value = 'Não há refeição cadastrada para este dia e turno. Cadastre o cardápio primeiro.'
       listaDia.value = []
+      metaDia.value = null
     }
   } finally {
     loadingDia.value = false
@@ -341,9 +345,27 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
       <!-- Filtros e Lista do Dia -->
       <Card class="xl:col-span-2 overflow-hidden !rounded-xl border border-slate-200 shadow-sm">
         <template #title>
-          <div class="flex items-center gap-2">
-            <i class="pi pi-list text-primary-600"></i>
-            <span class="text-xl font-bold text-slate-700">Lista de Presença do Dia</span>
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <i class="pi pi-list text-primary-600"></i>
+              <span class="text-xl font-bold text-slate-700">Lista de Presença do Dia</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span
+                v-if="metaDia?.total_bolsistas != null"
+                class="px-3 py-1 bg-primary-100 text-primary-700 text-sm font-bold rounded-full"
+                v-tooltip.top="'Total de bolsistas esperados para este dia/turno (RF09)'"
+              >
+                {{ metaDia.total_bolsistas }} esperados
+              </span>
+              <span
+                v-if="metaDia?.stats"
+                class="px-3 py-1 bg-emerald-100 text-emerald-700 text-sm font-bold rounded-full"
+                v-tooltip.top="'Presenças já confirmadas'"
+              >
+                {{ metaDia.stats.presentes || 0 }} confirmados
+              </span>
+            </div>
           </div>
         </template>
         <template #content>

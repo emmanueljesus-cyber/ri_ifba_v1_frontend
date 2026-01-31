@@ -24,6 +24,7 @@ export interface AtualizarPerfilRequest {
   curso?: string
   turno?: 'almoco' | 'jantar' | 'matutino' | 'vespertino' | 'noturno'
   alergias?: string
+  restricoes_alimentares?: string[]
   is_ovolactovegetariano?: boolean
 }
 

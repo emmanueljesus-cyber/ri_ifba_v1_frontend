@@ -144,12 +144,12 @@ onMounted(() => {
         <div class="flex-1">
           <div class="flex items-center gap-2">
             <p class="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Presenças Hoje</p>
-            <i class="pi pi-info-circle text-slate-300 cursor-help text-xs" v-tooltip.top="'Presença confirmadas hoje vs total esperado'"></i>
+            <i class="pi pi-info-circle text-slate-300 cursor-help text-xs" v-tooltip.top="'Presenças confirmadas hoje vs total esperado para o turno'"></i>
           </div>
           <div class="flex items-baseline gap-2">
             <p class="text-xl sm:text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.presencas_hoje || 0 }}</p>
-            <span v-if="bolsistasHoje.length > 0" class="text-xs font-bold text-blue-600">
-              {{ Math.round((resumo?.metricas.presencas_hoje || 0) / bolsistasHoje.length * 100) }}%
+            <span v-if="resumo?.refeicao_atual?.total_esperados > 0" class="text-xs font-bold text-blue-600">
+              {{ Math.round((resumo?.metricas.presencas_hoje || 0) / resumo.refeicao_atual.total_esperados * 100) }}%
             </span>
           </div>
         </div>
@@ -178,15 +178,15 @@ onMounted(() => {
         <div class="flex-1">
           <div class="flex items-center gap-2">
             <p class="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Aproveitamento</p>
-            <i class="pi pi-info-circle text-slate-300 cursor-help text-xs" v-tooltip.top="'Percentual de presenças em relação ao total de refeições disponíveis no mês'"></i>
+            <i class="pi pi-info-circle text-slate-300 cursor-help text-xs" v-tooltip.top="'Percentual de presenças em relação ao total de bolsistas esperados no turno'"></i>
           </div>
           <div class="flex items-baseline gap-2">
             <p class="text-xl sm:text-2xl font-black text-slate-800 leading-tight lato-black">
-              {{ resumo?.refeicao_atual?.confirmados && bolsistasHoje.length > 0 
-                ? Math.round((resumo.refeicao_atual.confirmados / bolsistasHoje.length) * 100) 
+              {{ resumo?.refeicao_atual?.confirmados && resumo?.refeicao_atual?.total_esperados > 0
+                ? Math.round((resumo.refeicao_atual.confirmados / resumo.refeicao_atual.total_esperados) * 100)
                 : 0 }}%
             </p>
-            <span class="text-xs text-slate-500">do mês</span>
+            <span class="text-xs text-slate-500">do turno</span>
           </div>
         </div>
       </div>
@@ -202,8 +202,8 @@ onMounted(() => {
                 <div>
                   <div class="flex flex-wrap items-center gap-2 sm:gap-3">
                     <h3 class="text-base sm:text-lg font-black text-slate-700 uppercase tracking-wider">Bolsistas do Dia</h3>
-                    <span class="px-2 sm:px-3 py-1 bg-primary-100 text-primary-700 text-xs sm:text-sm font-bold rounded-full">
-                      {{ bolsistasHoje.length }} esperados
+                    <span class="px-2 sm:px-3 py-1 bg-primary-100 text-primary-700 text-xs sm:text-sm font-bold rounded-full" v-tooltip.top="'Total de bolsistas esperados para o turno selecionado (RF09)'">
+                      {{ resumo?.refeicao_atual?.total_esperados || bolsistasHoje.length }} esperados
                     </span>
                   </div>
                   <p class="text-xs text-slate-500 font-medium mt-1">Lista de quem tem direito à refeição hoje.</p>
@@ -292,12 +292,12 @@ onMounted(() => {
               </div>
               <div class="flex items-center gap-3">
                 <span class="text-sm font-black text-emerald-800">
-                  {{ resumo.refeicao_atual.confirmados }} / {{ bolsistasHoje.length }} confirmados
+                  {{ resumo.refeicao_atual.confirmados }} / {{ resumo.refeicao_atual.total_esperados || bolsistasHoje.length }} confirmados
                 </span>
                 <div class="w-32 h-2.5 bg-emerald-200 rounded-full overflow-hidden">
                   <div 
                     class="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300" 
-                    :style="{ width: bolsistasHoje.length > 0 ? Math.min(100, (resumo.refeicao_atual.confirmados / bolsistasHoje.length) * 100) + '%' : '0%' }"
+                    :style="{ width: (resumo.refeicao_atual.total_esperados || bolsistasHoje.length) > 0 ? Math.min(100, (resumo.refeicao_atual.confirmados / (resumo.refeicao_atual.total_esperados || bolsistasHoje.length)) * 100) + '%' : '0%' }"
                   ></div>
                 </div>
               </div>

@@ -27,7 +27,8 @@ import Tag from 'primevue/tag'
 import DatePicker from 'primevue/datepicker'
 import InputText from 'primevue/inputtext'
 import Chart from 'primevue/chart'
-
+import { useToast } from 'primevue/usetoast'
+const toast = useToast()
 const loading = ref(false)
 const loadingExtras = ref(false)
 const relatorio = ref<any>(null)
@@ -78,6 +79,11 @@ const carregarRelatorio = async () => {
 const carregarPresencas = async () => {
   loading.value = true
   try {
+    if (!validarIntervaloDatas(filtroDataInicio.value, filtroDataFim.value)) {
+      loading.value = false
+      return
+    }
+    
     const inicio = filtroDataInicio.value.toISOString().split('T')[0]
     const fim = filtroDataFim.value.toISOString().split('T')[0]
     const turno = filtroTurno.value === 'todos' ? undefined : filtroTurno.value
@@ -85,6 +91,12 @@ const carregarPresencas = async () => {
     relatorioPresencas.value = await relatorioService.presencas(inicio, fim, turno)
   } catch (error) {
     console.error('Erro ao carregar presenças:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Erro',
+      detail: 'Não foi possível carregar os dados. Verifique o intervalo de datas.',
+      life: 5000
+    })
   } finally {
     loading.value = false
   }
@@ -107,6 +119,33 @@ const downloadTemplate = (tipo: string) => {
   window.open(`${import.meta.env.VITE_API_BASE_URL}/admin/${tipo}/template`, '_blank')
 }
 
+// Validação de intervalo de datas (máximo 30 dias)
+const validarIntervaloDatas = (dataInicio: Date, dataFim: Date): boolean => {
+  const diferencaDias = Math.ceil((dataFim.getTime() - dataInicio.getTime()) / (1000 * 60 * 60 * 24))
+  
+  if (diferencaDias < 0) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Intervalo Inválido',
+      detail: 'A data de início deve ser anterior à data de fim.',
+      life: 5000
+    })
+    return false
+  }
+  
+  if (diferencaDias > 30) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Intervalo Muito Grande',
+      detail: 'O intervalo máximo permitido é de 30 dias.',
+      life: 5000
+    })
+    return false
+  }
+  
+  return true
+}
+
 const exportarExcel = async () => {
   try {
     const blob = await relatorioService.exportarSemanal(mesSelecionado.value, anoSelecionado.value)
@@ -124,6 +163,10 @@ const exportarExcel = async () => {
 
 const exportarGeral = async () => {
   try {
+    if (!validarIntervaloDatas(filtroDataInicio.value, filtroDataFim.value)) {
+      return
+    }
+    
     const inicio = filtroDataInicio.value.toISOString().split('T')[0]
     const fim = filtroDataFim.value.toISOString().split('T')[0]
     const turno = filtroTurno.value === 'todos' ? undefined : filtroTurno.value
@@ -136,8 +179,21 @@ const exportarGeral = async () => {
     document.body.appendChild(link)
     link.click()
     link.remove()
-  } catch (error) {
+    
+    toast.add({
+      severity: 'success',
+      summary: 'Sucesso',
+      detail: 'Relatório exportado com sucesso!',
+      life: 3000
+    })
+  } catch (error: any) {
     console.error('Erro ao exportar geral:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Erro ao Exportar',
+      detail: error?.response?.data?.message || 'Não foi possível exportar o relatório. Verifique se o backend está rodando.',
+      life: 5000
+    })
   }
 }
 
@@ -167,6 +223,10 @@ const carregarExtras = async () => {
 
 const exportarExtras = async () => {
   try {
+    if (!validarIntervaloDatas(filtroDataInicio.value, filtroDataFim.value)) {
+      return
+    }
+    
     const inicio = filtroDataInicio.value.toISOString().split('T')[0]
     const fim = filtroDataFim.value.toISOString().split('T')[0]
     const turno = filtroTurno.value === 'todos' ? undefined : filtroTurno.value
@@ -176,8 +236,21 @@ const exportarExtras = async () => {
       data_fim: fim,
       turno
     })
-  } catch (error) {
+    
+    toast.add({
+      severity: 'success',
+      summary: 'Sucesso',
+      detail: 'Relatório exportado com sucesso!',
+      life: 3000
+    })
+  } catch (error: any) {
     console.error('Erro ao exportar extras:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Erro ao Exportar',
+      detail: error?.response?.data?.message || 'Não foi possível exportar o relatório. Verifique se o backend está rodando.',
+      life: 5000
+    })
   }
 }
 
@@ -257,11 +330,31 @@ const geralChartData = computed(() => {
 const geralChartOptions = {
   plugins: {
     legend: {
-      position: 'bottom',
+      position: 'right',
       labels: {
         usePointStyle: true,
-        padding: 20,
-        font: { size: 12, weight: 'bold' }
+        padding: 15,
+        font: { size: 13, weight: '600' },
+        generateLabels: (chart: any) => {
+          const data = chart.data
+          if (data.labels.length && data.datasets.length) {
+            const dataset = data.datasets[0]
+            const total = dataset.data.reduce((a: number, b: number) => a + b, 0)
+            
+            return data.labels.map((label: string, i: number) => {
+              const value = dataset.data[i]
+              const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0'
+              
+              return {
+                text: `${label}: ${value} (${percentage}%)`,
+                fillStyle: dataset.backgroundColor[i],
+                hidden: false,
+                index: i
+              }
+            })
+          }
+          return []
+        }
       }
     },
     tooltip: {
@@ -269,13 +362,141 @@ const geralChartOptions = {
       titleFont: { size: 14, weight: 'bold' },
       bodyFont: { size: 13 },
       padding: 12,
-      cornerRadius: 8
+      cornerRadius: 8,
+      callbacks: {
+        label: function(context: any) {
+          const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0)
+          const value = context.raw
+          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0'
+          return `${context.label}: ${value} (${percentage}%)`
+        }
+      }
     }
   },
   cutout: '65%',
   responsive: true,
   maintainAspectRatio: true
 }
+
+// Gráfico de Pizza (sem cutout)
+const geralPizzaChartOptions = {
+  plugins: {
+    legend: {
+      position: 'right',
+      labels: {
+        usePointStyle: true,
+        padding: 15,
+        font: { size: 13, weight: '600' },
+        generateLabels: (chart: any) => {
+          const data = chart.data
+          if (data.labels.length && data.datasets.length) {
+            const dataset = data.datasets[0]
+            const total = dataset.data.reduce((a: number, b: number) => a + b, 0)
+            
+            return data.labels.map((label: string, i: number) => {
+              const value = dataset.data[i]
+              const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0'
+              
+              return {
+                text: `${label}: ${value} (${percentage}%)`,
+                fillStyle: dataset.backgroundColor[i],
+                hidden: false,
+                index: i
+              }
+            })
+          }
+          return []
+        }
+      }
+    },
+    tooltip: {
+      backgroundColor: '#1e293b',
+      titleFont: { size: 14, weight: 'bold' },
+      bodyFont: { size: 13 },
+      padding: 12,
+      cornerRadius: 8,
+      callbacks: {
+        label: function(context: any) {
+          const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0)
+          const value = context.raw
+          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0'
+          return `${context.label}: ${value} (${percentage}%)`
+        }
+      }
+    }
+  },
+  responsive: true,
+  maintainAspectRatio: true
+}
+
+// Gráfico de Barras para aba geral
+const geralBarChartData = computed(() => {
+  if (!relatorio.value?.totais) return null
+
+  return {
+    labels: categorias.map(cat => cat.label),
+    datasets: [
+      {
+        label: 'Quantidade',
+        data: categorias.map(cat => relatorio.value?.totais?.[cat.key] || 0),
+        backgroundColor: chartPalette,
+        borderWidth: 0,
+        borderRadius: 6
+      }
+    ]
+  }
+})
+
+const geralBarChartOptions = {
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: '#1e293b',
+      titleFont: { size: 14, weight: 'bold' },
+      bodyFont: { size: 13 },
+      padding: 12,
+      cornerRadius: 8,
+      callbacks: {
+        label: function(context: any) {
+          const total = context.chart.data.datasets[0].data.reduce((a: number, b: number) => a + b, 0)
+          const value = context.raw
+          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0'
+          return `${context.label}: ${value} (${percentage}%)`
+        }
+      }
+    }
+  },
+  scales: {
+    y: {
+      beginAtZero: true,
+      ticks: { font: { size: 12, weight: '600' }, color: '#64748b' },
+      grid: { color: '#e2e8f0' }
+    },
+    x: {
+      ticks: { font: { size: 12, weight: '600' }, color: '#64748b' },
+      grid: { display: false }
+    }
+  },
+  responsive: true,
+  maintainAspectRatio: true
+}
+
+// Legendas externas customizadas
+const geralLegendasComPorcentagem = computed(() => {
+  if (!relatorio.value?.totais) return []
+  
+  const total = categorias.reduce((acc, cat) => acc + (relatorio.value?.totais?.[cat.key] || 0), 0)
+  
+  return categorias.map((cat, i) => {
+    const value = relatorio.value?.totais?.[cat.key] || 0
+    return {
+      label: cat.label,
+      value,
+      color: chartPalette[i],
+      percentage: total > 0 ? ((value / total) * 100).toFixed(1) : '0'
+    }
+  })
+})
 
 const presencasChartData = computed(() => {
   const totais = relatorioPresencas.value?.meta?.totais
@@ -308,11 +529,31 @@ const presencasChartData = computed(() => {
 const presencasChartOptions = {
   plugins: {
     legend: {
-      position: 'bottom',
+      position: 'right',
       labels: {
         usePointStyle: true,
-        padding: 20,
-        font: { size: 12, weight: 'bold' }
+        padding: 15,
+        font: { size: 13, weight: '600' },
+        generateLabels: (chart: any) => {
+          const data = chart.data
+          if (data.labels.length && data.datasets.length) {
+            const dataset = data.datasets[0]
+            const total = dataset.data.reduce((a: number, b: number) => a + b, 0)
+            
+            return data.labels.map((label: string, i: number) => {
+              const value = dataset.data[i]
+              const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0'
+              
+              return {
+                text: `${label}: ${value} (${percentage}%)`,
+                fillStyle: dataset.backgroundColor[i],
+                hidden: false,
+                index: i
+              }
+            })
+          }
+          return []
+        }
       }
     },
     tooltip: {
@@ -325,7 +566,7 @@ const presencasChartOptions = {
         label: function(context: any) {
           const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0)
           const value = context.raw
-          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0
+          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0'
           return `${context.label}: ${value} (${percentage}%)`
         }
       }
@@ -335,6 +576,143 @@ const presencasChartOptions = {
   responsive: true,
   maintainAspectRatio: true
 }
+
+// Gráfico de Pizza para presenças
+const presencasPizzaChartOptions = {
+  plugins: {
+    legend: {
+      position: 'right',
+      labels: {
+        usePointStyle: true,
+        padding: 15,
+        font: { size: 13, weight: '600' },
+        generateLabels: (chart: any) => {
+          const data = chart.data
+          if (data.labels.length && data.datasets.length) {
+            const dataset = data.datasets[0]
+            const total = dataset.data.reduce((a: number, b: number) => a + b, 0)
+            
+            return data.labels.map((label: string, i: number) => {
+              const value = dataset.data[i]
+              const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0'
+              
+              return {
+                text: `${label}: ${value} (${percentage}%)`,
+                fillStyle: dataset.backgroundColor[i],
+                hidden: false,
+                index: i
+              }
+            })
+          }
+          return []
+        }
+      }
+    },
+    tooltip: {
+      backgroundColor: '#1e293b',
+      titleFont: { size: 14, weight: 'bold' },
+      bodyFont: { size: 13 },
+      padding: 12,
+      cornerRadius: 8,
+      callbacks: {
+        label: function(context: any) {
+          const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0)
+          const value = context.raw
+          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0'
+          return `${context.label}: ${value} (${percentage}%)`
+        }
+      }
+    }
+  },
+  responsive: true,
+  maintainAspectRatio: true
+}
+
+// Gráfico de Barras para presenças
+const presencasBarChartData = computed(() => {
+  const totais = relatorioPresencas.value?.meta?.totais
+  if (!totais) return null
+
+  const total = (totais.presentes || 0) + (totais.falta_justificada || 0) +
+                (totais.falta_injustificada || 0) + (totais.cancelados || 0)
+
+  if (total === 0) return null
+
+  return {
+    labels: ['Presentes', 'Falta Justificada', 'Falta Injustificada', 'Cancelados'],
+    datasets: [
+      {
+        label: 'Quantidade',
+        data: [
+          totais.presentes || 0,
+          totais.falta_justificada || 0,
+          totais.falta_injustificada || 0,
+          totais.cancelados || 0
+        ],
+        backgroundColor: ['#10b981', '#3b82f6', '#ef4444', '#f59e0b'],
+        borderWidth: 0,
+        borderRadius: 6
+      }
+    ]
+  }
+})
+
+const presencasBarChartOptions = {
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: '#1e293b',
+      titleFont: { size: 14, weight: 'bold' },
+      bodyFont: { size: 13 },
+      padding: 12,
+      cornerRadius: 8,
+      callbacks: {
+        label: function(context: any) {
+          const total = context.chart.data.datasets[0].data.reduce((a: number, b: number) => a + b, 0)
+          const value = context.raw
+          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0'
+          return `${context.label}: ${value} (${percentage}%)`
+        }
+      }
+    }
+  },
+  scales: {
+    y: {
+      beginAtZero: true,
+      ticks: { font: { size: 12, weight: '600' }, color: '#64748b' },
+      grid: { color: '#e2e8f0' }
+    },
+    x: {
+      ticks: { font: { size: 12, weight: '600' }, color: '#64748b' },
+      grid: { display: false }
+    }
+  },
+  responsive: true,
+  maintainAspectRatio: true
+}
+
+const presencasLegendasComPorcentagem = computed(() => {
+  const totais = relatorioPresencas.value?.meta?.totais
+  if (!totais) return []
+  
+  const labels = ['Presentes', 'Falta Justificada', 'Falta Injustificada', 'Cancelados']
+  const values = [
+    totais.presentes || 0,
+    totais.falta_justificada || 0,
+    totais.falta_injustificada || 0,
+    totais.cancelados || 0
+  ]
+  const colors = ['#10b981', '#3b82f6', '#ef4444', '#f59e0b']
+  
+  const total = values.reduce((acc, v) => acc + v, 0)
+  
+  return labels.map((label, i) => ({
+    label,
+    value: values[i],
+    color: colors[i],
+    percentage: total > 0 ? ((values[i] / total) * 100).toFixed(1) : '0'
+  }))
+})
 
 
 const extrasChartData = computed(() => {
@@ -360,11 +738,31 @@ const extrasChartData = computed(() => {
 const extrasChartOptions = {
   plugins: {
     legend: {
-      position: 'bottom',
+      position: 'right',
       labels: {
         usePointStyle: true,
-        padding: 20,
-        font: { size: 12, weight: 'bold' }
+        padding: 15,
+        font: { size: 13, weight: '600' },
+        generateLabels: (chart: any) => {
+          const data = chart.data
+          if (data.labels.length && data.datasets.length) {
+            const dataset = data.datasets[0]
+            const total = dataset.data.reduce((a: number, b: number) => a + b, 0)
+            
+            return data.labels.map((label: string, i: number) => {
+              const value = dataset.data[i]
+              const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0'
+              
+              return {
+                text: `${label}: ${value} (${percentage}%)`,
+                fillStyle: dataset.backgroundColor[i],
+                hidden: false,
+                index: i
+              }
+            })
+          }
+          return []
+        }
       }
     },
     tooltip: {
@@ -377,7 +775,7 @@ const extrasChartOptions = {
         label: function(context: any) {
           const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0)
           const value = context.raw
-          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0
+          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0'
           return `${context.label}: ${value} (${percentage}%)`
         }
       }
@@ -387,6 +785,131 @@ const extrasChartOptions = {
   responsive: true,
   maintainAspectRatio: true
 }
+
+// Gráfico de Pizza para extras
+const extrasPizzaChartOptions = {
+  plugins: {
+    legend: {
+      position: 'right',
+      labels: {
+        usePointStyle: true,
+        padding: 15,
+        font: { size: 13, weight: '600' },
+        generateLabels: (chart: any) => {
+          const data = chart.data
+          if (data.labels.length && data.datasets.length) {
+            const dataset = data.datasets[0]
+            const total = dataset.data.reduce((a: number, b: number) => a + b, 0)
+            
+            return data.labels.map((label: string, i: number) => {
+              const value = dataset.data[i]
+              const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0'
+              
+              return {
+                text: `${label}: ${value} (${percentage}%)`,
+                fillStyle: dataset.backgroundColor[i],
+                hidden: false,
+                index: i
+              }
+            })
+          }
+          return []
+        }
+      }
+    },
+    tooltip: {
+      backgroundColor: '#1e293b',
+      titleFont: { size: 14, weight: 'bold' },
+      bodyFont: { size: 13 },
+      padding: 12,
+      cornerRadius: 8,
+      callbacks: {
+        label: function(context: any) {
+          const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0)
+          const value = context.raw
+          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0'
+          return `${context.label}: ${value} (${percentage}%)`
+        }
+      }
+    }
+  },
+  responsive: true,
+  maintainAspectRatio: true
+}
+
+// Gráfico de Barras para extras
+const extrasBarChartData = computed(() => {
+  const resumo = estatisticasExtras.value?.resumo
+  if (!resumo) return null
+
+  const total = (resumo.aprovados || 0) + (resumo.aguardando || 0) + (resumo.rejeitados || 0)
+  if (total === 0) return null
+
+  return {
+    labels: ['Aprovados', 'Aguardando', 'Rejeitados'],
+    datasets: [
+      {
+        label: 'Quantidade',
+        data: [resumo.aprovados || 0, resumo.aguardando || 0, resumo.rejeitados || 0],
+        backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+        borderWidth: 0,
+        borderRadius: 6
+      }
+    ]
+  }
+})
+
+const extrasBarChartOptions = {
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: '#1e293b',
+      titleFont: { size: 14, weight: 'bold' },
+      bodyFont: { size: 13 },
+      padding: 12,
+      cornerRadius: 8,
+      callbacks: {
+        label: function(context: any) {
+          const total = context.chart.data.datasets[0].data.reduce((a: number, b: number) => a + b, 0)
+          const value = context.raw
+          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0'
+          return `${context.label}: ${value} (${percentage}%)`
+        }
+      }
+    }
+  },
+  scales: {
+    y: {
+      beginAtZero: true,
+      ticks: { font: { size: 12, weight: '600' }, color: '#64748b' },
+      grid: { color: '#e2e8f0' }
+    },
+    x: {
+      ticks: { font: { size: 12, weight: '600' }, color: '#64748b' },
+      grid: { display: false }
+    }
+  },
+  responsive: true,
+  maintainAspectRatio: true
+}
+
+const extrasLegendasComPorcentagem = computed(() => {
+  const resumo = estatisticasExtras.value?.resumo
+  if (!resumo) return []
+  
+  const labels = ['Aprovados', 'Aguardando', 'Rejeitados']
+  const values = [resumo.aprovados || 0, resumo.aguardando || 0, resumo.rejeitados || 0]
+  const colors = ['#10b981', '#f59e0b', '#ef4444']
+  
+  const total = values.reduce((acc, v) => acc + v, 0)
+  
+  return labels.map((label, i) => ({
+    label,
+    value: values[i],
+    color: colors[i],
+    percentage: total > 0 ? ((values[i] / total) * 100).toFixed(1) : '0'
+  }))
+})
 
 const activeTab = ref('geral')
 
@@ -476,17 +999,42 @@ watch(activeTab, (newTab) => {
                    </div>
                 </div>
 
-                <div v-if="geralChartData" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                  <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
-                    <h4 class="text-sm font-black text-slate-700 mb-4">Distribuição Mensal</h4>
-                    <Chart type="doughnut" :data="geralChartData" :options="geralChartOptions" />
-                  </div>
-                  <div class="p-6 bg-slate-50 rounded-xl border border-slate-200">
-                    <h4 class="text-sm font-black text-slate-700 mb-3">Leitura Rápida</h4>
-                    <p class="text-sm text-slate-600 leading-relaxed">
-                      Este gráfico consolida o total do mês por categoria para comparação imediata
-                      do volume de refeições e faltas.
-                    </p>
+                <div v-if="geralChartData" class="space-y-6 mb-8">
+                  <!-- Título da Seção -->
+                 <h3 class="text-lg font-black text-slate-700 uppercase tracking-wide">📊 Visualizações Gráficas</h3>
+                  
+                  <!-- Grid com 3 gráficos -->
+                  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Gráfico de Barras -->
+                    <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
+                      <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">📊 Gráfico de Barras</h4>
+                      <Chart v-if="geralBarChartData" type="bar" :data="geralBarChartData" :options="geralBarChartOptions" class="h-48" />
+                      <!-- Legenda Externa com Porcentagem -->
+                      <div class="mt-4 space-y-2">
+                        <div v-for="item in geralLegendasComPorcentagem" :key="item.label" class="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
+                          <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: item.color }"></div>
+                            <span class="text-xs font-semibold text-slate-700">{{ item.label }}</span>
+                          </div>
+                          <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-slate-900">{{ item.value }}</span>
+                            <span class="text-[10px] font-black text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded-full">{{ item.percentage }}%</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Gráfico de Donut -->
+                    <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
+                      <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">🍩 Gráfico de Donut</h4>
+                      <Chart type="doughnut" :data="geralChartData" :options="geralChartOptions" class="h-48" />
+                    </div>
+
+                    <!-- Gráfico de Pizza -->
+                    <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
+                      <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">🍰 Gráfico de Pizza</h4>
+                      <Chart type="pie" :data="geralChartData" :options="geralPizzaChartOptions" class="h-48" />
+                    </div>
                   </div>
                 </div>
 
@@ -603,17 +1151,40 @@ watch(activeTab, (newTab) => {
                 </div>
               </div>
 
-              <div v-if="presencasChartData" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
-                  <h4 class="text-sm font-black text-slate-700 mb-4">Distribuição de Presenças</h4>
-                  <Chart type="doughnut" :data="presencasChartData" :options="presencasChartOptions" />
-                </div>
-                <div class="p-6 bg-slate-50 rounded-xl border border-slate-200">
-                  <h4 class="text-sm font-black text-slate-700 mb-3">Observações</h4>
-                  <p class="text-sm text-slate-600 leading-relaxed">
-                    Use esta visão para identificar rapidamente a proporção de faltas e cancelamentos
-                    no período selecionado.
-                  </p>
+              <div v-if="presencasChartData" class="space-y-6 mb-8">
+                <h3 class="text-lg font-black text-slate-700 uppercase tracking-wide">📊 Visualizações Gráficas - Presenças</h3>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <!-- Gráfico de Barras -->
+                  <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
+                    <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">📊 Gráfico de Barras</h4>
+                    <Chart v-if="presencasBarChartData" type="bar" :data="presencasBarChartData" :options="presencasBarChartOptions" class="h-48" />
+                    <!-- Legenda Externa com Porcentagem -->
+                    <div class="mt-4 space-y-2">
+                      <div v-for="item in presencasLegendasComPorcentagem" :key="item.label" class="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
+                        <div class="flex items-center gap-2">
+                          <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: item.color }"></div>
+                          <span class="text-xs font-semibold text-slate-700">{{ item.label }}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <span class="text-xs font-bold text-slate-900">{{ item.value }}</span>
+                          <span class="text-[10px] font-black text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded-full">{{ item.percentage }}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Gráfico de Donut -->
+                  <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
+                    <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">🍩 Gráfico de Donut</h4>
+                    <Chart type="doughnut" :data="presencasChartData" :options="presencasChartOptions" class="h-48" />
+                  </div>
+
+                  <!-- Gráfico de Pizza -->
+                  <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
+                    <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">🍰 Gráfico de Pizza</h4>
+                    <Chart type="pie" :data="presencasChartData" :options="presencasPizzaChartOptions" class="h-48" />
+                  </div>
                 </div>
               </div>
 
@@ -744,17 +1315,40 @@ watch(activeTab, (newTab) => {
                 </div>
               </div>
 
-              <div v-if="extrasChartData" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
-                  <h4 class="text-sm font-black text-slate-700 mb-4">Status das Inscrições</h4>
-                  <Chart type="doughnut" :data="extrasChartData" :options="extrasChartOptions" />
-                </div>
-                <div class="p-6 bg-slate-50 rounded-xl border border-slate-200">
-                  <h4 class="text-sm font-black text-slate-700 mb-3">Leitura Rápida</h4>
-                  <p class="text-sm text-slate-600 leading-relaxed">
-                    Acompanhe o equilíbrio entre aprovações, aguardando e rejeições para
-                    ajustar a gestão da fila de extras.
-                  </p>
+              <div v-if="extrasChartData" class="space-y-6 mb-8">
+                <h3 class="text-lg font-black text-slate-700 uppercase tracking-wide">📊 Visualizações Gráficas - Extras</h3>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <!-- Gráfico de Barras -->
+                  <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
+                    <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">📊 Gráfico de Barras</h4>
+                    <Chart v-if="extrasBarChartData" type="bar" :data="extrasBarChartData" :options="extrasBarChartOptions" class="h-48" />
+                    <!-- Legenda Externa com Porcentagem -->
+                    <div class="mt-4 space-y-2">
+                      <div v-for="item in extrasLegendasComPorcentagem" :key="item.label" class="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
+                        <div class="flex items-center gap-2">
+                          <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: item.color }"></div>
+                          <span class="text-xs font-semibold text-slate-700">{{ item.label }}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <span class="text-xs font-bold text-slate-900">{{ item.value }}</span>
+                          <span class="text-[10px] font-black text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded-full">{{ item.percentage }}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Gráfico de Donut -->
+                  <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
+                    <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">🍩 Gráfico de Donut</h4>
+                    <Chart type="doughnut" :data="extrasChartData" :options="extrasChartOptions" class="h-48" />
+                  </div>
+
+                  <!-- Gráfico de Pizza -->
+                  <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
+                    <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">🍰 Gráfico de Pizza</h4>
+                    <Chart type="pie" :data="extrasChartData" :options="extrasPizzaChartOptions" class="h-48" />
+                  </div>
                 </div>
               </div>
 
