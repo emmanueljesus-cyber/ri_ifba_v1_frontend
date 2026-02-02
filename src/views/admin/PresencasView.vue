@@ -492,9 +492,7 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
               <!-- QR Scanner Component -->
               <QrScanner 
                 @scan="validarTokenQr"
-                @error="(err) => toast.add({ severity: 'error', summary: 'Erro', detail: err })"
-                :fps="10"
-                :qrbox="250"
+                @error="(err) => toast.add({ severity: 'error', summary: 'Erro', detail: err, life: 5000 })"
               />
             </div>
           </template>
