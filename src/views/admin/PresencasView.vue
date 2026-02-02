@@ -34,6 +34,11 @@ const { getInitials, getAvatarStyle } = useAvatar()
 const { extractErrorMessage } = useErrorMessage()
 const loadingValidacao = ref(false)
 
+// Controle para evitar múltiplas validações do mesmo QR code
+const lastProcessedToken = ref('')
+const lastProcessedTime = ref(0)
+const COOLDOWN_MS = 3000 // 3 segundos de cooldown
+
 // Lista do dia - com persistência
 const dataFiltro = ref(
   localStorage.getItem('presencas_data') 
@@ -102,6 +107,10 @@ watch([dataFiltro, turnoFiltro], () => {
   }
   localStorage.setItem('presencas_turno', turnoFiltro.value)
   
+  // Resetar cooldown ao mudar data/turno
+  lastProcessedToken.value = ''
+  lastProcessedTime.value = 0
+
   carregarListaDia()
 })
 
@@ -172,6 +181,13 @@ const validarTokenQr = async (token: string) => {
   if (!token) return
   if (loadingValidacao.value) return
   
+  // Verificar cooldown
+  const agora = Date.now()
+  if (lastProcessedToken.value === token && (agora - lastProcessedTime.value) < COOLDOWN_MS) {
+    toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Aguarde antes de validar o mesmo QR Code novamente.', life: 5000 })
+    return
+  }
+
   loadingValidacao.value = true
   try {
     // Detectar se é token fixo (matrícula) ou temporário (hash)
@@ -189,6 +205,10 @@ const validarTokenQr = async (token: string) => {
       life: 3000
     })
     carregarListaDia()
+
+    // Atualizar último token processado
+    lastProcessedToken.value = token
+    lastProcessedTime.value = agora
   } catch (err: any) {
     toast.add({
       severity: 'error', 
