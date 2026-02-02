@@ -22,8 +22,8 @@ const error = ref('')
 // Helper para verificar se é admin
 const isAdmin = computed(() => authStore.user?.perfil === 'admin')
 
-const naoLidas = computed(() => notificacoes.value.filter(n => !n.lida_em))
-const lidas = computed(() => notificacoes.value.filter(n => n.lida_em))
+const naoLidas = computed(() => notificacoes.value.filter((n: Notificacao) => !n.lida_em))
+const lidas = computed(() => notificacoes.value.filter((n: Notificacao) => n.lida_em))
 
 const getSeverityByTipo = (tipo: string): 'success' | 'info' | 'warn' | 'danger' => {
   const severityMap: Record<string, 'success' | 'info' | 'warn' | 'danger'> = {
@@ -108,7 +108,7 @@ const marcarComoLida = async (notificacao: Notificacao) => {
 const marcarTodasComoLidas = async () => {
   try {
     await notificacoesService.marcarTodasComoLidas(isAdmin.value)
-    notificacoes.value.forEach(n => {
+    notificacoes.value.forEach((n: Notificacao) => {
       if (!n.lida_em) {
         n.lida_em = new Date().toISOString()
       }

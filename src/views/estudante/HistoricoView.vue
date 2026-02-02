@@ -47,11 +47,6 @@ const dateFilterFunction = (value: string, filter: Date | null) => {
 // Registra o filtro customizado no PrimeVue
 FilterService.register('dateFilter', dateFilterFunction)
 
-const turnoOptions = [
-  { label: 'Almoço', value: 'almoco' },
-  { label: 'Jantar', value: 'jantar' }
-]
-
 const statusOptions = [
   { label: 'Presente', value: true },
   { label: 'Ausente', value: false }
@@ -59,7 +54,6 @@ const statusOptions = [
 
 // safer: use the boolean field `bolsista` if available on the authenticated user
 const isBolsista = computed(() => !!auth.user?.bolsista)
-const temDados = computed(() => historico.value && historico.value.length > 0)
 
 const formatarData = (data: string) => {
   if (!data) return '-'

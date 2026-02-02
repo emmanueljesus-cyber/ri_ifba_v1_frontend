@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { Html5Qrcode } from 'html5-qrcode'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
@@ -17,7 +17,6 @@ const props = defineProps<{
 
 const isScanning = ref(false)
 const error = ref('')
-const cameraId = ref<string>('')
 let html5QrCode: Html5Qrcode | null = null
 
 const startScanning = async () => {
@@ -37,7 +36,7 @@ const startScanning = async () => {
       (decodedText) => {
         emit('scan', decodedText)
       },
-      (errorMessage) => {
+      (_errorMessage) => {
         // Ignorar erros de scan contínuo
       }
     )

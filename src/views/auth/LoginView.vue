@@ -5,7 +5,6 @@ import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
-import Divider from 'primevue/divider'
 import AuthLayout from '../../layouts/AuthLayout.vue'
 import { useAuthStore } from '../../stores/auth'
 

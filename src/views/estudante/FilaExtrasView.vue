@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { FilterMatchMode } from '@primevue/core/api'
 import { useFilaExtrasStore } from '../../stores/filaExtras'
 import { useToast } from 'primevue/usetoast'
@@ -16,21 +16,7 @@ const filaStore = useFilaExtrasStore()
 const toast = useToast()
 const errorMessage = ref('')
 
-// Computed para filtrar apenas inscrições relevantes (hoje ou futuras)
-const inscricoesRelevantes = computed(() => {
-  const hoje = new Date()
-  hoje.setHours(0, 0, 0, 0)
-  
-  return filaStore.minhasInscricoes.filter(inscricao => {
-    if (!inscricao.refeicao?.data) return false
-    
-    const dataInscricao = new Date(inscricao.refeicao.data)
-    dataInscricao.setHours(0, 0, 0, 0)
-    
-    // Mostrar apenas inscrições de hoje ou futuras
-    return dataInscricao >= hoje
-  })
-})
+
 
 const filters = ref({
   global: { value: null, matchMode: FilterMatchMode.CONTAINS }
@@ -40,17 +26,7 @@ const dialogInscricao = ref(false)
 const refeicaoSelecionada = ref<any>(null)
 const loadingAcao = ref(false)
 
-const formatarData = (data: string) => {
-  return new Date(data).toLocaleDateString('pt-BR', {
-    weekday: 'short',
-    day: '2-digit',
-    month: 'short'
-  })
-}
 
-const formatarTurno = (turno: string) => {
-  return turno === 'almoco' ? 'Almoço' : 'Jantar'
-}
 
 const abrirDialogInscricao = (refeicao: any) => {
   refeicaoSelecionada.value = refeicao

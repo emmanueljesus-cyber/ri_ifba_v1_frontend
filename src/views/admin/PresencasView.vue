@@ -32,10 +32,6 @@ import Avatar from 'primevue/avatar'
 const toast = useToast()
 const { getInitials, getAvatarStyle } = useAvatar()
 const { extractErrorMessage } = useErrorMessage()
-const tokenManual = ref('')
-const buscaTermo = ref('')
-const resultadosBusca = ref<any[]>([])
-const loadingBusca = ref(false)
 const loadingValidacao = ref(false)
 
 // Lista do dia - com persistência
@@ -170,33 +166,7 @@ const getStatusLabel = (status: string | null, temFaltaAntecipada = false) => {
   }
 }
 
-const validarToken = async () => {
-  if (!tokenManual.value) return
-  if (loadingValidacao.value) return
-  
-  loadingValidacao.value = true
-  try {
-    const dataIso = dataFiltro.value.toISOString().split('T')[0]
-    const token = tokenManual.value.trim()
-    const isTokenFixo = token.startsWith('IFBA-') || token.length <= 20
 
-    const res = isTokenFixo
-      ? await adminPresencaService.validarQrCodeFixo(token, turnoFiltro.value, dataIso)
-      : await adminPresencaService.validarQrCode(token)
-
-    toast.add({ severity: 'success', summary: 'Sucesso', detail: res.message || 'Presença confirmada!' })
-    tokenManual.value = ''
-    carregarListaDia()
-  } catch (err: any) {
-    toast.add({
-      severity: 'error', 
-      summary: 'Erro', 
-      detail: err.response?.data?.message || 'Falha ao validar token' 
-    })
-  } finally {
-    loadingValidacao.value = false
-  }
-}
 
 const validarTokenQr = async (token: string) => {
   if (!token) return
@@ -232,23 +202,7 @@ const validarTokenQr = async (token: string) => {
 }
 
 
-const buscarAlunos = async () => {
-  if (buscaTermo.value.length < 3) return
-  
-  loadingBusca.value = true
-  try {
-    const dataIso = dataFiltro.value.toISOString().split('T')[0]
-    resultadosBusca.value = await adminPresencaService.buscarBolsista(
-      buscaTermo.value, 
-      turnoFiltro.value,
-      dataIso
-    )
-  } catch (err) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha na busca' })
-  } finally {
-    loadingBusca.value = false
-  }
-}
+
 
 const confirmarPresencaManual = async (userId: number) => {
   try {
@@ -268,7 +222,6 @@ const confirmarPresencaManual = async (userId: number) => {
     }
 
     toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Presença confirmada!' })
-    resultadosBusca.value = resultadosBusca.value.filter(a => a.id !== userId)
 
     // Recarregar lista do servidor em background
     carregarListaDia()

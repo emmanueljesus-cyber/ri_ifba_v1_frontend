@@ -97,8 +97,8 @@ export function formatRelativeDate(date: string | Date | null | undefined): stri
 export function formatWeekday(date: string | Date | null | undefined): string {
     if (!isValidDate(date)) return '-'
 
-    const d = new Date(date!)
+    const d = new Date(date as string | Date)
     const weekdays = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 
-    return weekdays[d.getDay()]
+    return weekdays[d.getDay()] || '-'
 }

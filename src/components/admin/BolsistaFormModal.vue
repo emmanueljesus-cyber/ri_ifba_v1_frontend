@@ -8,7 +8,6 @@ import Select from 'primevue/select'
 import MultiSelect from 'primevue/multiselect'
 import Checkbox from 'primevue/checkbox'
 import Textarea from 'primevue/textarea'
-import Chip from 'primevue/chip'
 
 interface BolsistaFormData {
   nome: string
