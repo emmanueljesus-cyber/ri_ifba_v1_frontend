@@ -1,0 +1,14 @@
+[build]
+  command = "yarn build"
+  publish = "dist"
+
+[build.environment]
+  VITE_API_BASE_URL = "https://ri-ifba-homol.up.railway.app/api/v1"
+  VITE_APP_NAME = "RI-IFBA"
+  NODE_VERSION = "20"
+
+# Redirecionar todas as rotas para index.html (SPA)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
