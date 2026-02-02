@@ -102,7 +102,7 @@ const estatsDiaSemana = computed(() => {
     
     const idx = d.getDay()
     if (!diasMap.has(idx)) {
-      diasMap.set(idx, { dia: diasNomes[idx], total: 0, atendidos: 0, almoco: 0, jantar: 0 })
+      diasMap.set(idx, { dia: diasNomes[idx] ?? '', total: 0, atendidos: 0, almoco: 0, jantar: 0 })
     }
     
     const diaStats = diasMap.get(idx)!
@@ -367,7 +367,7 @@ onMounted(() => { const h = new Date(), t = new Date(); t.setDate(h.getDate() - 
         panelContainer: { class: 'bg-white' }
       }"
     >
-      <TabPanel header="Visão Geral">
+      <TabPanel value="0" header="Visão Geral">
         <div class="p-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div class="bg-slate-50 p-4 rounded-xl"><h3 class="text-sm font-bold mb-3"><i class="pi pi-chart-pie text-indigo-500 mr-2"></i>Status</h3><div class="h-56"><Chart type="pie" :data="chartStatusData" :options="chartOpts" class="h-full" /></div></div>
           <div class="bg-slate-50 p-4 rounded-xl"><h3 class="text-sm font-bold mb-3"><i class="pi pi-sun text-amber-500 mr-2"></i>Turno</h3><div class="h-56"><Chart type="doughnut" :data="chartTurnoData" :options="chartOpts" class="h-full" /></div></div>
@@ -376,7 +376,7 @@ onMounted(() => { const h = new Date(), t = new Date(); t.setDate(h.getDate() - 
         <div class="px-4 pb-4"><div class="bg-slate-50 p-4 rounded-xl"><h3 class="text-sm font-bold mb-3"><i class="pi pi-chart-line text-green-500 mr-2"></i>Evolução (14 dias)</h3><div class="h-64"><Chart type="line" :data="chartEvolucao" :options="chartBarOpts" class="h-full" /></div></div></div>
       </TabPanel>
 
-      <TabPanel header="Por Usuário">
+      <TabPanel value="1" header="Por Usuário">
         <div class="p-4 space-y-4">
           <div class="flex flex-col gap-2">
             <label class="text-xs font-bold text-slate-500">Selecione um estudante</label>
@@ -393,13 +393,13 @@ onMounted(() => { const h = new Date(), t = new Date(); t.setDate(h.getDate() - 
                 panel: { class: 'max-h-80 overflow-auto' }
               }"
             >
-              <template #item="{ item }">
+              <template #option="{ option }">
                 <div class="flex items-center gap-2 p-2">
-                  <Avatar v-if="item.foto" :image="item.foto" shape="circle" size="small" />
-                  <Avatar v-else :label="getInitials(item.nome)" shape="circle" size="small" :style="getAvatarStyle(item.nome)" />
+                  <Avatar v-if="option.foto" :image="option.foto" shape="circle" size="small" />
+                  <Avatar v-else :label="getInitials(option.nome)" shape="circle" size="small" :style="getAvatarStyle(option.nome)" />
                   <div>
-                    <p class="font-bold text-sm">{{ item.nome }}</p>
-                    <p class="text-xs text-slate-400">{{ item.matricula }}</p>
+                    <p class="font-bold text-sm">{{ option.nome }}</p>
+                    <p class="text-xs text-slate-400">{{ option.matricula }}</p>
                   </div>
                 </div>
               </template>
@@ -444,7 +444,7 @@ onMounted(() => { const h = new Date(), t = new Date(); t.setDate(h.getDate() - 
         </div>
       </TabPanel>
 
-      <TabPanel header="Por Dia">
+      <TabPanel value="2" header="Por Dia">
         <div class="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div class="bg-slate-50 p-4 rounded-xl"><h3 class="text-sm font-bold mb-3"><i class="pi pi-chart-bar text-blue-500 mr-2"></i>Gráfico</h3><div class="h-72"><Chart type="bar" :data="chartDiaData" :options="chartBarOpts" class="h-full" /></div></div>
           <div class="bg-slate-50 p-4 rounded-xl"><h3 class="text-sm font-bold mb-3"><i class="pi pi-table text-slate-500 mr-2"></i>Detalhes</h3>
@@ -461,7 +461,7 @@ onMounted(() => { const h = new Date(), t = new Date(); t.setDate(h.getDate() - 
         </div>
       </TabPanel>
 
-      <TabPanel header="Detalhado">
+      <TabPanel value="3" header="Detalhado">
         <div class="p-4">
           <DataTable v-model:filters="filters" :value="inscricoes" :loading="loading" paginator :rows="15" :globalFilterFields="['user.nome', 'user.matricula']">
             <template #header><div class="flex justify-between"><span class="font-bold">Histórico Completo</span><InputText v-model="filters['global'].value" placeholder="Buscar..." class="w-64" /></div></template>

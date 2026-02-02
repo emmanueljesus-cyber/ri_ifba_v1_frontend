@@ -76,7 +76,7 @@ const estatsDiaSemana = computed(() => {
     const d = p.refeicao?.data ? new Date(p.refeicao.data) : null
     if (!d || isNaN(d.getTime())) return
     const idx = d.getDay()
-    if (idx < 0 || idx > 6) return
+    if (idx < 0 || idx > 6 || !dias[idx]) return
     dias[idx].total++
     if (p.status_da_presenca === 'presente') dias[idx].presentes++
     else dias[idx].ausentes++
@@ -205,7 +205,7 @@ onMounted(() => {
 
     <!-- Abas -->
     <TabView v-model:activeIndex="activeTab" class="bg-white rounded-xl shadow-sm border">
-      <TabPanel header="Visão Geral">
+      <TabPanel value="0" header="Visão Geral">
         <div class="p-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div class="bg-slate-50 p-4 rounded-xl"><h3 class="text-sm font-bold mb-3"><i class="pi pi-chart-pie text-indigo-500 mr-2"></i>Presenças</h3><div class="h-56"><Chart type="pie" :data="chartPresencaData" :options="chartOpts" class="h-full" /></div></div>
           <div class="bg-slate-50 p-4 rounded-xl"><h3 class="text-sm font-bold mb-3"><i class="pi pi-sun text-amber-500 mr-2"></i>Por Turno</h3><div class="h-56"><Chart type="doughnut" :data="chartTurnoData" :options="chartOpts" class="h-full" /></div></div>
@@ -214,7 +214,7 @@ onMounted(() => {
         <div class="px-4 pb-4"><div class="bg-slate-50 p-4 rounded-xl"><h3 class="text-sm font-bold mb-3"><i class="pi pi-chart-line text-green-500 mr-2"></i>Evolução (14 dias)</h3><div class="h-64"><Chart type="line" :data="chartEvolucao" :options="chartBarOpts" class="h-full" /></div></div></div>
       </TabPanel>
 
-      <TabPanel header="Por Bolsista">
+      <TabPanel value="1" header="Por Bolsista">
         <div class="p-4 space-y-4">
           <Select v-model="filtroBolsista" :options="bolsistasUnicos" optionLabel="label" optionValue="value" filter class="w-80" placeholder="Selecione um bolsista" />
           <div v-if="!filtroBolsista" class="bg-slate-50 p-4 rounded-xl">
@@ -240,7 +240,7 @@ onMounted(() => {
         </div>
       </TabPanel>
 
-      <TabPanel header="Por Turno">
+      <TabPanel value="2" header="Por Turno">
         <div class="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div class="bg-slate-50 p-4 rounded-xl"><h3 class="text-sm font-bold mb-3"><i class="pi pi-chart-bar text-blue-500 mr-2"></i>Distribuição</h3><div class="h-72"><Chart type="bar" :data="chartDiaData" :options="chartBarOpts" class="h-full" /></div></div>
           <div class="bg-slate-50 p-4 rounded-xl"><h3 class="text-sm font-bold mb-3"><i class="pi pi-table text-slate-500 mr-2"></i>Por Dia da Semana</h3>
@@ -257,7 +257,7 @@ onMounted(() => {
         </div>
       </TabPanel>
 
-      <TabPanel header="Lista Bolsistas">
+      <TabPanel value="3" header="Lista Bolsistas">
         <div class="p-4">
           <DataTable v-model:filters="filters" :value="bolsistas" :loading="loading" paginator :rows="15" :globalFilterFields="['nome', 'matricula', 'curso']">
             <template #header><div class="flex justify-between"><span class="font-bold">Bolsistas Ativos</span><InputText v-model="filters['global'].value" placeholder="Buscar..." class="w-64" /></div></template>
@@ -271,7 +271,7 @@ onMounted(() => {
         </div>
       </TabPanel>
 
-      <TabPanel header="Presenças">
+      <TabPanel value="4" header="Presenças">
         <div class="p-4">
           <DataTable v-model:filters="filters" :value="presencasFiltradas" :loading="loading" paginator :rows="15" :globalFilterFields="['user.nome', 'user.matricula']">
             <template #header><div class="flex justify-between"><span class="font-bold">Histórico de Presenças</span><InputText v-model="filters['global'].value" placeholder="Buscar..." class="w-64" /></div></template>

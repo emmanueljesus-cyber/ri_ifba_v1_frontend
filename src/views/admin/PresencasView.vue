@@ -41,7 +41,7 @@ const dataFiltro = ref(
     : new Date()
 )
 const turnoFiltro = ref<'almoco' | 'jantar'>(
-  (localStorage.getItem('presencas_turno') as 'almoco' | 'jantar') || 'almoco'
+  (localStorage.getItem('presencas_turno') === 'jantar' ? 'jantar' : 'almoco')
 )
 const listaDia = ref<any[]>([])
 const metaDia = ref<any>(null)
@@ -67,7 +67,7 @@ const turnos: Array<{label: string, value: TurnoType}> = [
   { label: 'Jantar', value: 'jantar' }
 ]
 
-const getTurnoAtual = (): 'almoco' | 'jantar' => turnoFiltro.value || 'almoco'
+const getTurnoAtual = (): 'almoco' | 'jantar' => turnoFiltro.value
 
 const semRefeicao = ref(false)
 const mensagemSemRefeicao = ref('')
@@ -77,7 +77,7 @@ const carregarListaDia = async () => {
   semRefeicao.value = false
   mensagemSemRefeicao.value = ''
   try {
-    const dataIso = dataFiltro.value.toISOString().split('T')[0]
+    const dataIso = dataFiltro.value.toISOString().split('T')[0] ?? ''
     const resultado = await adminPresencaService.listarDoDiaComMeta(dataIso, getTurnoAtual())
     listaDia.value = resultado.bolsistas
     metaDia.value = resultado.meta
@@ -250,7 +250,7 @@ const confirmarPresencaManual = async (userId: number) => {
 
 const marcarFaltaManual = async (userId: number, justificada = false) => {
   try {
-    const dataIso = dataFiltro.value.toISOString().split('T')[0]
+    const dataIso = dataFiltro.value.toISOString().split('T')[0] ?? ''
     console.log('Marcando falta:', { userId, data: dataIso, turno: getTurnoAtual(), justificada })
 
     await adminPresencaService.marcarFalta(userId, dataIso, getTurnoAtual(), justificada)

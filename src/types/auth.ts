@@ -11,6 +11,7 @@ export interface User {
   turno_refeicao?: string | null
   turno_aula?: string | null
   foto?: string | null
+  dias_semana?: string[] | any[]
 }
 
 export interface LoginRequest {

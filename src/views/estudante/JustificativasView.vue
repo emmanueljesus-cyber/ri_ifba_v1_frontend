@@ -242,24 +242,7 @@ const diasSemanaBeneficiario = computed((): number[] => {
     .filter((d: number) => d >= 0)
 })
 
-// Computed para obter datas com justificativas pendentes
-const datasComJustificativaPendente = computed((): string[] => {
-  return justificativas.value
-    .filter(j => j.status === 'pendente')
-    .map(j => {
-      // A data pode vir no formato "dd/mm/yyyy" ou como objeto
-      if (j.refeicao?.data) {
-        // Formato brasileiro dd/mm/yyyy -> yyyy-mm-dd
-        const partes = j.refeicao.data.split('/')
-        if (partes.length === 3) {
-          return `${partes[2]}-${partes[1]}-${partes[0]}`
-        }
-        return j.refeicao.data
-      }
-      return ''
-    })
-    .filter(d => d)
-})
+
 
 // Computed para dias da semana que devem ser desabilitados no calendário
 // PrimeVue DatePicker usa 0=Domingo, 1=Segunda, ..., 6=Sábado
@@ -275,11 +258,11 @@ const datasJustificativasPendentes = computed((): Date[] => {
     .filter(j => j.status === 'pendente')
     .map(j => {
       // A data pode vir no formato "dd/mm/yyyy" ou como string ISO
-      if (j.refeicao?.data) {
-        const partes = j.refeicao.data.split('/')
+      if (j.refeicao?.data_do_cardapio) {
+        const partes = j.refeicao.data_do_cardapio.split('/')
         if (partes.length === 3) {
           // Formato brasileiro dd/mm/yyyy
-          return new Date(parseInt(partes[2]), parseInt(partes[1]) - 1, parseInt(partes[0]))
+          return new Date(parseInt(partes[2] ?? '0'), parseInt(partes[1] ?? '0') - 1, parseInt(partes[0] ?? '0'))
         }
       }
       return null

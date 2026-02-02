@@ -84,8 +84,8 @@ const carregarPresencas = async () => {
       return
     }
     
-    const inicio = filtroDataInicio.value.toISOString().split('T')[0]
-    const fim = filtroDataFim.value.toISOString().split('T')[0]
+    const inicio = filtroDataInicio.value.toISOString().split('T')[0] ?? ''
+    const fim = filtroDataFim.value.toISOString().split('T')[0] ?? ''
     const turno = filtroTurno.value === 'todos' ? undefined : filtroTurno.value
 
     relatorioPresencas.value = await relatorioService.presencas(inicio, fim, turno)
@@ -167,8 +167,8 @@ const exportarGeral = async () => {
       return
     }
     
-    const inicio = filtroDataInicio.value.toISOString().split('T')[0]
-    const fim = filtroDataFim.value.toISOString().split('T')[0]
+    const inicio = filtroDataInicio.value.toISOString().split('T')[0] ?? ''
+    const fim = filtroDataFim.value.toISOString().split('T')[0] ?? ''
     const turno = filtroTurno.value === 'todos' ? undefined : filtroTurno.value
 
     const blob = await relatorioService.exportarGeral(inicio, fim, turno)
@@ -1046,7 +1046,7 @@ watch(activeTab, (newTab) => {
                           {{ relatorio.mes_ano }}
                         </th>
                         <th v-for="(_, index) in relatorio.semanas" :key="index" class="p-4 text-center font-black uppercase tracking-widest text-xs border border-slate-700">
-                          Semana {{ index + 1 }}
+                          Semana {{ Number(index) + 1 }}
                         </th>
                         <th class="p-4 text-center font-black uppercase tracking-widest text-xs border border-slate-700 bg-slate-700">
                           Total Mês
@@ -1440,7 +1440,7 @@ watch(activeTab, (newTab) => {
                     class="flex items-center gap-2 px-3 py-2 bg-white rounded-lg border border-slate-200"
                   >
                     <span class="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-xs font-bold">
-                      {{ idx + 1 }}
+                      {{ Number(idx) + 1 }}
                     </span>
                     <div>
                       <p class="text-sm font-semibold text-slate-700">{{ est.nome }}</p>

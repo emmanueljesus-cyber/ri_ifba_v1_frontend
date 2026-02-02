@@ -187,12 +187,12 @@ const onUpload = async (event: any) => {
 // ============= ORGANIZAÇÃO POR SEMANAS =============
 const semanaAtual = ref(0) // Index da semana atual no array
 
-const getWeekKey = (date: Date) => {
+const getWeekKey = (date: Date): string => {
   const d = new Date(date)
   const dayOfWeek = d.getDay()
   const weekStart = new Date(d)
   weekStart.setDate(d.getDate() - dayOfWeek)
-  return weekStart.toISOString().split('T')[0]
+  return weekStart.toISOString().split('T')[0] ?? ''
 }
 
 const cardapiosPorSemana = computed(() => {
