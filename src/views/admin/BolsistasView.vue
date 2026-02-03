@@ -14,7 +14,6 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Avatar from 'primevue/avatar'
 import Select from 'primevue/select'
-import MultiSelect from 'primevue/multiselect'
 
 import Checkbox from 'primevue/checkbox'
 
@@ -80,12 +79,6 @@ const diasSemanaOptions = ref([
   { label: 'Sexta', value: 5 },
   { label: 'Sábado', value: 6 },
 ])
-
-const filtersBolsistas = ref({
-  global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-  ativo: { value: null, matchMode: FilterMatchMode.EQUALS },
-  turno_refeicao: { value: null, matchMode: FilterMatchMode.EQUALS }
-})
 
 const carregarBolsistas = async () => {
   loading.value = true
