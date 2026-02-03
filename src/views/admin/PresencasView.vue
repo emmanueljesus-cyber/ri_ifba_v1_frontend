@@ -33,6 +33,7 @@ const toast = useToast()
 const { getInitials, getAvatarStyle } = useAvatar()
 const { extractErrorMessage } = useErrorMessage()
 const loadingValidacao = ref(false)
+const qrScannerRef = ref<InstanceType<typeof QrScanner> | null>(null)
 
 // Lista do dia - com persistência
 const dataFiltro = ref(
@@ -101,7 +102,7 @@ watch([dataFiltro, turnoFiltro], () => {
     localStorage.setItem('presencas_data', dataFiltro.value.toISOString())
   }
   localStorage.setItem('presencas_turno', turnoFiltro.value)
-  
+
   carregarListaDia()
 })
 
@@ -171,7 +172,7 @@ const getStatusLabel = (status: string | null, temFaltaAntecipada = false) => {
 const validarTokenQr = async (token: string) => {
   if (!token) return
   if (loadingValidacao.value) return
-  
+
   loadingValidacao.value = true
   try {
     // Detectar se é token fixo (matrícula) ou temporário (hash)
@@ -182,20 +183,66 @@ const validarTokenQr = async (token: string) => {
       ? await adminPresencaService.validarQrCodeFixo(token, turnoFiltro.value, dataIso)
       : await adminPresencaService.validarQrCode(token)
     
-    toast.add({ 
-      severity: 'success', 
-      summary: 'Sucesso', 
-      detail: res.meta?.message || res.message || 'Presença confirmada!',
-      life: 3000
-    })
+    // Preparar mensagem de sucesso
+    const message = res.meta?.message || res.message || 'Presença confirmada!'
+
+    // Se já estava presente, mostrar como info
+    if (res.meta?.ja_presente) {
+      toast.add({
+        severity: 'info',
+        summary: 'Já Registrado',
+        detail: message,
+        life: 3000
+      })
+      qrScannerRef.value?.showScanResult('warning', `✓ ${message}`)
+    } else {
+      toast.add({
+        severity: 'success',
+        summary: 'Sucesso',
+        detail: message,
+        life: 3000
+      })
+      qrScannerRef.value?.showScanResult('success', `✓ ${message}`)
+    }
+
     carregarListaDia()
   } catch (err: any) {
+    const errorMsg = extractErrorMessage(err, 'Falha ao validar QR Code')
+
+    // Identificar tipos específicos de erro para melhor feedback
+    let severity: 'error' | 'warn' = 'error'
+    let summary = 'Erro'
+    let scanResultType: 'error' | 'warning' = 'error'
+
+    if (errorMsg.toLowerCase().includes('não encontrada') ||
+        errorMsg.toLowerCase().includes('não há refeição') ||
+        errorMsg.toLowerCase().includes('sem refeição')) {
+      severity = 'warn'
+      summary = 'Refeição não disponível'
+      scanResultType = 'warning'
+    } else if (errorMsg.toLowerCase().includes('não está listado') ||
+               errorMsg.toLowerCase().includes('não é bolsista') ||
+               errorMsg.toLowerCase().includes('turno incorreto')) {
+      severity = 'warn'
+      summary = 'Turno Incorreto'
+      scanResultType = 'warning'
+    } else if (errorMsg.toLowerCase().includes('inativo') ||
+               errorMsg.toLowerCase().includes('suspenso')) {
+      severity = 'warn'
+      summary = 'Bolsista inativo'
+      scanResultType = 'warning'
+    }
+
+    // Mostrar toast
     toast.add({
-      severity: 'error', 
-      summary: 'Erro', 
-      detail: err.response?.data?.message || 'Falha ao validar QR Code',
+      severity,
+      summary,
+      detail: errorMsg,
       life: 5000
     })
+
+    // Mostrar feedback visual no scanner
+    qrScannerRef.value?.showScanResult(scanResultType, `✗ ${summary}: ${errorMsg}`)
   } finally {
     loadingValidacao.value = false
   }
@@ -491,6 +538,9 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
             <div class="space-y-4">
               <!-- QR Scanner Component -->
               <QrScanner 
+                ref="qrScannerRef"
+                :stop-after-scan="true"
+                :scan-cooldown="5000"
                 @scan="validarTokenQr"
                 @error="(err) => toast.add({ severity: 'error', summary: 'Erro', detail: err, life: 5000 })"
               />

@@ -23,9 +23,16 @@ const displayImport = ref(false)
 const displayDesligar = ref(false)
 const displayReativar = ref(false)
 const displayTemplates = ref(false)
+const displayNovo = ref(false)
 const selectedBolsista = ref<any>(null)
 const motivoDesligamento = ref('')
 const motivoReativacao = ref('')
+const salvandoBolsista = ref(false)
+
+const novoBolsista = ref({
+  matricula: '',
+  turno_refeicao: 'almoco'
+})
 
 const statusOptions = ref([
   { label: 'Todos', value: null },
@@ -35,6 +42,11 @@ const statusOptions = ref([
 
 const turnoOptions = ref([
   { label: 'Todos Turnos', value: null },
+  { label: 'Almoço', value: 'almoco' },
+  { label: 'Jantar', value: 'jantar' }
+])
+
+const turnoFormOptions = ref([
   { label: 'Almoço', value: 'almoco' },
   { label: 'Jantar', value: 'jantar' }
 ])
@@ -77,8 +89,37 @@ const onUpload = async (event: any) => {
     toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Importação concluída' })
     displayImport.value = false
     carregarBolsistas()
-  } catch (err) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha na importação' })
+  } catch (err: any) {
+    const errorMsg = err.response?.data?.meta?.errors?.[0] || err.response?.data?.message || 'Falha na importação'
+    toast.add({ severity: 'error', summary: 'Erro', detail: errorMsg, life: 5000 })
+  }
+}
+
+const resetNovoBolsista = () => {
+  novoBolsista.value = {
+    matricula: '',
+    turno_refeicao: 'almoco'
+  }
+}
+
+const salvarNovoBolsista = async () => {
+  if (!novoBolsista.value.matricula) {
+    toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Matrícula é obrigatória', life: 3000 })
+    return
+  }
+
+  salvandoBolsista.value = true
+  try {
+    await adminBolsistaService.criarBolsista(novoBolsista.value)
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Bolsista adicionado com sucesso!' })
+    displayNovo.value = false
+    resetNovoBolsista()
+    carregarBolsistas()
+  } catch (err: any) {
+    const errorMsg = err.response?.data?.message || err.response?.data?.errors?.matricula?.[0] || 'Falha ao adicionar bolsista'
+    toast.add({ severity: 'error', summary: 'Erro', detail: errorMsg, life: 5000 })
+  } finally {
+    salvandoBolsista.value = false
   }
 }
 
@@ -126,9 +167,59 @@ const confirmarReativacao = async () => {
   }
 }
 
-const downloadTemplate = () => {
-  const url = `${import.meta.env.VITE_API_BASE_URL}/admin/bolsistas/template`
-  window.open(url, '_blank')
+import api from '../../services/api' // Importe o Axios configurado
+
+const downloadTemplate = async () => {
+  try {
+    // Usar rota V2 protegida (dentro do grupo admin)
+    // O interceptor do api.ts vai adicionar o token Bearer automaticamente
+    const url = `/admin/bolsistas/template-v2`
+
+    const response = await api.get(url, {
+      responseType: 'blob', // Importante para arquivos binários
+      headers: {
+        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      }
+    })
+
+    const blob = new Blob([response.data], { 
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+    })
+
+    const contentDisposition = response.headers['content-disposition']
+    let filename = 'template_bolsistas.xlsx'
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="(.+)"/)
+      if (filenameMatch && filenameMatch[1]) {
+        filename = filenameMatch[1]
+      }
+    }
+
+    const blobUrl = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = blobUrl
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 100)
+
+    toast.add({
+      severity: 'success',
+      summary: 'Sucesso',
+      detail: 'Template baixado com sucesso!',
+      life: 3000
+    })
+  } catch (error) {
+    console.error('Erro ao baixar template:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Erro',
+      detail: 'Erro ao baixar template. Tente novamente.',
+      life: 5000
+    })
+  }
 }
 
 // Função para abreviar dias da semana
@@ -161,6 +252,7 @@ onMounted(() => {
 
     <div class="flex justify-end items-center -mt-16 mb-4 relative z-10">
       <div class="flex gap-2">
+        <Button label="Novo" icon="pi pi-plus" severity="success" @click="displayNovo = true" />
         <Button label="Modelo Excel" icon="pi pi-download" severity="info" text @click="displayTemplates = true" />
         <Button label="Importar Planilha" icon="pi pi-upload" severity="secondary" outlined @click="displayImport = true" />
       </div>
@@ -288,8 +380,34 @@ onMounted(() => {
     <Dialog v-model:visible="displayImport" header="Importar Bolsistas" :style="{ width: '450px' }" modal>
       <div class="space-y-4">
         <p class="text-sm text-slate-600">Selecione o arquivo Excel (.xlsx) ou CSV com a lista de bolsistas aprovados.</p>
-        <FileUpload mode="basic" name="arquivo" accept=".xlsx,.csv" :maxFileSize="5000000" customUpload @select="onUpload" chooseLabel="Escolher Arquivo" class="w-full" />
+        <FileUpload mode="basic" name="file" accept=".xlsx,.csv" :maxFileSize="5000000" customUpload @select="onUpload" chooseLabel="Escolher Arquivo" class="w-full" />
       </div>
+    </Dialog>
+
+    <!-- Dialog Novo Bolsista -->
+    <Dialog v-model:visible="displayNovo" header="Novo Bolsista" :style="{ width: '450px' }" modal class="!rounded-xl">
+      <div class="space-y-4 py-2">
+        <div class="field">
+          <label class="font-bold block mb-2">Matrícula <span class="text-red-500">*</span></label>
+          <InputText v-model="novoBolsista.matricula" class="w-full" placeholder="Ex: 20231234567" />
+        </div>
+
+        <div class="field">
+          <label class="font-bold block mb-2">Turno da Refeição <span class="text-red-500">*</span></label>
+          <Select v-model="novoBolsista.turno_refeicao" :options="turnoFormOptions" optionLabel="label" optionValue="value" class="w-full" />
+        </div>
+
+        <div class="p-3 bg-blue-50 rounded-lg border border-blue-100">
+          <p class="text-xs text-blue-700">
+            <i class="pi pi-info-circle mr-1"></i>
+            Ao adicionar a matrícula, o estudante será automaticamente reconhecido como bolsista quando se cadastrar no sistema.
+          </p>
+        </div>
+      </div>
+      <template #footer>
+        <Button label="Cancelar" icon="pi pi-times" text @click="displayNovo = false; resetNovoBolsista()" />
+        <Button label="Salvar" icon="pi pi-check" severity="success" :loading="salvandoBolsista" @click="salvarNovoBolsista" />
+      </template>
     </Dialog>
 
     <!-- Dialog Desligamento -->
