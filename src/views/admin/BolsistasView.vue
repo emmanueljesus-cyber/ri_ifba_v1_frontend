@@ -92,9 +92,17 @@ const carregarBolsistas = async () => {
     }
 
     const response = await adminBolsistaService.listarTodos(params)
-    const data = response.data
-    bolsistas.value = data.data || []
-    totalRecords.value = data.meta?.total || bolsistas.value.length
+    const res = response.data // O corpo da resposta da API (ApiResponse)
+    
+    // Se a resposta for paginada via Resource, os dados reais estarão em res.data.data
+    // Se não for paginada ou for coleção simples, estarão em res.data
+    if (res.data && Array.isArray(res.data.data)) {
+      bolsistas.value = res.data.data
+    } else {
+      bolsistas.value = res.data || []
+    }
+
+    totalRecords.value = res.meta?.pagination?.total || res.meta?.total || bolsistas.value.length
   } catch (err: any) {
     console.error('Erro ao carregar bolsistas:', err)
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar usuários bolsistas' })
