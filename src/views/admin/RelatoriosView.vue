@@ -3,6 +3,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { FilterMatchMode } from '@primevue/core/api'
 import { relatorioService } from '../../services/relatorios'
 import { adminExtrasService } from '../../services/adminExtras'
+import api from '../../services/api'
 import PageHeader from '../../components/common/PageHeader.vue'
 
 // Locale pt-BR para DatePicker
@@ -117,23 +118,20 @@ const carregarDashboard = async () => {
 
 const downloadTemplate = async (tipo: string) => {
   try {
-    const url = `${import.meta.env.VITE_API_BASE_URL}/${tipo}/template-v2`
+    const url = `/admin/${tipo}/template`
 
-    const response = await fetch(url, {
-      method: 'GET',
+    const response = await api.get(url, {
+      responseType: 'blob',
       headers: {
         'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      },
-      credentials: 'include',
+      }
     })
 
-    if (!response.ok) {
-      throw new Error('Erro ao baixar template')
-    }
+    const blob = new Blob([response.data], { 
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+    })
 
-    const blob = await response.blob()
-
-    const contentDisposition = response.headers.get('Content-Disposition')
+    const contentDisposition = response.headers['content-disposition']
     let filename = `template_${tipo}.xlsx`
     if (contentDisposition) {
       const filenameMatch = contentDisposition.match(/filename="(.+)"/)

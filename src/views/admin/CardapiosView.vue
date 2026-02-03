@@ -168,9 +168,8 @@ import api from '../../services/api' // Importe o Axios configurado
 
 const downloadTemplate = async (tipo: string) => {
   try {
-    // Usar rota V2 protegida (dentro do grupo admin)
-    // O interceptor do api.ts vai adicionar o token Bearer automaticamente
-    const url = `/admin/${tipo}/template-v2`
+    // Usar rota dentro do grupo admin
+    const url = `/admin/${tipo}/template`
 
     const response = await api.get(url, {
       responseType: 'blob', // Importante para arquivos binários
