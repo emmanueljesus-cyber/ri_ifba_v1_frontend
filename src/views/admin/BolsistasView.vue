@@ -85,12 +85,22 @@ watch([() => filtersBolsistas.value.ativo.value, () => filtersBolsistas.value.tu
 
 const onUpload = async (event: any) => {
   try {
-    await adminBolsistaService.importar(event.files[0])
-    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Importação concluída' })
+    const resultado = await adminBolsistaService.importar(event.files[0])
+    const criados = resultado?.data?.criados?.length || 0
+    const atualizados = resultado?.data?.atualizados?.length || 0
+    const total = criados + atualizados
+    toast.add({ 
+      severity: 'success', 
+      summary: 'Sucesso', 
+      detail: `${total} bolsista(s) importado(s) (${criados} novos, ${atualizados} atualizados)`,
+      life: 4000
+    })
     displayImport.value = false
-    carregarBolsistas()
+    // Forçar atualização após breve delay
+    setTimeout(() => carregarBolsistas(), 500)
   } catch (err: any) {
-    const errorMsg = err.response?.data?.meta?.errors?.[0] || err.response?.data?.message || 'Falha na importação'
+    console.error('Erro na importação:', err)
+    const errorMsg = err.response?.data?.meta?.message || err.response?.data?.meta?.errors?.[0] || err.response?.data?.message || 'Falha na importação'
     toast.add({ severity: 'error', summary: 'Erro', detail: errorMsg, life: 5000 })
   }
 }

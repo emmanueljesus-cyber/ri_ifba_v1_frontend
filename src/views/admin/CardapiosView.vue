@@ -224,12 +224,21 @@ const onUpload = async (event: any) => {
   if (!file) return
   loadingImport.value = true
   try {
-    await cardapioService.importarAdmin(file, turnosImport.value)
-    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Cardápios importados' })
+    const resultado = await cardapioService.importarAdmin(file, turnosImport.value)
+    const total = resultado?.meta?.total_importados || resultado?.data?.length || 0
+    toast.add({ 
+      severity: 'success', 
+      summary: 'Sucesso', 
+      detail: `${total} cardápio(s) importado(s) com sucesso!`,
+      life: 4000
+    })
     displayImport.value = false
-    carregarCardapios()
+    // Forçar atualização após breve delay
+    setTimeout(() => carregarCardapios(), 500)
   } catch (err: any) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: err?.response?.data?.message || 'Falha na importação' })
+    console.error('Erro na importação:', err)
+    const errorMsg = err?.response?.data?.meta?.message || err?.response?.data?.message || 'Falha na importação'
+    toast.add({ severity: 'error', summary: 'Erro', detail: errorMsg, life: 5000 })
   } finally {
     loadingImport.value = false
   }
