@@ -14,6 +14,8 @@ const props = defineProps<{
   fps?: number
   qrbox?: number
   aspectRatio?: number
+  stopAfterScan?: boolean // Parar scanner automaticamente após leitura
+  scanCooldown?: number // Tempo de cooldown entre leituras (ms)
 }>()
 
 const isScanning = ref(false)
@@ -21,7 +23,13 @@ const isLoading = ref(false)
 const error = ref('')
 const permissionDenied = ref(false)
 const isMobile = ref(false)
+const lastScanResult = ref<{ type: 'success' | 'error' | 'warning', message: string } | null>(null)
 let html5QrCode: Html5Qrcode | null = null
+
+// Controle de debounce para evitar múltiplas leituras do mesmo QR code
+const lastScannedCode = ref('')
+const lastScannedTime = ref(0)
+const SCAN_COOLDOWN_MS = computed(() => props.scanCooldown || 5000) // 5 segundos padrão entre leituras
 
 // Detectar se é mobile
 onMounted(() => {
@@ -61,11 +69,30 @@ const startScanning = async () => {
     await html5QrCode.start(
       cameraConfig,
       config,
-      (decodedText) => {
+      async (decodedText) => {
+        // Verificar debounce: ignorar se for o mesmo código lido recentemente
+        const now = Date.now()
+        if (lastScannedCode.value === decodedText && (now - lastScannedTime.value) < SCAN_COOLDOWN_MS.value) {
+          return // Ignorar leitura duplicada
+        }
+
+        // Atualizar controle de debounce
+        lastScannedCode.value = decodedText
+        lastScannedTime.value = now
+
         // Vibrar ao escanear (apenas mobile)
         if (isMobile.value && navigator.vibrate) {
           navigator.vibrate(200)
         }
+
+        // Limpar último resultado
+        lastScanResult.value = null
+
+        // Parar scanner se configurado
+        if (props.stopAfterScan) {
+          await stopScanning()
+        }
+
         emit('scan', decodedText)
       },
       (_errorMessage) => {
@@ -100,10 +127,23 @@ const stopScanning = async () => {
       await html5QrCode.stop()
       html5QrCode.clear()
       isScanning.value = false
+      // Resetar controle de debounce
+      lastScannedCode.value = ''
+      lastScannedTime.value = 0
     } catch (err) {
       console.error('Erro ao parar scanner:', err)
     }
   }
+}
+
+const showScanResult = (type: 'success' | 'error' | 'warning', message: string) => {
+  lastScanResult.value = { type, message }
+  // Auto-limpar após 5 segundos
+  setTimeout(() => {
+    if (lastScanResult.value?.message === message) {
+      lastScanResult.value = null
+    }
+  }, 5000)
 }
 
 onUnmounted(() => {
@@ -113,7 +153,8 @@ onUnmounted(() => {
 defineExpose({
   startScanning,
   stopScanning,
-  isScanning
+  isScanning,
+  showScanResult
 })
 </script>
 
@@ -157,7 +198,30 @@ defineExpose({
         'border-slate-200': !isScanning
       }"
     ></div>
-    
+
+    <!-- Resultado da última leitura -->
+    <div v-if="lastScanResult" class="mt-4">
+      <Message
+        :severity="lastScanResult.type === 'success' ? 'success' : lastScanResult.type === 'warning' ? 'warn' : 'error'"
+        :closable="true"
+        @close="lastScanResult = null"
+      >
+        <div class="flex items-start gap-3">
+          <i
+            class="text-xl mt-0.5"
+            :class="{
+              'pi pi-check-circle': lastScanResult.type === 'success',
+              'pi pi-exclamation-triangle': lastScanResult.type === 'warning',
+              'pi pi-times-circle': lastScanResult.type === 'error'
+            }"
+          ></i>
+          <div>
+            <p class="font-semibold text-base">{{ lastScanResult.message }}</p>
+          </div>
+        </div>
+      </Message>
+    </div>
+
     <!-- Estado inicial -->
     <div v-if="!isScanning && !isLoading" class="text-center space-y-4">
       <div class="p-8 border-2 border-dashed border-slate-200 rounded-xl bg-gradient-to-br from-slate-50 to-white">
