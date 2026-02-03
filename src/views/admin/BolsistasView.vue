@@ -126,63 +126,11 @@ const confirmarReativacao = async () => {
   }
 }
 
-const downloadTemplate = async () => {
-  try {
-    const url = `${import.meta.env.VITE_API_BASE_URL}/admin/bolsistas/template`
-
-    // Fazer request com responseType blob
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      },
-      credentials: 'include', // Para enviar cookies se necessário
-    })
-
-    if (!response.ok) {
-      throw new Error('Erro ao baixar template')
-    }
-
-    // Pegar o blob da resposta
-    const blob = await response.blob()
-
-    // Extrair nome do arquivo do header Content-Disposition
-    const contentDisposition = response.headers.get('Content-Disposition')
-    let filename = 'template_bolsistas.xlsx'
-    if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename="(.+)"/)
-      if (filenameMatch && filenameMatch[1]) {
-        filename = filenameMatch[1]
-      }
-    }
-
-    // Criar URL temporária e forçar download
-    const blobUrl = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = blobUrl
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-
-    // Limpar URL temporária
-    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 100)
-
-    toast.add({
-      severity: 'success',
-      summary: 'Sucesso',
-      detail: 'Template baixado com sucesso!',
-      life: 3000
-    })
-  } catch (error) {
-    console.error('Erro ao baixar template:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Erro',
-      detail: 'Erro ao baixar template. Tente novamente.',
-      life: 5000
-    })
-  }
+const downloadTemplate = () => {
+  // Usar a rota V2 pública que já foi validada
+  // Nota: A rota v2 não tem prefixo /admin
+  const url = `${import.meta.env.VITE_API_BASE_URL}/bolsistas/template-v2`
+  window.open(url, '_blank')
 }
 
 // Função para abreviar dias da semana

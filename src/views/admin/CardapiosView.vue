@@ -164,58 +164,11 @@ const salvarCardapio = async () => {
   }
 }
 
-const downloadTemplate = async (tipo: string) => {
-  try {
-    const url = `${import.meta.env.VITE_API_BASE_URL}/admin/${tipo}/template`
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      },
-      credentials: 'include',
-    })
-
-    if (!response.ok) {
-      throw new Error('Erro ao baixar template')
-    }
-
-    const blob = await response.blob()
-
-    const contentDisposition = response.headers.get('Content-Disposition')
-    let filename = `template_${tipo}.xlsx`
-    if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename="(.+)"/)
-      if (filenameMatch && filenameMatch[1]) {
-        filename = filenameMatch[1]
-      }
-    }
-
-    const blobUrl = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = blobUrl
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-
-    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 100)
-
-    toast.add({
-      severity: 'success',
-      summary: 'Sucesso',
-      detail: 'Template baixado com sucesso!',
-      life: 3000
-    })
-  } catch (error) {
-    console.error('Erro ao baixar template:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Erro',
-      detail: 'Erro ao baixar template. Tente novamente.',
-      life: 5000
-    })
-  }
+const downloadTemplate = (tipo: string) => {
+  // Usar a rota V2 pública que já foi validada e não requer autenticação complexa
+  // Nota: A rota v2 não tem prefixo /admin
+  const url = `${import.meta.env.VITE_API_BASE_URL}/${tipo}/template-v2`
+  window.open(url, '_blank')
 }
 
 const onUpload = async (event: any) => {
