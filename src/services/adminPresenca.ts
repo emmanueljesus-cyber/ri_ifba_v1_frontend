@@ -6,6 +6,16 @@ export const adminPresencaService = {
     return data
   },
 
+  async validarQrCodeFixo(qrToken: string, turno?: string, data?: string) {
+    const matricula = qrToken.replace(/^IFBA-/, '').trim()
+    const { data: res } = await api.post('/admin/bolsistas/qrcode', {
+      matricula,
+      turno,
+      data
+    })
+    return res
+  },
+
   async buscarBolsista(search: string, turno: string, data?: string) {
     const { data: res } = await api.get('/admin/bolsistas/buscar', {
       params: { search, turno, data }
@@ -30,8 +40,19 @@ export const adminPresencaService = {
     return res.data
   },
 
+  async listarDoDiaComMeta(data: string, turno: string) {
+    const { data: res } = await api.get('/admin/bolsistas/dia', {
+      params: { data, turno }
+    })
+    return {
+      bolsistas: res.data,
+      meta: res.meta
+    }
+  },
+
   async confirmarPresenca(payload: { matricula: string, turno: string, data: string }) {
     const { data } = await api.post('/admin/presencas/confirmar', payload)
     return data.data
   }
 }
+

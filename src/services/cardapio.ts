@@ -9,8 +9,14 @@ interface ApiResponse<T> {
 export const cardapioService = {
   async hoje(): Promise<CardapioDia> {
     // Laravel Resource retorna { data: { id, data, almoco, jantar, ... } }
-    const response = await api.get('/cardapio/hoje')
+    const response = await api.get('/estudante/cardapio/hoje')
     // Retorna o objeto completo, não apenas response.data.data (que é só a data string)
+    return response.data
+  },
+
+  async hojePublico(): Promise<CardapioDia> {
+    // Rota pública sem autenticação
+    const response = await api.get('/cardapio/hoje')
     return response.data
   },
 
@@ -29,9 +35,17 @@ export const cardapioService = {
     return data.data
   },
 
+  async carteirinha(): Promise<any> {
+    const { data } = await api.get<ApiResponse<any>>('/estudante/carteirinha')
+    return data.data
+  },
+
   // Admin methods
   async listarAdmin(): Promise<Cardapio[]> {
-    const { data } = await api.get<ApiResponse<Cardapio[]>>('/admin/cardapios')
+    // Buscar todos os cardápios (per_page grande para pegar todos)
+    const { data } = await api.get<ApiResponse<Cardapio[]>>('/admin/cardapios', {
+      params: { per_page: 500 }
+    })
     return data.data
   },
 

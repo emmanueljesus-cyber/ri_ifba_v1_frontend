@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { FilterMatchMode } from '@primevue/core/api'
 import { useToast } from 'primevue/usetoast'
 import { adminBolsistaService } from '../../services/adminBolsista'
@@ -12,29 +12,46 @@ import FileUpload from 'primevue/fileupload'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
-import IconField from 'primevue/iconfield'
-import InputIcon from 'primevue/inputicon'
 import Avatar from 'primevue/avatar'
-import SelectButton from 'primevue/selectbutton'
 import Select from 'primevue/select'
+
+import Checkbox from 'primevue/checkbox'
 
 const toast = useToast()
 const { getInitials, getAvatarStyle } = useAvatar()
 const bolsistas = ref<any[]>([])
-const aprovados = ref<any[]>([])
 const loading = ref(false)
-const loadingAprovados = ref(false)
+const totalRecords = ref(0)
+const lazyParams = ref({
+  first: 0,
+  rows: 10,
+  page: 0,
+  sortField: null,
+  sortOrder: null,
+  filters: {
+    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    ativo: { value: null, matchMode: FilterMatchMode.EQUALS },
+    turno_refeicao: { value: null, matchMode: FilterMatchMode.EQUALS }
+  }
+})
+
 const displayImport = ref(false)
 const displayDesligar = ref(false)
+const displayReativar = ref(false)
 const displayTemplates = ref(false)
+const displayNovo = ref(false)
 const selectedBolsista = ref<any>(null)
 const motivoDesligamento = ref('')
+const motivoReativacao = ref('')
+const salvandoBolsista = ref(false)
 
-const activeTab = ref('aprovados')
-const tabOptions = [
-  { label: 'Lista de Aprovados (Importada)', value: 'aprovados' },
-  { label: 'Usuários Bolsistas (Cadastrados)', value: 'cadastrados' }
-]
+const novoBolsista = ref({
+  matricula: '',
+  nome: '',
+  curso: '',
+  turno_refeicao: 'almoco',
+  dias_semana: [1,2,3,4,5],
+})
 
 const statusOptions = ref([
   { label: 'Todos', value: null },
@@ -42,103 +59,263 @@ const statusOptions = ref([
   { label: 'Inativo', value: false }
 ])
 
-const turnoOptionsAprovados = ref([
+const turnoOptions = ref([
   { label: 'Todos Turnos', value: null },
   { label: 'Almoço', value: 'almoco' },
   { label: 'Jantar', value: 'jantar' }
 ])
 
-const turnoOptionsCadastrados = ref([
-  { label: 'Todos Turnos', value: null },
-  { label: 'Matutino', value: 'matutino' },
-  { label: 'Vespertino', value: 'vespertino' },
-  { label: 'Noturno', value: 'noturno' }
+const turnoFormOptions = ref([
+  { label: 'Almoço', value: 'almoco' },
+  { label: 'Jantar', value: 'jantar' }
 ])
 
-const filtersAprovados = ref({
-  global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-  ativo: { value: null, matchMode: FilterMatchMode.EQUALS },
-  turno_refeicao: { value: null, matchMode: FilterMatchMode.EQUALS }
-})
-
-const filtersBolsistas = ref({
-  global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-  ativo: { value: null, matchMode: FilterMatchMode.EQUALS },
-  turno_refeicao: { value: null, matchMode: FilterMatchMode.EQUALS }
-})
+const diasSemanaOptions = ref([
+  { label: 'Domingo', value: 0 },
+  { label: 'Segunda', value: 1 },
+  { label: 'Terça', value: 2 },
+  { label: 'Quarta', value: 3 },
+  { label: 'Quinta', value: 4 },
+  { label: 'Sexta', value: 5 },
+  { label: 'Sábado', value: 6 },
+])
 
 const carregarBolsistas = async () => {
   loading.value = true
   try {
-    const params = {
-      ativo: filtersBolsistas.value.ativo.value,
-      turno_refeicao: filtersBolsistas.value.turno_refeicao.value
+    const params: any = {
+      page: lazyParams.value.page + 1,
+      per_page: lazyParams.value.rows,
+      search: lazyParams.value.filters.global.value || undefined,
+      ativo: lazyParams.value.filters.ativo.value !== null ? lazyParams.value.filters.ativo.value : undefined,
+      turno: lazyParams.value.filters.turno_refeicao.value || undefined
     }
-    const data = await adminBolsistaService.listarTodos(params)
-    bolsistas.value = Array.isArray(data) ? data : (data?.data || [])
-  } catch (err) {
+
+    const response = await adminBolsistaService.listarTodos(params)
+    const data = response.data
+    bolsistas.value = data.data || []
+    totalRecords.value = data.meta?.total || bolsistas.value.length
+  } catch (err: any) {
+    console.error('Erro ao carregar bolsistas:', err)
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar usuários bolsistas' })
   } finally {
     loading.value = false
   }
 }
 
-const carregarAprovados = async () => {
-  loadingAprovados.value = true
-  try {
-    const params = {
-      ativo: filtersAprovados.value.ativo.value,
-      turno_refeicao: filtersAprovados.value.turno_refeicao.value
-    }
-    const data = await adminBolsistaService.listarAprovados(params)
-    aprovados.value = Array.isArray(data) ? data : (data?.data || [])
-  } catch (err) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar lista de aprovados' })
-  } finally {
-    loadingAprovados.value = false
-  }
+const onPage = (event: any) => {
+  lazyParams.value = event
+  carregarBolsistas()
 }
 
-watch([() => filtersAprovados.value.ativo.value, () => filtersAprovados.value.turno_refeicao.value], () => {
-  carregarAprovados()
+const onFilter = () => {
+  lazyParams.value.page = 0
+  carregarBolsistas()
+}
+
+watch([() => lazyParams.value.filters.ativo.value, () => lazyParams.value.filters.turno_refeicao.value], () => {
+  onFilter()
 })
 
-watch([() => filtersBolsistas.value.ativo.value, () => filtersBolsistas.value.turno_refeicao.value], () => {
-  carregarBolsistas()
+let searchTimeout: any = null
+watch(() => lazyParams.value.filters.global.value, () => {
+  if (searchTimeout) clearTimeout(searchTimeout)
+  searchTimeout = setTimeout(() => {
+    onFilter()
+  }, 500)
 })
 
 const onUpload = async (event: any) => {
   try {
-    await adminBolsistaService.importar(event.files[0])
-    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Importação concluída' })
+    const resultado = await adminBolsistaService.importar(event.files[0])
+    console.log('Resultado da importação de bolsistas:', resultado)
+    
+    const criados = resultado?.data?.criados?.length || 0
+    const atualizados = resultado?.data?.atualizados?.length || 0
+    const total = criados + atualizados
+    const erros = resultado?.meta?.total_erros || resultado?.meta?.errors?.length || 0
+    const errosDetalhes = resultado?.meta?.errors || []
+    
+    if (total > 0) {
+      toast.add({ 
+        severity: 'success', 
+        summary: 'Sucesso', 
+        detail: `${total} bolsista(s) importado(s) (${criados} novos, ${atualizados} atualizados)`,
+        life: 4000
+      })
+    } else if (erros > 0) {
+      // Se não importou nada mas tem erros, mostrar os erros
+      const primeiroErro = errosDetalhes[0]?.erro || 'Verifique o formato do arquivo'
+      toast.add({ 
+        severity: 'warn', 
+        summary: 'Atenção', 
+        detail: `Nenhum bolsista importado. ${primeiroErro}`,
+        life: 6000
+      })
+    } else {
+      toast.add({ 
+        severity: 'info', 
+        summary: 'Info', 
+        detail: 'Nenhum bolsista encontrado no arquivo. Verifique se o cabeçalho contém "Matrícula".',
+        life: 5000
+      })
+    }
+    
     displayImport.value = false
-    carregarAprovados()
+    // Forçar atualização após breve delay
+    setTimeout(() => carregarBolsistas(), 500)
+  } catch (err: any) {
+    console.error('Erro na importação:', err)
+    const errorMsg = err.response?.data?.meta?.message || err.response?.data?.meta?.errors?.[0] || err.response?.data?.message || 'Falha na importação'
+    toast.add({ severity: 'error', summary: 'Erro', detail: errorMsg, life: 5000 })
+  }
+}
+
+const resetNovoBolsista = () => {
+  novoBolsista.value = {
+    matricula: '',
+    nome: '',
+    curso: '',
+    turno_refeicao: 'almoco',
+    dias_semana: [1,2,3,4,5],
+  }
+}
+
+const salvarNovoBolsista = async () => {
+  if (!novoBolsista.value.matricula) {
+    toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Matrícula é obrigatória', life: 3000 })
+    return
+  }
+
+  salvandoBolsista.value = true
+  try {
+    await adminBolsistaService.criarBolsista(novoBolsista.value)
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Bolsista adicionado com sucesso!' })
+    displayNovo.value = false
+    resetNovoBolsista()
     carregarBolsistas()
-  } catch (err) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha na importação' })
+  } catch (err: any) {
+    const errorMsg = err.response?.data?.message || err.response?.data?.errors?.matricula?.[0] || 'Falha ao adicionar bolsista'
+    toast.add({ severity: 'error', summary: 'Erro', detail: errorMsg, life: 5000 })
+  } finally {
+    salvandoBolsista.value = false
   }
 }
 
 const confirmarDesligamento = async () => {
-  if (!motivoDesligamento.value) return
+  if (!motivoDesligamento.value || motivoDesligamento.value.length < 10) {
+    toast.add({ 
+      severity: 'warn', 
+      summary: 'Atenção', 
+      detail: 'O motivo deve ter no mínimo 10 caracteres',
+      life: 3000
+    })
+    return
+  }
   try {
     await adminBolsistaService.desligar(selectedBolsista.value.id, motivoDesligamento.value)
     toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Bolsista desligado' })
     displayDesligar.value = false
+    motivoDesligamento.value = ''
     carregarBolsistas()
-  } catch (err) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao desligar' })
+  } catch (err: any) {
+    const errorMsg = err.response?.data?.message || 'Falha ao desligar'
+    toast.add({ severity: 'error', summary: 'Erro', detail: errorMsg })
   }
 }
 
-const downloadTemplate = () => {
-  const url = `${import.meta.env.VITE_API_BASE_URL}/admin/bolsistas/template`
-  window.open(url, '_blank')
+const confirmarReativacao = async () => {
+  if (motivoReativacao.value && motivoReativacao.value.length < 10) {
+    toast.add({ 
+      severity: 'warn', 
+      summary: 'Atenção', 
+      detail: 'Se informado, o motivo deve ter no mínimo 10 caracteres',
+      life: 3000
+    })
+    return
+  }
+  try {
+    await adminBolsistaService.reativar(selectedBolsista.value.id, motivoReativacao.value || undefined)
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Bolsista reativado' })
+    displayReativar.value = false
+    motivoReativacao.value = ''
+    carregarBolsistas()
+  } catch (err: any) {
+    const errorMsg = err.response?.data?.message || 'Falha ao reativar'
+    toast.add({ severity: 'error', summary: 'Erro', detail: errorMsg })
+  }
+}
+
+import api from '../../services/api' // Importe o Axios configurado
+
+const downloadTemplate = async () => {
+  try {
+    // Usar rota dentro do grupo admin/bolsistas
+    const url = `/admin/bolsistas/template`
+
+    const response = await api.get(url, {
+      responseType: 'blob', // Importante para arquivos binários
+      headers: {
+        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      }
+    })
+
+    const blob = new Blob([response.data], { 
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+    })
+
+    const contentDisposition = response.headers['content-disposition']
+    let filename = 'template_bolsistas.xlsx'
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="(.+)"/)
+      if (filenameMatch && filenameMatch[1]) {
+        filename = filenameMatch[1]
+      }
+    }
+
+    const blobUrl = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = blobUrl
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 100)
+
+    toast.add({
+      severity: 'success',
+      summary: 'Sucesso',
+      detail: 'Template baixado com sucesso!',
+      life: 3000
+    })
+  } catch (error) {
+    console.error('Erro ao baixar template:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Erro',
+      detail: 'Erro ao baixar template. Tente novamente.',
+      life: 5000
+    })
+  }
+}
+
+// Função para abreviar dias da semana
+const getDiaSemanaAbrev = (dia: number) => {
+  const dias: Record<number, string> = {
+    0: 'Dom',
+    1: 'Seg',
+    2: 'Ter',
+    3: 'Qua',
+    4: 'Qui',
+    5: 'Sex',
+    6: 'Sáb'
+  }
+  return dias[dia] || '-'
 }
 
 onMounted(() => {
   carregarBolsistas()
-  carregarAprovados()
 })
 </script>
 
@@ -151,77 +328,36 @@ onMounted(() => {
       :breadcrumbs="[{ label: 'Admin', route: '/admin' }, { label: 'Gestão de Bolsistas' }]"
     />
 
-    <div class="flex justify-between items-center -mt-16 mb-4 relative z-10">
-      <SelectButton v-model="activeTab" :options="tabOptions" optionLabel="label" optionValue="value" aria-labelledby="basic" />
+    <div class="flex justify-end items-center -mt-16 mb-4 relative z-10">
       <div class="flex gap-2">
+        <Button label="Novo" icon="pi pi-plus" severity="success" @click="displayNovo = true" />
         <Button label="Modelo Excel" icon="pi pi-download" severity="info" text @click="displayTemplates = true" />
         <Button label="Importar Planilha" icon="pi pi-upload" severity="secondary" outlined @click="displayImport = true" />
       </div>
     </div>
 
-    <div v-if="activeTab === 'aprovados'" class="animate-fadein">
+    <div class="animate-fadein">
       <div class="card bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-        <DataTable v-model:filters="filtersAprovados" :value="aprovados" :loading="loadingAprovados" paginator :rows="10"
-          :globalFilterFields="['matricula', 'nome', 'turno']" filterDisplay="menu">
-          <template #header>
-            <div class="flex flex-col md:flex-row justify-between items-center mb-2 gap-4">
-              <span class="text-xl font-bold text-slate-700">Aprovados</span>
-              <div class="flex gap-3 items-center w-full md:w-auto">
-                <Select v-model="filtersAprovados['turno_refeicao'].value" :options="turnoOptionsAprovados" optionLabel="label" optionValue="value" placeholder="Turno" class="flex-1 md:w-40" />
-                <Select v-model="filtersAprovados['ativo'].value" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Status" class="flex-1 md:w-40" />
-                <InputText v-model="filtersAprovados['global'].value" placeholder="Buscar..." class="flex-1 md:w-60 !rounded-xl" />
-              </div>
-            </div>
-          </template>
-          <Column field="matricula" header="Matrícula">
-            <template #body="{ data }">
-              <div class="flex items-center gap-3">
-                <Avatar icon="pi pi-user" shape="circle" :style="getAvatarStyle(data.matricula)" />
-                <span class="font-bold text-slate-700">{{ data.matricula }}</span>
-              </div>
-            </template>
-          </Column>
-          <Column field="nome" header="Nome">
-            <template #body="{ data }">
-              <span class="text-slate-600 font-medium">{{ data.nome || 'Não informado' }}</span>
-            </template>
-          </Column>
-          <Column field="turno_refeicao" header="Turno">
-            <template #body="{ data }">
-              <Tag :severity="data.turno_refeicao === 'almoco' ? 'success' : 'info'" class="!rounded-full px-3 uppercase text-[10px] font-black">
-                <i :class="data.turno_refeicao === 'almoco' ? 'pi pi-sun' : 'pi pi-moon'" class="mr-1"></i>
-                {{ data.turno_refeicao }}
-              </Tag>
-            </template>
-          </Column>
-          <Column field="ativo" header="Status">
-            <template #body="{ data }">
-              <Tag :value="data.ativo ? 'Ativa' : 'Inativa'" :severity="data.ativo ? 'success' : 'danger'" />
-            </template>
-          </Column>
-          <Column header="Ações">
-            <template #body="{ data }">
-               <div class="flex gap-2">
-                 <Button v-if="data.ativo" icon="pi pi-times-circle" outlined severity="danger" class="!rounded-lg" title="Desativar Bolsista" @click="adminBolsistaService.desativarAprovado(data.id); carregarAprovados()" />
-                 <Button v-else icon="pi pi-check-circle" outlined severity="success" class="!rounded-lg" title="Reativar Matrícula" @click="adminBolsistaService.reativarAprovado(data.id); carregarAprovados()" />
-               </div>
-            </template>
-          </Column>
-        </DataTable>
-      </div>
-    </div>
-
-    <div v-if="activeTab === 'cadastrados'" class="animate-fadein">
-      <div class="card bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-        <DataTable v-model:filters="filtersBolsistas" :value="bolsistas" :loading="loading" paginator :rows="10"
+        <DataTable 
+          :value="bolsistas" 
+          :lazy="true"
+          :paginator="true" 
+          :rows="lazyParams.rows"
+          :totalRecords="totalRecords"
+          :loading="loading"
+          @page="onPage"
+          @filter="onFilter"
+          v-model:filters="lazyParams.filters"
+          filterDisplay="menu"
+          dataKey="id"
           :globalFilterFields="['nome', 'matricula', 'curso']">
           <template #header>
             <div class="flex flex-col md:flex-row justify-between items-center mb-2 gap-4">
-              <span class="text-xl font-bold text-slate-700">Usuários Ativos</span>
+              <span class="text-xl font-bold text-slate-700">Bolsistas</span>
               <div class="flex gap-3 items-center w-full md:w-auto">
-                <Select v-model="filtersBolsistas['turno_refeicao'].value" :options="turnoOptionsAprovados" optionLabel="label" optionValue="value" placeholder="Refeição" class="flex-1 md:w-40" />
-                <Select v-model="filtersBolsistas['ativo'].value" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Status" class="flex-1 md:w-40" />
-                <InputText v-model="filtersBolsistas['global'].value" placeholder="Buscar bolsista..." class="flex-1 md:w-60 !rounded-xl" />
+                <Select v-model="lazyParams.filters['turno_refeicao'].value" :options="turnoOptions" optionLabel="label" optionValue="value" placeholder="Refeição" class="flex-1 md:w-40" />
+                <Select v-model="lazyParams.filters['ativo'].value" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Status" class="flex-1 md:w-40" />
+                <InputText v-model="lazyParams.filters['global'].value" placeholder="Buscar bolsista..." class="flex-1 md:w-60 !rounded-xl" />
               </div>
             </div>
           </template>
@@ -256,16 +392,72 @@ onMounted(() => {
               <span v-else class="text-slate-400 text-xs italic">Não informado</span>
             </template>
           </Column>
+          <Column field="preferencia_alimentar" header="Saúde e Restrições">
+            <template #body="{ data }">
+              <div v-if="data.is_ovolactovegetariano || (data.restricoes_alimentares && data.restricoes_alimentares.length > 0) || data.alergias" class="space-y-1.5">
+                <!-- Ovolactovegetariano -->
+                <div v-if="data.is_ovolactovegetariano" class="flex items-center gap-2">
+                  <i class="pi pi-leaf text-green-500"></i>
+                  <span class="text-xs text-green-700 font-semibold">Ovolactovegetariano</span>
+                </div>
+
+                <!-- Restrições Alimentares -->
+                <div v-if="data.restricoes_alimentares && data.restricoes_alimentares.length > 0">
+                  <div class="flex flex-wrap gap-1">
+                    <Tag v-for="restricao in data.restricoes_alimentares" :key="restricao" severity="warn" class="!rounded-full px-2 text-[9px]">
+                      {{ restricao }}
+                    </Tag>
+                  </div>
+                </div>
+
+                <!-- Alergias -->
+                <div v-if="data.alergias" class="flex items-center gap-1">
+                  <i class="pi pi-exclamation-triangle text-red-500 text-xs"></i>
+                  <Tag severity="danger" class="!rounded-full px-2 text-[9px]">
+                    {{ data.alergias }}
+                  </Tag>
+                </div>
+              </div>
+              <span v-else class="text-slate-300 text-xs">-</span>
+            </template>
+          </Column>
+          <Column field="dias_semana" header="Dias de Uso">
+            <template #body="{ data }">
+              <div v-if="data.dias_semana_texto" class="text-xs text-slate-700">
+
+                  {{ data.dias_semana_texto }}
+
+              </div>
+              <div v-else-if="data.dias_semana && data.dias_semana.length > 0" class="flex flex-wrap gap-1">
+                <Tag v-for="dia in data.dias_semana" :key="dia" severity="secondary" class="!rounded-full px-2 text-[9px]">
+                  {{ getDiaSemanaAbrev(dia) }}
+                </Tag>
+              </div>
+              <span v-else class="text-slate-300 text-xs">-</span>
+            </template>
+          </Column>
+
           <Column field="ativo" header="Status">
             <template #body="{ data }">
               <Tag :value="data.ativo ? 'Ativo' : 'Inativo'" :severity="data.ativo ? 'success' : 'danger'" />
+            </template>
+          </Column>
+          <Column field="total_faltas" header="Faltas">
+            <template #body="{ data }">
+              <div class="flex items-center gap-2">
+                <Tag
+                    :value="String(data.total_faltas ?? 0)"
+                    :severity="(data.total_faltas ?? 0) === 0 ? 'info' : (data.total_faltas ?? 0) <= 3 ? 'warn' : 'danger'"
+                    class="!rounded-full px-3 font-black"
+                />
+              </div>
             </template>
           </Column>
           <Column header="Ações">
             <template #body="{ data }">
               <div class="flex gap-2">
                 <Button v-if="data.ativo" icon="pi pi-user-minus" outlined severity="danger" class="!rounded-lg" @click="selectedBolsista = data; displayDesligar = true" />
-                <Button v-else icon="pi pi-user-plus" outlined severity="success" class="!rounded-lg" @click="adminBolsistaService.reativar(data.id); carregarBolsistas()" />
+                <Button v-else icon="pi pi-user-plus" outlined severity="success" class="!rounded-lg" @click="selectedBolsista = data; displayReativar = true" />
               </div>
             </template>
           </Column>
@@ -277,8 +469,63 @@ onMounted(() => {
     <Dialog v-model:visible="displayImport" header="Importar Bolsistas" :style="{ width: '450px' }" modal>
       <div class="space-y-4">
         <p class="text-sm text-slate-600">Selecione o arquivo Excel (.xlsx) ou CSV com a lista de bolsistas aprovados.</p>
-        <FileUpload mode="basic" name="arquivo" accept=".xlsx,.csv" :maxFileSize="5000000" customUpload @select="onUpload" chooseLabel="Escolher Arquivo" class="w-full" />
+        <FileUpload mode="basic" name="file" accept=".xlsx,.csv" :maxFileSize="5000000" customUpload @select="onUpload" chooseLabel="Escolher Arquivo" class="w-full" />
       </div>
+    </Dialog>
+
+    <!-- Dialog Novo Bolsista -->
+    <Dialog v-model:visible="displayNovo" header="Novo Bolsista" :style="{ width: '520px' }" modal class="!rounded-xl">
+      <div class="space-y-4 py-2">
+        <div class="grid grid-cols-1 gap-4">
+          <div class="p-3 bg-blue-50 rounded-lg border border-blue-100">
+            <p class="text-xs text-blue-700">
+              <i class="pi pi-info-circle mr-1"></i>
+              Ao adicionar a matrícula, o estudante será automaticamente reconhecido como bolsista quando se cadastrar no sistema.
+            </p>
+          </div>
+          <div class="field">
+            <label class="font-bold block mb-2">Matrícula <span class="text-red-500">*</span></label>
+            <InputText v-model="novoBolsista.matricula" class="w-full" placeholder="Ex: 20231234567" />
+          </div>
+
+          <div class="field">
+            <label class="font-bold block mb-2">Nome</label>
+            <InputText v-model="novoBolsista.nome" class="w-full" placeholder="Nome completo (opcional)" />
+          </div>
+
+          <div class="field">
+            <label class="font-bold block mb-2">Curso</label>
+            <InputText v-model="novoBolsista.curso" class="w-full" placeholder="Ex: ADS" />
+          </div>
+
+          <div class="field">
+            <label class="font-bold block mb-2">Turno da Refeição <span class="text-red-500">*</span></label>
+            <div class="flex gap-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
+              <div v-for="option in turnoFormOptions" :key="option.value" class="flex items-center">
+                <Checkbox v-model="novoBolsista.turno_refeicao" :inputId="option.value" :name="option.value" :value="option.value" :binary="false" 
+                  @update:modelValue="(val) => { if(Array.isArray(val)) novoBolsista.turno_refeicao = val[val.length-1] }" />
+                <label :for="option.value" class="ml-2 cursor-pointer">{{ option.label }}</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="font-bold block mb-2">Dias da Semana</label>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
+              <div v-for="dia in diasSemanaOptions" :key="dia.value" class="flex items-center">
+                <Checkbox v-model="novoBolsista.dias_semana" :inputId="'dia-'+dia.value" :name="'dia-'+dia.value" :value="dia.value" />
+                <label :for="'dia-'+dia.value" class="ml-2 text-sm cursor-pointer">{{ dia.label }}</label>
+              </div>
+            </div>
+            <small class="text-slate-500 mt-1 block">Padrão: Seg a Sex.</small>
+          </div>
+        </div>
+
+      </div>
+      <template #footer>
+        <Button label="Cancelar" icon="pi pi-times" text @click="displayNovo = false; resetNovoBolsista()" />
+        <Button label="Salvar" icon="pi pi-check" severity="success" :loading="salvandoBolsista" @click="salvarNovoBolsista" />
+      </template>
     </Dialog>
 
     <!-- Dialog Desligamento -->
@@ -286,13 +533,42 @@ onMounted(() => {
       <div class="space-y-4">
         <p>Deseja realmente desligar o bolsista <strong>{{ selectedBolsista?.nome }}</strong>?</p>
         <div class="field">
-          <label class="font-bold block mb-2">Motivo</label>
-          <InputText v-model="motivoDesligamento" class="w-full" placeholder="Ex: Formatura, Desistência..." />
+          <label class="font-bold block mb-2">Motivo <span class="text-red-500">*</span></label>
+          <InputText 
+            v-model="motivoDesligamento" 
+            class="w-full" 
+            placeholder="Ex: Formatura, Desistência, Transferência..." 
+          />
+          <small class="text-slate-500 mt-1 block">
+            Mínimo 10 caracteres ({{ motivoDesligamento.length }}/10)
+          </small>
         </div>
       </div>
       <template #footer>
         <Button label="Cancelar" icon="pi pi-times" text @click="displayDesligar = false" />
         <Button label="Confirmar" icon="pi pi-check" severity="danger" @click="confirmarDesligamento" />
+      </template>
+    </Dialog>
+
+    <!-- Dialog Reativação -->
+    <Dialog v-model:visible="displayReativar" header="Confirmar Reativação" :style="{ width: '400px' }" modal>
+      <div class="space-y-4">
+        <p>Deseja realmente reativar o bolsista <strong>{{ selectedBolsista?.nome }}</strong>?</p>
+        <div class="field">
+          <label class="font-bold block mb-2">Motivo (opcional)</label>
+          <InputText 
+            v-model="motivoReativacao" 
+            class="w-full" 
+            placeholder="Ex: Retorno de licença, Regularização de situação..." 
+          />
+          <small v-if="motivoReativacao" class="text-slate-500 mt-1 block">
+            {{ motivoReativacao.length }}/10 caracteres
+          </small>
+        </div>
+      </div>
+      <template #footer>
+        <Button label="Cancelar" icon="pi pi-times" text @click="displayReativar = false" />
+        <Button label="Confirmar" icon="pi pi-check" severity="success" @click="confirmarReativacao" />
       </template>
     </Dialog>
 

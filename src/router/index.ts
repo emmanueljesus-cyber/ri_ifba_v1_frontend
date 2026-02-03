@@ -26,6 +26,18 @@ const router = createRouter({
       meta: { public: true }
     },
     {
+      path: '/forgot-password',
+      name: 'forgot-password',
+      component: () => import('../views/ForgotPasswordView.vue'),
+      meta: { public: true }
+    },
+    {
+      path: '/reset-password',
+      name: 'reset-password',
+      component: () => import('../views/ResetPasswordView.vue'),
+      meta: { public: true }
+    },
+    {
       path: '/cardapio',
       name: 'cardapio',
       component: () => import('../views/estudante/CardapioView.vue'),
@@ -53,6 +65,11 @@ const router = createRouter({
           component: () => import('../views/estudante/HistoricoView.vue')
         },
         {
+          path: 'notificacoes',
+          name: 'notificacoes',
+          component: () => import('../views/estudante/NotificacoesView.vue')
+        },
+        {
           path: 'perfil',
           name: 'perfil',
           component: () => import('../views/estudante/PerfilView.vue')
@@ -61,6 +78,12 @@ const router = createRouter({
           path: 'justificativas',
           name: 'justificativas',
           component: () => import('../views/estudante/JustificativasView.vue'),
+          meta: { bolsistaOnly: true }
+        },
+        {
+          path: 'carteirinha',
+          name: 'carteirinha',
+          component: () => import('../views/estudante/CarteirinhaView.vue'),
           meta: { bolsistaOnly: true }
         },
         {
@@ -110,6 +133,16 @@ const router = createRouter({
           path: 'relatorios',
           name: 'admin-relatorios',
           component: () => import('../views/admin/RelatoriosView.vue')
+        },
+        {
+          path: 'relatorios/extras',
+          name: 'admin-relatorios-extras',
+          component: () => import('../views/admin/RelatoriosExtrasView.vue')
+        },
+        {
+          path: 'relatorios/bolsistas',
+          name: 'admin-relatorios-bolsistas',
+          component: () => import('../views/admin/RelatoriosBolsistasView.vue')
         },
         {
           path: 'usuarios',

@@ -39,9 +39,28 @@ const formSenha = ref({
 
 const formBolsista = ref({
   alergias: '',
+  restricoes_alimentares: [] as string[],
   is_ovolactovegetariano: false,
   dias: [] as number[]
 })
+
+// Opções de alergias e restrições alimentares
+const alergiasOptions = [
+  { label: 'Intolerância à lactose', value: 'Intolerância à lactose' },
+  { label: 'Glúten', value: 'Glúten' },
+  { label: 'Frutos do mar', value: 'Frutos do mar' },
+  { label: 'Amendoim', value: 'Amendoim' },
+  { label: 'Castanhas', value: 'Castanhas' },
+  { label: 'Soja', value: 'Soja' },
+  { label: 'Ovos', value: 'Ovos' },
+  { label: 'Leite', value: 'Leite' },
+  { label: 'Trigo', value: 'Trigo' },
+  { label: 'Carne vermelha', value: 'Carne vermelha' },
+  { label: 'Carne de porco', value: 'Carne de porco' },
+  { label: 'Frango', value: 'Frango' },
+  { label: 'Peixe', value: 'Peixe' },
+  {label: "Abacaxi", value: "Abacaxi"}
+]
 
 // Controle de solicitação de mudança de dias
 const temSolicitacaoPendente = ref(false)
@@ -61,6 +80,7 @@ const carregarPerfil = async () => {
   try {
     perfil.value = await perfilService.obter()
     formBolsista.value.alergias = perfil.value.alergias || ''
+    formBolsista.value.restricoes_alimentares = perfil.value.restricoes_alimentares || []
     formBolsista.value.is_ovolactovegetariano = !!perfil.value.is_ovolactovegetariano
     formBolsista.value.dias = perfil.value.dias_cadastrados?.map(d => parseInt(d)) || []
 
@@ -255,9 +275,10 @@ const removerFoto = async () => {
 const salvarDadosBolsista = async () => {
   loadingBolsista.value = true
   try {
-    await perfilService.atualizar({
-      alergias: formBolsista.value.alergias,
-      is_ovolactovegetariano: formBolsista.value.is_ovolactovegetariano
+    await perfilService.atualizarRestricoesAlimentares({
+      restricoes_alimentares: formBolsista.value.restricoes_alimentares,
+      alergias: formBolsista.value.alergias || undefined,
+      preferencia_alimentar: formBolsista.value.is_ovolactovegetariano ? 'ovolactovegetariano' : 'comum'
     })
     toast.add({
       severity: 'success',
@@ -331,6 +352,15 @@ const toggleDia = (value: number) => {
     formBolsista.value.dias.push(value)
   } else {
     formBolsista.value.dias.splice(index, 1)
+  }
+}
+
+const toggleRestricao = (value: string) => {
+  const index = formBolsista.value.restricoes_alimentares.indexOf(value)
+  if (index === -1) {
+    formBolsista.value.restricoes_alimentares.push(value)
+  } else {
+    formBolsista.value.restricoes_alimentares.splice(index, 1)
   }
 }
 
@@ -586,13 +616,38 @@ onMounted(() => {
           </AccordionHeader>
           <AccordionContent>
             <div class="space-y-6 pt-4">
+              <!-- Alergias e Restrições - Lista de Checkboxes -->
               <div class="flex flex-col gap-3">
-                <label class="font-bold text-slate-700">Alergias</label>
+                <label class="font-bold text-slate-700">Alergias e Restrições Alimentares</label>
+                <p class="text-sm text-slate-500">Selecione todas as alergias ou restrições que você possui:</p>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div
+                    v-for="opcao in alergiasOptions"
+                    :key="opcao.value"
+                    class="flex items-center gap-2 p-3 bg-white border border-slate-200 rounded-xl hover:border-primary-500 transition-colors cursor-pointer"
+                    :class="{ 'bg-red-50 border-red-300': formBolsista.restricoes_alimentares.includes(opcao.value) }"
+                    @click="toggleRestricao(opcao.value)"
+                  >
+                    <Checkbox
+                      v-model="formBolsista.restricoes_alimentares"
+                      :value="opcao.value"
+                      :inputId="'alergia-' + opcao.value"
+                    />
+                    <label :for="'alergia-' + opcao.value" class="text-sm font-medium text-slate-700 cursor-pointer">
+                      {{ opcao.label }}
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Outras alergias (texto livre) -->
+              <div class="flex flex-col gap-3">
+                <label class="font-bold text-slate-700">Outras Alergias</label>
                 <Textarea
                   v-model="formBolsista.alergias"
-                  rows="3"
+                  rows="2"
                   autoResize
-                  placeholder="Informe se possui alguma alergia alimentar..."
+                  placeholder="Informe outras alergias que não estão na lista acima..."
                   class="w-full !rounded-xl"
                 />
               </div>

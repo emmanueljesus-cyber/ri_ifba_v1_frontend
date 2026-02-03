@@ -43,8 +43,8 @@ const perfis = [
 const carregarUsuarios = async () => {
   loading.value = true
   try {
-    const res = await adminUsuarioService.listar({ desligado: false })
-    usuarios.value = res.data || []
+    const res = await adminUsuarioService.listar({ desligado: false })// Suporta tanto res.data.items quanto res.data diretamente
+    usuarios.value = res.data?.items || res.data || []
   } catch (err) {
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar usuários' })
   } finally {

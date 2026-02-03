@@ -4,6 +4,7 @@ interface ResumoDashboard {
   refeicao_atual: {
     turno: string
     confirmados: number
+    total_esperados: number
     capacidade: number
     vagas_restantes: number
   } | null

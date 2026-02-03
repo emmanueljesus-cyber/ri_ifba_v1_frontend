@@ -7,6 +7,7 @@ export interface FilaExtraAdmin {
     nome: string
     matricula: string
     email?: string
+    foto?: string
   }
   refeicao?: {
     id: number
@@ -55,6 +56,8 @@ interface PaginatedResponse<T> extends ApiResponse<T> {
 
 export interface FiltrosExtras {
   data?: string
+  data_inicio?: string
+  data_fim?: string
   turno?: 'almoco' | 'jantar'
   status?: 'inscrito' | 'aprovado' | 'rejeitado'
   per_page?: number
@@ -131,7 +134,18 @@ export const adminExtrasService = {
   /**
    * Exportar relatório de fila de extras em Excel
    */
-  async exportarRelatorio(params: { data_inicio?: string, data_fim?: string, turno?: string }): Promise<void> {
+  async exportarRelatorio(params: {
+    data_inicio?: string,
+    data_fim?: string,
+    turno?: string,
+    user_id?: number,
+    agrupamento?: string,
+    status_final?: string,
+    detalhado?: number,
+    tipo_relatorio?: string
+  }): Promise<void> {
+    console.log('🔧 adminExtrasService.exportarRelatorio chamado com:', params)
+
     const response = await api.get('/admin/extras/exportar', {
       params,
       responseType: 'blob'
@@ -142,7 +156,22 @@ export const adminExtrasService = {
     const link = document.createElement('a')
     link.href = url
     const dataAtual = new Date().toISOString().split('T')[0]
-    link.setAttribute('download', `relatorio_fila_extras_${dataAtual}.xlsx`)
+
+    // Nome dinâmico baseado no tipo
+    let nomeArquivo = 'relatorio_extras'
+    if (params.tipo_relatorio === 'por_usuario' && params.user_id) {
+      nomeArquivo = `relatorio_extras_usuario_${params.user_id}`
+    } else if (params.tipo_relatorio === 'por_dia') {
+      nomeArquivo = 'relatorio_extras_por_dia'
+    } else if (params.tipo_relatorio === 'detalhado') {
+      nomeArquivo = 'relatorio_extras_detalhado'
+    } else if (params.tipo_relatorio === 'geral') {
+      nomeArquivo = 'relatorio_extras_geral'
+    }
+
+    link.setAttribute('download', `${nomeArquivo}_${dataAtual}.xlsx`)
+    console.log('📥 Baixando arquivo:', `${nomeArquivo}_${dataAtual}.xlsx`)
+
     document.body.appendChild(link)
     link.click()
     link.remove()

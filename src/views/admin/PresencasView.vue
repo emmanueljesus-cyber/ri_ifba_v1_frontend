@@ -4,7 +4,9 @@ import { FilterMatchMode } from '@primevue/core/api'
 import { useToast } from 'primevue/usetoast'
 import { adminPresencaService } from '../../services/adminPresenca'
 import { useAvatar } from '../../composables/useAvatar'
+import { useErrorMessage } from '../../composables/useErrorMessage'
 import PageHeader from '../../components/common/PageHeader.vue'
+import QrScanner from '../../components/common/QrScanner.vue'
 
 // Locale pt-BR para DatePicker
 const ptBR = {
@@ -24,24 +26,26 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import DatePicker from 'primevue/datepicker'
-import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
-import IconField from 'primevue/iconfield'
-import InputIcon from 'primevue/inputicon'
 import Avatar from 'primevue/avatar'
 
 const toast = useToast()
 const { getInitials, getAvatarStyle } = useAvatar()
-const tokenManual = ref('')
-const buscaTermo = ref('')
-const resultadosBusca = ref<any[]>([])
-const loadingBusca = ref(false)
+const { extractErrorMessage } = useErrorMessage()
 const loadingValidacao = ref(false)
+const qrScannerRef = ref<InstanceType<typeof QrScanner> | null>(null)
 
-// Lista do dia
-const dataFiltro = ref(new Date())
-const turnoFiltro = ref<'almoco' | 'jantar'>('almoco')
+// Lista do dia - com persistência
+const dataFiltro = ref(
+  localStorage.getItem('presencas_data') 
+    ? new Date(localStorage.getItem('presencas_data')!) 
+    : new Date()
+)
+const turnoFiltro = ref<'almoco' | 'jantar'>(
+  (localStorage.getItem('presencas_turno') === 'jantar' ? 'jantar' : 'almoco')
+)
 const listaDia = ref<any[]>([])
+const metaDia = ref<any>(null)
 const loadingDia = ref(false)
 
 const filters = ref()
@@ -64,21 +68,41 @@ const turnos: Array<{label: string, value: TurnoType}> = [
   { label: 'Jantar', value: 'jantar' }
 ]
 
-const getTurnoAtual = (): string => turnoFiltro.value || 'almoco'
+const getTurnoAtual = (): 'almoco' | 'jantar' => turnoFiltro.value
+
+const semRefeicao = ref(false)
+const mensagemSemRefeicao = ref('')
 
 const carregarListaDia = async () => {
   loadingDia.value = true
+  semRefeicao.value = false
+  mensagemSemRefeicao.value = ''
   try {
-    const dataIso = dataFiltro.value.toISOString().split('T')[0]
-    listaDia.value = await adminPresencaService.listarDoDia(dataIso, getTurnoAtual())
-  } catch (err) {
+    const dataIso = dataFiltro.value.toISOString().split('T')[0] ?? ''
+    const resultado = await adminPresencaService.listarDoDiaComMeta(dataIso, getTurnoAtual())
+    listaDia.value = resultado.bolsistas
+    metaDia.value = resultado.meta
+  } catch (err: any) {
     console.error('Erro ao carregar lista do dia', err)
+    const errorMsg = extractErrorMessage(err, '')
+    if (errorMsg.toLowerCase().includes('refeição') || errorMsg.toLowerCase().includes('refeicao')) {
+      semRefeicao.value = true
+      mensagemSemRefeicao.value = 'Não há refeição cadastrada para este dia e turno. Cadastre o cardápio primeiro.'
+      listaDia.value = []
+      metaDia.value = null
+    }
   } finally {
     loadingDia.value = false
   }
 }
 
 watch([dataFiltro, turnoFiltro], () => {
+  // Salvar no localStorage para persistência
+  if (dataFiltro.value) {
+    localStorage.setItem('presencas_data', dataFiltro.value.toISOString())
+  }
+  localStorage.setItem('presencas_turno', turnoFiltro.value)
+
   carregarListaDia()
 })
 
@@ -86,9 +110,36 @@ onMounted(() => {
   carregarListaDia()
 })
 
+const isRefeicaoPassada = () => {
+  const agora = new Date()
+  const hoje = new Date()
+  hoje.setHours(0,0,0,0)
+  
+  const filtro = new Date(dataFiltro.value)
+  filtro.setHours(0,0,0,0)
+
+  // Se data futura -> não passou
+  if (filtro > hoje) return false 
+  // Se data passada -> passou
+  if (filtro < hoje) return true 
+
+  // Se é hoje, verifica hora
+  const hora = agora.getHours()
+  // Almoço até 15h, Jantar até 21h (dando uma margem)
+  if (turnoFiltro.value === 'almoco') return hora >= 15
+  if (turnoFiltro.value === 'jantar') return hora >= 21
+  
+  return false
+}
+
 const getStatusSeverity = (status: string | null, temFaltaAntecipada = false) => {
   if (temFaltaAntecipada) return 'info'
-  if (!status) return 'secondary'
+  
+  // Se não tem status, verifica se já passou
+  if (!status) {
+    return isRefeicaoPassada() ? 'danger' : 'secondary'
+  }
+
   switch (status) {
     case 'presente': return 'success'
     case 'falta_justificada': return 'info'
@@ -99,86 +150,183 @@ const getStatusSeverity = (status: string | null, temFaltaAntecipada = false) =>
 }
 
 const getStatusLabel = (status: string | null, temFaltaAntecipada = false) => {
-  if (temFaltaAntecipada) return 'FALTA ANTECIPADA'
-  if (!status) return 'Pendente'
+  if (temFaltaAntecipada) return 'JUSTIFICATIVA ANTECIPADA'
+  
+  // Se não tem status, verifica se já passou
+  if (!status) {
+    return isRefeicaoPassada() ? 'AUSENTE' : 'PENDENTE'
+  }
+
   switch (status) {
     case 'presente': return 'PRESENTE'
     case 'falta_justificada': return 'FALTA JUSTIFICADA'
-    case 'falta_injustificada': return 'FALTA'
+    case 'falta_injustificada': return 'AUSENTE' // Falta injustificada = Ausente
+    case 'ausente': return 'AUSENTE'
     case 'cancelado': return 'CANCELADO'
     default: return status.replace('_', ' ').toUpperCase()
   }
 }
 
-const validarToken = async () => {
-  if (!tokenManual.value) return
-  
+
+
+const validarTokenQr = async (token: string) => {
+  if (!token) return
+  if (loadingValidacao.value) return
+
   loadingValidacao.value = true
   try {
-    const res = await adminPresencaService.validarQrCode(tokenManual.value)
-    toast.add({ severity: 'success', summary: 'Sucesso', detail: res.message || 'Presença confirmada!' })
-    tokenManual.value = ''
+    // Detectar se é token fixo (matrícula) ou temporário (hash)
+    const isTokenFixo = token.startsWith('IFBA-') || token.length <= 20
+    const dataIso = dataFiltro.value.toISOString().split('T')[0]
+    
+    const res = isTokenFixo
+      ? await adminPresencaService.validarQrCodeFixo(token, turnoFiltro.value, dataIso)
+      : await adminPresencaService.validarQrCode(token)
+    
+    // Preparar mensagem de sucesso
+    const message = res.meta?.message || res.message || 'Presença confirmada!'
+
+    // Se já estava presente, mostrar como info
+    if (res.meta?.ja_presente) {
+      toast.add({
+        severity: 'info',
+        summary: 'Já Registrado',
+        detail: message,
+        life: 3000
+      })
+      qrScannerRef.value?.showScanResult('warning', `✓ ${message}`)
+    } else {
+      toast.add({
+        severity: 'success',
+        summary: 'Sucesso',
+        detail: message,
+        life: 3000
+      })
+      qrScannerRef.value?.showScanResult('success', `✓ ${message}`)
+    }
+
     carregarListaDia()
   } catch (err: any) {
+    const errorMsg = extractErrorMessage(err, 'Falha ao validar QR Code')
+
+    // Identificar tipos específicos de erro para melhor feedback
+    let severity: 'error' | 'warn' = 'error'
+    let summary = 'Erro'
+    let scanResultType: 'error' | 'warning' = 'error'
+
+    if (errorMsg.toLowerCase().includes('não encontrada') ||
+        errorMsg.toLowerCase().includes('não há refeição') ||
+        errorMsg.toLowerCase().includes('sem refeição')) {
+      severity = 'warn'
+      summary = 'Refeição não disponível'
+      scanResultType = 'warning'
+    } else if (errorMsg.toLowerCase().includes('não está listado') ||
+               errorMsg.toLowerCase().includes('não é bolsista') ||
+               errorMsg.toLowerCase().includes('turno incorreto')) {
+      severity = 'warn'
+      summary = 'Turno Incorreto'
+      scanResultType = 'warning'
+    } else if (errorMsg.toLowerCase().includes('inativo') ||
+               errorMsg.toLowerCase().includes('suspenso')) {
+      severity = 'warn'
+      summary = 'Bolsista inativo'
+      scanResultType = 'warning'
+    }
+
+    // Mostrar toast
     toast.add({
-      severity: 'error', 
-      summary: 'Erro', 
-      detail: err.response?.data?.message || 'Falha ao validar token' 
+      severity,
+      summary,
+      detail: errorMsg,
+      life: 5000
     })
+
+    // Mostrar feedback visual no scanner
+    qrScannerRef.value?.showScanResult(scanResultType, `✗ ${summary}: ${errorMsg}`)
   } finally {
     loadingValidacao.value = false
   }
 }
 
-const buscarAlunos = async () => {
-  if (buscaTermo.value.length < 3) return
-  
-  loadingBusca.value = true
-  try {
-    const dataIso = dataFiltro.value.toISOString().split('T')[0]
-    resultadosBusca.value = await adminPresencaService.buscarBolsista(
-      buscaTermo.value, 
-      turnoFiltro.value,
-      dataIso
-    )
-  } catch (err) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha na busca' })
-  } finally {
-    loadingBusca.value = false
-  }
-}
+
+
 
 const confirmarPresencaManual = async (userId: number) => {
   try {
     const dataIso = dataFiltro.value.toISOString().split('T')[0]
     await adminPresencaService.confirmarPorId(userId, dataIso, turnoFiltro.value)
-    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Presença confirmada manualmente' })
+
+    // Atualizar status localmente imediatamente
+    const aluno = listaDia.value.find((a: any) => a.id === userId || a.user_id === userId)
+    if (aluno) {
+      aluno.status_presenca = 'presente'
+      aluno.presente = true
+      if (aluno.presenca_atual) {
+        aluno.presenca_atual.status_da_presenca = 'presente'
+      } else {
+        aluno.presenca_atual = { status_da_presenca: 'presente' }
+      }
+    }
+
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Presença confirmada!' })
+
+    // Recarregar lista do servidor em background
     carregarListaDia()
-    resultadosBusca.value = resultadosBusca.value.filter(a => a.id !== userId)
   } catch (err: any) {
-    toast.add({ 
-      severity: 'error', 
-      summary: 'Erro', 
-      detail: err.response?.data?.message || 'Falha ao confirmar' 
-    })
+    const errorMsg = extractErrorMessage(err, 'Falha ao confirmar')
+
+    // Se já foi confirmada, atualizar o status local e mostrar info
+    if (errorMsg.toLowerCase().includes('já') || errorMsg.toLowerCase().includes('confirmada')) {
+      const aluno = listaDia.value.find((a: any) => a.id === userId || a.user_id === userId)
+      if (aluno) {
+        aluno.status_presenca = 'presente'
+        aluno.presente = true
+        if (aluno.presenca_atual) {
+          aluno.presenca_atual.status_da_presenca = 'presente'
+        } else {
+          aluno.presenca_atual = { status_da_presenca: 'presente' }
+        }
+      }
+      toast.add({ severity: 'info', summary: 'Info', detail: 'Presença já estava confirmada' })
+      carregarListaDia()
+    } else {
+      toast.add({ severity: 'error', summary: 'Erro', detail: errorMsg })
+    }
   }
 }
 
 const marcarFaltaManual = async (userId: number, justificada = false) => {
   try {
-    const dataIso = dataFiltro.value.toISOString().split('T')[0]
+    const dataIso = dataFiltro.value.toISOString().split('T')[0] ?? ''
+    console.log('Marcando falta:', { userId, data: dataIso, turno: getTurnoAtual(), justificada })
+
     await adminPresencaService.marcarFalta(userId, dataIso, getTurnoAtual(), justificada)
+
+    // Atualizar status localmente imediatamente
+    const aluno = listaDia.value.find((a: any) => a.id === userId || a.user_id === userId)
+    if (aluno) {
+      aluno.status_presenca = justificada ? 'falta_justificada' : 'falta_injustificada'
+      aluno.presente = false
+      if (aluno.presenca_atual) {
+        aluno.presenca_atual.status_da_presenca = justificada ? 'falta_justificada' : 'falta_injustificada'
+      } else {
+        aluno.presenca_atual = { status_da_presenca: justificada ? 'falta_justificada' : 'falta_injustificada' }
+      }
+    }
+
     toast.add({
       severity: justificada ? 'info' : 'warn',
       summary: 'Sucesso',
       detail: justificada ? 'Falta justificada registrada' : 'Falta injustificada registrada'
     })
-    carregarListaDia()
+
+    // Recarregar lista do servidor após um pequeno delay para garantir persistência
+    setTimeout(() => carregarListaDia(), 500)
   } catch (err: any) {
-    toast.add({ 
-      severity: 'error', 
+    toast.add({
+      severity: 'error',
       summary: 'Erro', 
-      detail: err.response?.data?.message || 'Falha ao registrar falta' 
+      detail: extractErrorMessage(err, 'Falha ao registrar falta')
     })
   }
 }
@@ -193,13 +341,31 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
       :breadcrumbs="[{ label: 'Admin', route: '/admin' }, { label: 'Controle de Presença' }]"
     />
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
       <!-- Filtros e Lista do Dia -->
-      <Card class="lg:col-span-2 overflow-hidden !rounded-xl border border-slate-200 shadow-sm">
+      <Card class="xl:col-span-2 overflow-hidden !rounded-xl border border-slate-200 shadow-sm">
         <template #title>
-          <div class="flex items-center gap-2">
-            <i class="pi pi-list text-primary-600"></i>
-            <span class="text-xl font-bold text-slate-700">Lista de Presença do Dia</span>
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <i class="pi pi-list text-primary-600"></i>
+              <span class="text-xl font-bold text-slate-700">Lista de Presença do Dia</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span
+                v-if="metaDia?.total_bolsistas != null"
+                class="px-3 py-1 bg-primary-100 text-primary-700 text-sm font-bold rounded-full"
+                v-tooltip.top="'Total de bolsistas esperados para este dia/turno (RF09)'"
+              >
+                {{ metaDia.total_bolsistas }} esperados
+              </span>
+              <span
+                v-if="metaDia?.stats"
+                class="px-3 py-1 bg-emerald-100 text-emerald-700 text-sm font-bold rounded-full"
+                v-tooltip.top="'Presenças já confirmadas'"
+              >
+                {{ metaDia.stats.presentes || 0 }} confirmados
+              </span>
+            </div>
           </div>
         </template>
         <template #content>
@@ -240,7 +406,20 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
                 </div>
               </div>
             </template>
-            <template #empty> <p class="text-center p-4">Nenhum bolsista para este dia/turno.</p> </template>
+            <template #empty>
+              <div v-if="semRefeicao" class="text-center p-6">
+                <i class="pi pi-calendar-times text-4xl text-orange-400 mb-3"></i>
+                <p class="text-orange-600 font-semibold">{{ mensagemSemRefeicao }}</p>
+                <Button
+                  label="Ir para Cardápios"
+                  icon="pi pi-arrow-right"
+                  class="mt-4 !rounded-xl"
+                  severity="warning"
+                  @click="$router.push('/admin/cardapios')"
+                />
+              </div>
+              <p v-else class="text-center p-4">Nenhum bolsista para este dia/turno.</p>
+            </template>
             <Column header="Aluno" sortable field="nome">
               <template #body="{ data }">
                 <div class="flex items-center gap-3">
@@ -281,23 +460,42 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
             <Column header="Ações" class="text-center">
               <template #body="{ data }">
                 <!-- Se tem falta antecipada, ações desabilitadas -->
-                <div v-if="data.tem_falta_antecipada" class="text-xs text-slate-400 italic">
-                  <i class="pi pi-lock mr-1"></i> Justificado
+                <div v-if="data.tem_falta_antecipada" class="flex justify-center gap-1">
+                  <Tag severity="info" class="!rounded-full px-2 text-[9px]">
+                    <i class="pi pi-lock mr-1"></i> Justificado
+                  </Tag>
                 </div>
-                <!-- Se já está presente, só mostra indicador -->
-                <div v-else-if="data.presenca_atual?.status_da_presenca === 'presente'" class="text-xs text-green-600 font-bold">
-                  <i class="pi pi-check-circle mr-1"></i> Presente
+                <!-- Se já está presente, mostrar botão para desfazer -->
+                <div v-else-if="data.presenca_atual?.status_da_presenca === 'presente'" class="flex justify-center gap-1">
+                  <Button
+                    icon="pi pi-times"
+                    severity="secondary"
+                    text
+                    size="small"
+                    @click="marcarFaltaManual(data.id, false)"
+                    v-tooltip.top="'Desfazer Presença'"
+                    class="!rounded-lg"
+                  />
                 </div>
-                <!-- Se já está com falta marcada, mostra status -->
-                <div v-else-if="data.presenca_atual?.status_da_presenca === 'falta_justificada' || data.presenca_atual?.status_da_presenca === 'falta_injustificada'" class="text-xs text-slate-500 font-bold">
-                  <i class="pi pi-info-circle mr-1"></i> Registrada
+                <!-- Se já está com falta marcada, mostrar botão para confirmar presença -->
+                <div v-else-if="data.presenca_atual?.status_da_presenca === 'falta_justificada' || data.presenca_atual?.status_da_presenca === 'falta_injustificada'" class="flex justify-center gap-1">
+                  <Button
+                    icon="pi pi-check-circle"
+                    severity="success"
+                    text
+                    size="small"
+                    @click="confirmarPresencaManual(data.id)"
+                    v-tooltip.top="'Confirmar Presença'"
+                    class="!rounded-lg"
+                  />
                 </div>
-                <!-- Ações disponíveis -->
+                <!-- Ações disponíveis (pendente/sem registro) -->
                 <div v-else class="flex justify-center gap-1">
                   <Button
                     icon="pi pi-check-circle"
                     severity="success" 
                     outlined
+                    size="small"
                     @click="confirmarPresencaManual(data.id)"
                     v-tooltip.top="'Confirmar Presença'"
                     class="!rounded-lg"
@@ -306,6 +504,7 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
                     icon="pi pi-times-circle"
                     severity="danger" 
                     outlined
+                    size="small"
                     v-tooltip.top="'Marcar Falta'"
                     @click="marcarFaltaManual(data.id, false)"
                     class="!rounded-lg"
@@ -314,6 +513,7 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
                     icon="pi pi-file-edit"
                     severity="info"
                     outlined
+                    size="small"
                     v-tooltip.top="'Falta Justificada'"
                     @click="marcarFaltaManual(data.id, true)"
                     class="!rounded-lg"
@@ -326,84 +526,24 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
       </Card>
 
       <div class="space-y-6">
-        <!-- Busca Manual -->
-        <Card class="!rounded-xl border border-slate-200 shadow-sm">
-          <template #title>
-             <div class="flex items-center gap-2">
-                <i class="pi pi-search text-primary-600"></i>
-                <span class="text-lg font-bold text-slate-700">Busca Rápida</span>
-             </div>
-          </template>
-          <template #content>
-            <div class="space-y-4">
-              <div class="flex gap-2">
-                <InputText v-model="buscaTermo" placeholder="Nome ou Matrícula..." class="flex-1 !rounded-xl" @keyup.enter="buscarAlunos" />
-                <Button icon="pi pi-search" @click="buscarAlunos" :loading="loadingBusca" class="!rounded-xl" />
-              </div>
-
-              <DataTable :value="resultadosBusca" scrollable scrollHeight="200px" class="p-datatable-sm custom-table">
-                <template #empty> <p class="text-center p-2 text-xs text-slate-400">Pesquise para listar.</p> </template>
-                <Column field="nome" header="Aluno">
-                  <template #body="{ data }">
-                    <div class="flex items-center gap-2">
-                      <Avatar
-                        v-if="data.foto"
-                        :image="data.foto"
-                        shape="circle"
-                        size="small"
-                      />
-                      <Avatar
-                        v-else
-                        :label="getInitials(data.nome)"
-                        shape="circle"
-                        size="small"
-                        :style="getAvatarStyle(data.nome)"
-                      />
-                      <div class="flex flex-col">
-                        <span class="text-xs font-bold text-slate-700">{{ data.nome }}</span>
-                        <span class="text-[9px] text-slate-400">{{ data.matricula }}</span>
-                      </div>
-                    </div>
-                  </template>
-                </Column>
-                <Column header="Ação" class="text-right">
-                  <template #body="{ data }">
-                    <Button icon="pi pi-user-plus" severity="success" text rounded @click="confirmarPresencaManual(data.id)" v-tooltip.left="'Adicionar Presença'" />
-                  </template>
-                </Column>
-              </DataTable>
-            </div>
-          </template>
-        </Card>
         <!-- Validação de QR Code -->
         <Card class="!rounded-xl border border-slate-200 shadow-sm">
           <template #title>
              <div class="flex items-center gap-2">
                 <i class="pi pi-qrcode text-primary-600"></i>
-                <span class="text-lg font-bold text-slate-700">Validação de QR Code</span>
+                <span class="text-lg font-bold text-slate-700">Presença por QR Code</span>
              </div>
           </template>
           <template #content>
             <div class="space-y-4">
-              <div class="p-8 border-2 border-dashed border-slate-200 rounded-xl text-center bg-slate-50/50">
-                <i class="pi pi-qrcode text-6xl text-slate-200 mb-4"></i>
-                <p class="text-slate-400 mb-4 text-xs font-medium">Aponte a câmera para o QR Code do estudante</p>
-                <Button label="Ativar Câmera" icon="pi pi-camera" severity="success" disabled class="w-full !rounded-xl" v-tooltip.bottom="'Está sendo implementado'" />
-              </div>
-
-              <div class="relative py-2">
-                <div class="absolute inset-0 flex items-center" aria-hidden="true">
-                  <div class="w-full border-t border-slate-100"></div>
-                </div>
-                <div class="relative flex justify-center text-[10px] font-black uppercase tracking-widest">
-                  <span class="bg-white px-2 text-slate-300">ou use o token</span>
-                </div>
-              </div>
-
-              <div class="flex gap-2">
-                <InputText v-model="tokenManual" placeholder="Token manual..." class="flex-1 !rounded-xl" @keyup.enter="validarToken" />
-                <Button icon="pi pi-check" @click="validarToken" :loading="loadingValidacao" severity="primary" class="!rounded-xl" />
-              </div>
+              <!-- QR Scanner Component -->
+              <QrScanner 
+                ref="qrScannerRef"
+                :stop-after-scan="true"
+                :scan-cooldown="5000"
+                @scan="validarTokenQr"
+                @error="(err) => toast.add({ severity: 'error', summary: 'Erro', detail: err, life: 5000 })"
+              />
             </div>
           </template>
         </Card>

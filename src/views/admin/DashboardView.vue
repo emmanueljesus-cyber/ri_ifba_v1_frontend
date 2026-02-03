@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { adminDashboardService } from '../../services/adminDashboard'
 import { adminPresencaService } from '../../services/adminPresenca'
 import { useAvatar } from '../../composables/useAvatar'
@@ -24,12 +24,24 @@ const loadingBolsistas = ref(false)
 const bolsistasHoje = ref<any[]>([])
 const turnoSelecionado = ref('almoco')
 const buscaRapida = ref('')
+const buscaBolsista = ref('')
 const validandoToken = ref(false)
 
 const turnoOptions = [
   { label: 'Almoço', value: 'almoco' },
   { label: 'Jantar', value: 'jantar' }
 ]
+
+// Filtrar bolsistas por nome ou matrícula
+const bolsistasFiltrados = computed(() => {
+  if (!buscaBolsista.value) return bolsistasHoje.value
+
+  const termo = buscaBolsista.value.toLowerCase()
+  return bolsistasHoje.value.filter(b =>
+    b.nome?.toLowerCase().includes(termo) ||
+    b.matricula?.toLowerCase().includes(termo)
+  )
+})
 
 const carregarDados = async () => {
   loading.value = true
@@ -108,112 +120,207 @@ onMounted(() => {
       <Button icon="pi pi-refresh" rounded outlined @click="carregarDados(); carregarBolsistasHoje()" :loading="loading || loadingBolsistas" severity="secondary" />
     </div>
 
-    <!-- Métricas Rápidas -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-        <div class="p-3 bg-emerald-50 rounded-xl text-emerald-600">
-          <i class="pi pi-users text-2xl"></i>
+    <!-- Métricas Rápidas - Simplificadas para 4 Essenciais -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <!-- 1. Bolsistas Ativos -->
+      <div class="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 sm:gap-4 group relative">
+        <div class="p-2 sm:p-3 bg-emerald-50 rounded-xl text-emerald-600">
+          <i class="pi pi-users text-xl sm:text-2xl"></i>
         </div>
-        <div>
-          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Bolsistas Ativos</p>
-          <p class="text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.bolsistas_ativos || 0 }}</p>
-        </div>
-      </div>
-
-      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-        <div class="p-3 bg-blue-50 rounded-xl text-blue-600">
-          <i class="pi pi-check-circle text-2xl"></i>
-        </div>
-        <div>
-          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Presenças Hoje</p>
-          <p class="text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.presencas_hoje || 0 }}</p>
+        <div class="flex-1">
+          <div class="flex items-center gap-2">
+            <p class="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Bolsistas Ativos</p>
+            <i class="pi pi-info-circle text-slate-300 cursor-help text-xs" v-tooltip.top="'Total de bolsistas cadastrados e ativos no sistema'"></i>
+          </div>
+          <p class="text-xl sm:text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.bolsistas_ativos || 0 }}</p>
         </div>
       </div>
 
-      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-        <div class="p-3 bg-orange-50 rounded-xl text-orange-600">
-          <i class="pi pi-file-edit text-2xl"></i>
+      <!-- 2. Presenças Hoje (com %) -->
+      <div class="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 sm:gap-4">
+        <div class="p-2 sm:p-3 bg-blue-50 rounded-xl text-blue-600">
+          <i class="pi pi-check-circle text-xl sm:text-2xl"></i>
         </div>
-        <div>
-          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Justificativas</p>
-          <p class="text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.justificativas_pendentes || 0 }}</p>
+        <div class="flex-1">
+          <div class="flex items-center gap-2">
+            <p class="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Presenças Hoje</p>
+            <i class="pi pi-info-circle text-slate-300 cursor-help text-xs" v-tooltip.top="'Presenças confirmadas hoje vs total esperado para o turno'"></i>
+          </div>
+          <div class="flex items-baseline gap-2">
+            <p class="text-xl sm:text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.presencas_hoje || 0 }}</p>
+            <span v-if="resumo?.refeicao_atual?.total_esperados > 0" class="text-xs font-bold text-blue-600">
+              {{ Math.round((resumo?.metricas.presencas_hoje || 0) / resumo.refeicao_atual.total_esperados * 100) }}%
+            </span>
+          </div>
         </div>
       </div>
 
-      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-        <div class="p-3 bg-red-50 rounded-xl text-red-600">
-          <i class="pi pi-times-circle text-2xl"></i>
+      <!-- 3. Justificativas Pendentes (acionável) -->
+      <div class="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 sm:gap-4 cursor-pointer hover:shadow-md transition-shadow" @click="$router.push('/admin/justificativas')">
+        <div class="p-2 sm:p-3 bg-orange-50 rounded-xl text-orange-600">
+          <i class="pi pi-file-edit text-xl sm:text-2xl"></i>
         </div>
-        <div>
-          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Faltas Hoje</p>
-          <p class="text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.faltas_hoje || 0 }}</p>
+        <div class="flex-1">
+          <div class="flex items-center gap-2">
+            <p class="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Pendentes</p>
+            <i class="pi pi-info-circle text-slate-300 cursor-help text-xs" v-tooltip.top="'Justificativas aguardando sua análise. Clique para revisar'"></i>
+          </div>
+          <p class="text-xl sm:text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.justificativas_pendentes || 0 }}</p>
+        </div>
+        <i class="pi pi-chevron-right text-slate-300 text-sm"></i>
+      </div>
+
+      <!-- 4. Taxa de Aproveitamento do Mês -->
+      <div class="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 sm:gap-4">
+        <div class="p-2 sm:p-3 bg-purple-50 rounded-xl text-purple-600">
+          <i class="pi pi-chart-line text-xl sm:text-2xl"></i>
+        </div>
+        <div class="flex-1">
+          <div class="flex items-center gap-2">
+            <p class="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Aproveitamento</p>
+            <i class="pi pi-info-circle text-slate-300 cursor-help text-xs" v-tooltip.top="'Percentual de presenças em relação ao total de bolsistas esperados no turno'"></i>
+          </div>
+          <div class="flex items-baseline gap-2">
+            <p class="text-xl sm:text-2xl font-black text-slate-800 leading-tight lato-black">
+              {{ resumo?.refeicao_atual?.confirmados && resumo?.refeicao_atual?.total_esperados > 0
+                ? Math.round((resumo.refeicao_atual.confirmados / resumo.refeicao_atual.total_esperados) * 100)
+                : 0 }}%
+            </p>
+            <span class="text-xs text-slate-500">do turno</span>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
       <!-- Bolsistas do Dia -->
-      <div class="lg:col-span-2 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-        <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-          <div>
-            <h3 class="text-lg font-black text-slate-700 uppercase tracking-wider">Bolsistas do Dia</h3>
-            <p class="text-xs text-slate-500 font-medium">Lista de quem tem direito à refeição hoje.</p>
-          </div>
-          <SelectButton v-model="turnoSelecionado" :options="turnoOptions" optionLabel="label" optionValue="value" :unselectable="false" />
-        </div>
-
-        <DataTable :value="bolsistasHoje" :loading="loadingBolsistas" paginator :rows="5" class="p-datatable-sm">
-          <template #empty>
-            <div class="flex flex-col items-center justify-center py-8 text-slate-400">
-              <i class="pi pi-users text-4xl mb-2"></i>
-              <p>Não foi possível carregar os dados.</p>
+      <div class="xl:col-span-2">
+        <Card class="!rounded-xl !border-slate-200 overflow-hidden shadow-sm">
+          <template #title>
+            <div class="flex flex-col gap-4">
+              <div class="flex flex-col sm:flex-row justify-between items-start gap-4">
+                <div>
+                  <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <h3 class="text-base sm:text-lg font-black text-slate-700 uppercase tracking-wider">Bolsistas do Dia</h3>
+                    <span class="px-2 sm:px-3 py-1 bg-primary-100 text-primary-700 text-xs sm:text-sm font-bold rounded-full" v-tooltip.top="'Total de bolsistas esperados para o turno selecionado (RF09)'">
+                      {{ resumo?.refeicao_atual?.total_esperados || bolsistasHoje.length }} esperados
+                    </span>
+                  </div>
+                  <p class="text-xs text-slate-500 font-medium mt-1">Lista de quem tem direito à refeição hoje.</p>
+                </div>
+                <SelectButton
+                  v-model="turnoSelecionado"
+                  :options="turnoOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                  :unselectable="false"
+                  class="!rounded-xl w-full sm:w-auto"
+                />
+              </div>
+              <!-- Filtro de busca -->
+              <div class="flex items-center gap-2">
+                <IconField class="flex-1">
+                  <InputIcon class="pi pi-search" />
+                  <InputText
+                    v-model="buscaBolsista"
+                    placeholder="Buscar por nome ou matrícula..."
+                    class="w-full !rounded-xl"
+                  />
+                </IconField>
+              </div>
             </div>
           </template>
-          <Column header="Bolsista">
-            <template #body="{ data }">
+          <template #content>
+            <DataTable 
+              :value="bolsistasFiltrados"
+              :loading="loadingBolsistas"
+              paginator 
+              :rows="10" 
+              class="p-datatable-sm"
+              :rowsPerPageOptions="[5, 10, 20]"
+              paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
+            >
+              <template #empty>
+                <div class="flex flex-col items-center justify-center py-12 text-slate-400">
+                  <i class="pi pi-users text-6xl mb-4 text-slate-200"></i>
+                  <p class="text-sm font-medium text-slate-500">Não foi possível carregar os dados.</p>
+                  <p class="text-xs text-slate-400 mt-1">Verifique se há cardápio cadastrado para hoje.</p>
+                </div>
+              </template>
+              <Column header="Bolsista" style="min-width: 250px">
+                <template #body="{ data }">
+                  <div class="flex items-center gap-3">
+                    <Avatar 
+                      :label="getInitials(data.nome)" 
+                      shape="circle" 
+                      size="large"
+                      class="flex-shrink-0" 
+                      :style="getAvatarStyle(data.nome)" 
+                    />
+                    <div class="flex flex-col">
+                      <span class="font-bold text-slate-700 leading-tight">{{ data.nome }}</span>
+                      <span class="text-[10px] text-slate-400 font-black uppercase tracking-wider mt-0.5">{{ data.matricula }}</span>
+                    </div>
+                  </div>
+                </template>
+              </Column>
+              <Column field="curso" header="Curso" style="min-width: 200px">
+                <template #body="{ data }">
+                  <span class="text-sm text-slate-600">{{ data.curso }}</span>
+                </template>
+              </Column>
+              <Column header="Status" style="min-width: 120px" class="text-right">
+                <template #body="{ data }">
+                  <Tag 
+                    :value="data.presenca_atual?.status_da_presenca || 'Pendente'" 
+                    :severity="getStatusSeverity(data.presenca_atual?.status_da_presenca)" 
+                    class="!rounded-full px-3 py-1 uppercase text-[10px] font-black tracking-wider" 
+                  />
+                </template>
+              </Column>
+            </DataTable>
+            
+            <div 
+              class="mt-4 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl flex justify-between items-center" 
+              v-if="resumo?.refeicao_atual"
+            >
+              <div class="flex items-center gap-2">
+                <i class="pi pi-chart-bar text-emerald-600"></i>
+                <span class="text-xs font-bold text-emerald-700 uppercase tracking-widest">
+                  Presenças do {{ resumo.refeicao_atual.turno }}:
+                </span>
+              </div>
               <div class="flex items-center gap-3">
-                <Avatar :label="getInitials(data.nome)" shape="circle" class="flex-shrink-0" :style="getAvatarStyle(data.nome)" />
-                <div class="flex flex-col">
-                  <span class="font-bold text-slate-700 leading-none">{{ data.nome }}</span>
-                  <span class="text-[10px] text-slate-400 font-black uppercase tracking-tighter mt-1">{{ data.matricula }}</span>
+                <span class="text-sm font-black text-emerald-800">
+                  {{ resumo.refeicao_atual.confirmados }} / {{ resumo.refeicao_atual.total_esperados || bolsistasHoje.length }} confirmados
+                </span>
+                <div class="w-32 h-2.5 bg-emerald-200 rounded-full overflow-hidden">
+                  <div 
+                    class="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300" 
+                    :style="{ width: (resumo.refeicao_atual.total_esperados || bolsistasHoje.length) > 0 ? Math.min(100, (resumo.refeicao_atual.confirmados / (resumo.refeicao_atual.total_esperados || bolsistasHoje.length)) * 100) + '%' : '0%' }"
+                  ></div>
                 </div>
               </div>
-            </template>
-          </Column>
-          <Column field="curso" header="Curso" class="text-xs text-slate-500"></Column>
-          <Column header="Status" class="text-right">
-            <template #body="{ data }">
-              <Tag :value="data.presenca?.status || 'Pendente'" :severity="getStatusSeverity(data.presenca?.status)" class="!rounded-full px-3 uppercase text-[10px] font-black" />
-            </template>
-          </Column>
-        </DataTable>
-        
-        <div class="p-4 bg-emerald-50/50 border-t border-emerald-100 flex justify-between items-center" v-if="resumo?.refeicao_atual">
-           <span class="text-xs font-bold text-emerald-700 uppercase tracking-widest">Ocupação do {{ resumo.refeicao_atual.turno }}:</span>
-           <div class="flex items-center gap-3">
-              <span class="text-sm font-black text-emerald-800">{{ resumo.refeicao_atual.confirmados }} / {{ resumo.refeicao_atual.capacidade }}</span>
-              <div class="w-32 h-2 bg-emerald-200 rounded-full overflow-hidden">
-                 <div class="h-full bg-emerald-500" :style="{ width: Math.min(100, (resumo.refeicao_atual.confirmados / resumo.refeicao_atual.capacidade) * 100) + '%' }"></div>
-              </div>
-           </div>
-        </div>
+            </div>
+          </template>
+        </Card>
       </div>
 
       <!-- Ações Rápidas -->
       <div class="space-y-6">
         <Card class="!rounded-xl !border-slate-200 overflow-hidden shadow-sm">
           <template #title>
-             <span class="text-base font-black text-slate-700 uppercase tracking-wider">Validação Rápida</span>
+             <span class="text-base font-black text-slate-700 uppercase tracking-wider">Registrar Presença</span>
           </template>
           <template #content>
             <div class="space-y-4">
-              <p class="text-xs text-slate-500">Digite a matrícula para confirmar presença manualmente.</p>
+              <p class="text-xs text-slate-500">Digite a matrícula do bolsista para registrar presença manualmente.</p>
               <div class="flex flex-col gap-3">
                 <IconField iconPosition="left">
                   <InputIcon class="pi pi-user" />
-                  <InputText v-model="buscaRapida" placeholder="Matrícula..." class="w-full !rounded-xl" @keyup.enter="validarMatriculaRapida" />
+                  <InputText v-model="buscaRapida" placeholder="Matrícula do bolsista..." class="w-full !rounded-xl" @keyup.enter="validarMatriculaRapida" />
                 </IconField>
-                <Button label="Validar Matrícula" icon="pi pi-check" class="w-full !rounded-xl shadow-md" severity="success" :loading="validandoToken" @click="validarMatriculaRapida" />
+                <Button label="Confirmar Presença" icon="pi pi-check" class="w-full !rounded-xl shadow-md" severity="success" :loading="validandoToken" @click="validarMatriculaRapida" />
               </div>
               
               <div class="relative py-2">

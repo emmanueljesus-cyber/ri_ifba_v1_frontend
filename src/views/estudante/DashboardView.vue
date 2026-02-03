@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { FilterMatchMode } from '@primevue/core/api'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
+import { useFilaExtrasStore } from '../../stores/filaExtras'
 import { cardapioService } from '../../services/cardapio'
-import { filaExtrasService } from '../../services/filaExtras'
+import { useToast } from 'primevue/usetoast'
 import PageHeader from '../../components/common/PageHeader.vue'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
@@ -11,58 +13,44 @@ import Skeleton from 'primevue/skeleton'
 import Message from 'primevue/message'
 import Dialog from 'primevue/dialog'
 import Tag from 'primevue/tag'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import InputText from 'primevue/inputtext'
 import type { CardapioDia } from '../../types/cardapio'
-import type { FilaExtra, PosicaoFila } from '../../types/filaExtras'
 
 const router = useRouter()
 const auth = useAuthStore()
+const filaStore = useFilaExtrasStore()
+const toast = useToast()
 
 // Computed para verificar tipo de usuário
 const isBolsista = computed(() => auth.user?.bolsista === true)
 const isNaoBolsista = computed(() => auth.user?.bolsista === false)
 
 const cardapio = ref<CardapioDia | null>(null)
-const minhasInscricoes = ref<FilaExtra[]>([])
-const posicoesNaFila = ref<PosicaoFila[]>([])
 const presencaHoje = ref<any>(null)
+const carteirinha = ref<any>(null)
 const loadingCardapio = ref(false)
-const loadingInscricoes = ref(false)
 const loadingPresenca = ref(false)
+const loadingCarteirinha = ref(false)
 const errorCardapio = ref('')
 const displayQrCode = ref(false)
 
-const formatarData = (data: string) => {
-  if (!data) return ''
-  // Se for apenas data YYYY-MM-DD
-  if (data.length === 10 && data.includes('-')) {
-    const parts = data.split('-').map(Number) as [number, number, number]
-    return new Date(parts[0], parts[1] - 1, parts[2]).toLocaleDateString('pt-BR', {
-      weekday: 'long',
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric'
-    })
-  }
-  // Se for objeto data ou string completa
-  const dateObj = new Date(data)
-  // Adiciona 12 horas para evitar problemas de fuso horário se for apenas data sem hora
-  if (!data.includes('T') && !data.includes(':')) {
-     dateObj.setHours(12, 0, 0, 0)
-  }
-  return dateObj.toLocaleDateString('pt-BR', {
-    weekday: 'long',
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric'
-  })
-}
+// Fila Extras
+const dialogInscricao = ref(false)
+const refeicaoSelecionada = ref<any>(null)
+const loadingAcao = ref(false)
+const filters = ref({
+  global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+})
+
+
 
 const carregarCardapio = async () => {
   loadingCardapio.value = true
   errorCardapio.value = ''
   try {
-    const result = await cardapioService.hoje()
-    cardapio.value = result
+    cardapio.value = await cardapioService.hoje()
   } catch (err: any) {
       // Se for 404, não é erro - simplesmente não há cardápio para hoje
     if (err?.response?.status === 404) {
@@ -76,38 +64,125 @@ const carregarCardapio = async () => {
   }
 }
 
-const carregarInscricoes = async () => {
-  // Fila de extras é apenas para não-bolsistas
-  if (isBolsista.value) {
-    return
-  }
+// Fila Extras functions
+const abrirDialogInscricao = (refeicao: any) => {
+  refeicaoSelecionada.value = refeicao
+  dialogInscricao.value = true
+}
 
-  loadingInscricoes.value = true
+const confirmarInscricao = async () => {
+  if (!refeicaoSelecionada.value) return
+
+  loadingAcao.value = true
   try {
-    minhasInscricoes.value = await filaExtrasService.minhasInscricoes()
-    posicoesNaFila.value = await filaExtrasService.posicao()
-  } catch (err) {
-    console.error('Erro ao carregar inscrições:', err)
+    await filaStore.inscrever(refeicaoSelecionada.value.refeicao_id)
+    toast.add({
+      severity: 'success',
+      summary: 'Sucesso!',
+      detail: 'Inscrição realizada com sucesso',
+      life: 3000
+    })
+    dialogInscricao.value = false
+    // Recarregar dados para sincronizar UI
+    await Promise.all([
+      filaStore.carregarMinhasInscricoes(),
+      filaStore.carregarRefeicoesDisponiveis(),
+      filaStore.carregarPosicoes()
+    ])
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Erro',
+      detail: err?.response?.data?.message || 'Erro ao realizar inscrição',
+      life: 5000
+    })
   } finally {
-    loadingInscricoes.value = false
+    loadingAcao.value = false
+  }
+}
+
+const cancelarInscricao = async (inscricaoId: number) => {
+  loadingAcao.value = true
+  try {
+    await filaStore.cancelar(inscricaoId)
+    toast.add({
+      severity: 'success',
+      summary: 'Sucesso!',
+      detail: 'Inscrição cancelada',
+      life: 3000
+    })
+    // Recarregar dados para sincronizar UI
+    await Promise.all([
+      filaStore.carregarMinhasInscricoes(),
+      filaStore.carregarRefeicoesDisponiveis(),
+      filaStore.carregarPosicoes()
+    ])
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Erro',
+      detail: err?.response?.data?.message || 'Erro ao cancelar inscrição',
+      life: 5000
+    })
+  } finally {
+    loadingAcao.value = false
   }
 }
 
 const carregarPresencaHoje = async () => {
+  // Presença só faz sentido para bolsistas
+  if (!isBolsista.value) {
+    presencaHoje.value = null
+    return
+  }
+
   loadingPresenca.value = true
   try {
     presencaHoje.value = await cardapioService.presencaHoje()
-  } catch (err) {
-    console.error('Nenhuma presença para hoje')
+  } catch (err: any) {
+    // 404 é esperado quando não há presença registrada para hoje
+    if (err?.response?.status === 404) {
+      presencaHoje.value = null
+      console.log('Nenhuma presença registrada para hoje')
+    } else {
+      console.error('Erro ao carregar presença:', err)
+    }
   } finally {
     loadingPresenca.value = false
   }
 }
 
-onMounted(() => {
+const carregarCarteirinha = async () => {
+  // Carteirinha só para bolsistas
+  if (!isBolsista.value) {
+    carteirinha.value = null
+    return
+  }
+
+  loadingCarteirinha.value = true
+  try {
+    carteirinha.value = await cardapioService.carteirinha()
+  } catch (err: any) {
+    console.error('Erro ao carregar carteirinha:', err)
+    carteirinha.value = null
+  } finally {
+    loadingCarteirinha.value = false
+  }
+}
+
+onMounted(async () => {
   carregarCardapio()
-  carregarInscricoes()
   carregarPresencaHoje()
+  carregarCarteirinha()
+  
+  // Carregar dados de Fila Extras para não-bolsistas
+  if (isNaoBolsista.value) {
+    await Promise.all([
+      filaStore.carregarRefeicoesDisponiveis(),
+      filaStore.carregarMinhasInscricoes(),
+      filaStore.carregarPosicoes()
+    ])
+  }
 })
 </script>
 
@@ -120,24 +195,41 @@ onMounted(() => {
       :breadcrumbs="[]"
     />
 
-    <div v-if="presencaHoje && presencaHoje.status !== 'presente'" class="flex justify-end -mt-16 relative z-10">
-      <Button label="Meu QR Code" icon="pi pi-qrcode" severity="success" @click="displayQrCode = true" class="!rounded-xl shadow-md" />
+    <div v-if="isBolsista && carteirinha" class="flex justify-end -mt-16 relative z-10">
+      <Button label="Minha Carteirinha" icon="pi pi-qrcode" severity="success" @click="router.push('/dashboard/carteirinha')" class="!rounded-xl shadow-md" />
     </div>
 
     <!-- Dialog QR Code -->
-    <Dialog v-model:visible="displayQrCode" header="Meu QR Code para Refeição" :style="{ width: '350px' }" modal>
+    <Dialog v-model:visible="displayQrCode" header="Minha Carteirinha Digital" :style="{ width: '400px' }" modal>
       <div class="flex flex-col items-center py-4 space-y-4">
         <div class="bg-white p-4 rounded-xl shadow-md">
           <img 
-            :src="`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${presencaHoje?.token}`" 
+            :src="`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${carteirinha?.qr_token}`" 
             alt="QR Code"
             class="w-48 h-48"
           />
         </div>
-        <div class="text-center">
-          <p class="font-bold text-slate-800 uppercase">{{ presencaHoje?.refeicao.turno }}</p>
-          <p class="text-sm text-slate-500">{{ formatarData(presencaHoje?.refeicao.data) }}</p>
+        <div class="text-center space-y-1">
+          <p class="font-bold text-slate-900 text-lg">{{ carteirinha?.nome }}</p>
+          <p class="text-sm text-slate-600 font-mono">{{ carteirinha?.matricula }}</p>
+          <p class="text-xs text-slate-500">{{ carteirinha?.curso }}</p>
+          <div class="pt-2">
+            <Tag 
+              :value="carteirinha?.turno_refeicao === 'almoco' ? 'Almoço' : 'Jantar'" 
+              :severity="carteirinha?.turno_refeicao === 'almoco' ? 'warning' : 'info'"
+              class="!rounded-full"
+            />
+          </div>
         </div>
+        
+        <!-- Token para digitação manual -->
+        <div class="w-full p-3 bg-slate-50 rounded-xl border border-slate-200">
+          <p class="text-xs text-slate-500 font-bold mb-1 text-center">TOKEN PARA DIGITAÇÃO MANUAL</p>
+          <p class="text-center font-mono text-sm font-bold text-slate-800 select-all break-all">
+            {{ carteirinha?.qr_token }}
+          </p>
+        </div>
+        
         <Message severity="info" :closable="false" class="text-xs">
           Apresente este código ao servidor no momento da refeição.
         </Message>
@@ -205,11 +297,11 @@ onMounted(() => {
                   <div class="grid grid-cols-2 gap-2">
                     <div class="flex flex-col gap-1">
                       <span class="text-[10px] font-bold text-amber-600">OP 1</span>
-                      <p class="text-xs text-amber-800">{{ cardapio.almoco.acompanhamento.split(',')[0].trim() }}</p>
+                      <p class="text-xs text-amber-800">{{ cardapio.almoco.acompanhamento?.split(',')[0]?.trim() }}</p>
                     </div>
-                    <div v-if="cardapio.almoco.acompanhamento.includes(',')" class="flex flex-col gap-1">
+                    <div v-if="cardapio.almoco.acompanhamento?.includes(',')" class="flex flex-col gap-1">
                       <span class="text-[10px] font-bold text-amber-600">OP 2</span>
-                      <p class="text-xs text-amber-800">{{ cardapio.almoco.acompanhamento.split(',')[1].trim() }}</p>
+                      <p class="text-xs text-amber-800">{{ cardapio.almoco.acompanhamento?.split(',')[1]?.trim() }}</p>
                     </div>
                   </div>
                 </div>
@@ -294,11 +386,11 @@ onMounted(() => {
                   <div class="grid grid-cols-2 gap-2">
                     <div class="flex flex-col gap-1">
                       <span class="text-[10px] font-bold text-indigo-600">OP 1</span>
-                      <p class="text-xs text-indigo-800">{{ cardapio.jantar.acompanhamento.split(',')[0].trim() }}</p>
+                      <p class="text-xs text-indigo-800">{{ cardapio.jantar.acompanhamento?.split(',')[0]?.trim() }}</p>
                     </div>
-                    <div v-if="cardapio.jantar.acompanhamento.includes(',')" class="flex flex-col gap-1">
+                    <div v-if="cardapio.jantar.acompanhamento?.includes(',')" class="flex flex-col gap-1">
                       <span class="text-[10px] font-bold text-indigo-600">OP 2</span>
-                      <p class="text-xs text-indigo-800">{{ cardapio.jantar.acompanhamento.split(',')[1].trim() }}</p>
+                      <p class="text-xs text-indigo-800">{{ cardapio.jantar.acompanhamento?.split(',')[1]?.trim() }}</p>
                     </div>
                   </div>
                 </div>
@@ -376,78 +468,147 @@ onMounted(() => {
 
 
 
-      <!-- Card: Minhas Inscrições (Fila Extra) - APENAS PARA NÃO-BOLSISTAS -->
-      <Card v-if="isNaoBolsista" class="!rounded-xl border border-slate-200 shadow-sm">
-        <template #title>
-          <div class="flex items-center gap-2">
+      <!-- Fila de Extras - APENAS PARA NÃO-BOLSISTAS -->
+      <section v-if="isNaoBolsista">
+        <div class="flex items-center gap-2 mb-4">
+          <div class="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center">
             <i class="pi pi-ticket text-primary-600"></i>
-            <span class="text-xl font-bold text-slate-700">Fila Extra</span>
           </div>
-        </template>
-        <template #content>
-          <div v-if="loadingInscricoes" class="space-y-3">
-            <Skeleton height="60px" border-radius="0.75rem" />
-            <Skeleton height="60px" border-radius="0.75rem" />
-          </div>
+          <h2 class="text-xl font-black text-slate-800 lato-black">Fila de Extras</h2>
+        </div>
 
-          <div v-else-if="minhasInscricoes.length === 0" class="text-center py-4">
-            <div class="mb-4">
-               <i class="pi pi-ticket text-4xl text-slate-200"></i>
-            </div>
-            <p class="text-slate-500 text-sm mb-4">Você não possui inscrições ativas</p>
-            <Button
-              label="Ver Vagas Disponíveis"
-              icon="pi pi-plus"
-              class="w-full !rounded-xl"
-              severity="success"
-              @click="router.push('/dashboard/fila-extras')"
-            />
-          </div>
+        <div v-if="filaStore.loading && filaStore.refeicoesDisponiveis.length === 0" class="space-y-4">
+           <Skeleton height="80px" border-radius="1.5rem" v-for="i in 3" :key="i" />
+        </div>
 
-          <div v-else class="space-y-3">
-            <div
-              v-for="inscricao in minhasInscricoes.slice(0, 2)"
-              :key="inscricao.id"
-              class="p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-primary-200 transition-colors"
-            >
-              <div class="flex items-start justify-between">
-                <div>
-                  <p class="font-bold text-slate-800 text-sm">
-                    {{ inscricao.refeicao?.turno === 'almoco' ? 'Almoco' : 'Jantar' }}
-                  </p>
-                  <p class="text-xs text-slate-500 font-medium">
-                    {{ inscricao.refeicao?.data ? inscricao.refeicao.data.split('-').reverse().join('/') : '-' }}
-                  </p>
+        <div v-else-if="filaStore.refeicoesDisponiveis.length === 0">
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-12 text-center">
+             <i class="pi pi-calendar-times text-4xl text-slate-300 mb-4"></i>
+             <p class="text-slate-600 font-medium mb-2">Não há refeições disponíveis para inscrição no momento</p>
+             <p class="text-slate-400 text-sm mb-3">As inscrições só estão disponíveis no dia da refeição, dentro do horário permitido:</p>
+             <div class="space-y-2 mb-4">
+               <p class="text-slate-500 text-sm font-medium">
+                 <i class="pi pi-sun text-amber-500 mr-2"></i>
+                 Almoço: disponível até 13:30
+               </p>
+               <p class="text-slate-500 text-sm font-medium">
+                 <i class="pi pi-moon text-indigo-500 mr-2"></i>
+                 Jantar: disponível até 19:00
+               </p>
+             </div>
+             <p class="text-slate-400 text-xs">
+               💡 Volte mais tarde ou verifique se há cardápio cadastrado para hoje
+             </p>
+          </div>
+        </div>
+
+        <div v-else class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm p-4">
+          <DataTable
+            v-model:filters="filters"
+            :value="filaStore.refeicoesDisponiveis"
+            :rows="10"
+            :paginator="filaStore.refeicoesDisponiveis.length > 10"
+            :globalFilterFields="['turno', 'turno_label']"
+            class="p-datatable-sm"
+            responsiveLayout="stack"
+            breakpoint="768px"
+          >
+            <template #header>
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-sm font-black text-slate-400 uppercase tracking-widest">Vagas Disponíveis</span>
+                <InputText v-model="filters['global'].value" placeholder="Filtrar..." />
+              </div>
+            </template>
+            <Column header="Refeição" style="min-width: 150px">
+              <template #body="{ data }">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-lg">
+                    <i :class="data.turno === 'almoco' ? 'pi pi-sun text-amber-500' : 'pi pi-moon text-indigo-500'"></i>
+                  </div>
+                  <div>
+                    <p class="font-bold text-slate-800">Hoje</p>
+                    <p class="text-xs text-slate-500">{{ data.turno_label }}</p>
+                  </div>
                 </div>
+              </template>
+            </Column>
+            <Column header="Disponibilidade" style="min-width: 120px">
+              <template #body="{ data }">
+                <div class="flex flex-col gap-1">
+                   <Tag
+                    :value="`${data.vagas_disponiveis} vagas`"
+                    :severity="data.vagas_disponiveis > 10 ? 'success' : 'warn'"
+                    class="!rounded-full w-fit"
+                  />
+                  <span class="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Até {{ data.horario_fim }}</span>
+                </div>
+              </template>
+            </Column>
+            <Column header="Posição" style="min-width: 100px; text-align: center" headerStyle="text-align: center">
+              <template #body="{ data }">
+                <div v-if="data.inscrito" class="flex flex-col items-center">
+                  <span class="text-2xl font-black text-primary-600">{{ data.posicao_fila }}º</span>
+                  <span class="text-[9px] text-slate-400 uppercase font-bold">na fila</span>
+                </div>
+                <span v-else class="text-slate-300 text-sm">—</span>
+              </template>
+            </Column>
+            <Column header="Status" style="min-width: 120px">
+              <template #body="{ data }">
                 <Tag
-                  v-if="inscricao.confirmado"
+                  v-if="data.inscrito && data.status_inscricao === 'aprovado'"
                   value="Confirmado"
                   severity="success"
-                  class="!text-[10px]"
+                  class="!rounded-full"
                 />
                 <Tag
-                  v-else
-                  value="Na Fila"
-                  severity="warn"
-                  class="!text-[10px]"
+                  v-else-if="data.inscrito && data.status_inscricao === 'rejeitado'"
+                  value="Cancelado"
+                  severity="danger"
+                  class="!rounded-full"
                 />
-              </div>
-              <div class="mt-3 pt-3 border-t border-slate-200/50 flex justify-between items-center">
-                 <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Sua Posição</span>
-                 <span class="text-sm font-black text-emerald-600">{{ inscricao.posicao }}º</span>
-              </div>
-            </div>
-
-            <Button
-              v-if="minhasInscricoes.length > 2"
-              label="Ver Todas"
-              text
-              class="w-full !text-xs"
-              @click="router.push('/dashboard/fila-extras')"
-            />
-          </div>
-        </template>
-      </Card>
+                <Tag
+                  v-else-if="data.inscrito"
+                  value="Aguardando"
+                  severity="warn"
+                  class="!rounded-full"
+                />
+                <span v-else class="text-slate-300 text-sm">—</span>
+              </template>
+            </Column>
+            <Column header="Ações" style="min-width: 150px; text-align: right" headerStyle="text-align: right">
+              <template #body="{ data }">
+                <Button
+                  v-if="data.pode_inscrever && !data.inscrito"
+                  label="Inscrever-se"
+                  icon="pi pi-plus"
+                  size="small"
+                  class="!rounded-xl"
+                  severity="success"
+                  :loading="loadingAcao"
+                  @click="abrirDialogInscricao(data)"
+                />
+                <Button
+                  v-else-if="data.inscrito && data.status_inscricao === 'inscrito'"
+                  label="Cancelar"
+                  icon="pi pi-times"
+                  size="small"
+                  class="!rounded-xl"
+                  severity="danger"
+                  outlined
+                  :loading="loadingAcao"
+                  @click="cancelarInscricao(data.inscricao_id)"
+                />
+                <div v-else-if="data.inscrito && data.status_inscricao === 'aprovado'" class="flex items-center justify-end gap-2 text-green-600 font-bold text-sm">
+                   <i class="pi pi-check-circle"></i>
+                   Confirmado
+                </div>
+                <Tag v-else value="Expirado" severity="danger" class="!rounded-full" />
+              </template>
+            </Column>
+          </DataTable>
+        </div>
+      </section>
     </div>
 
     <!-- Ações Rápidas (Estilo IFBA/GovBR) -->
@@ -466,20 +627,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- Ação: Fila de Extras - APENAS para NÃO-BOLSISTAS -->
-      <div
-        v-if="isNaoBolsista"
-        class="group cursor-pointer p-4 rounded-xl bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-primary-300 transition-all flex items-center gap-4"
-        @click="router.push('/dashboard/fila-extras')"
-      >
-        <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-inner transition-transform group-hover:scale-110 bg-primary-700">
-          <i class="pi pi-ticket text-xl"></i>
-        </div>
-        <div class="flex-1">
-          <h3 class="font-bold text-slate-700 text-sm leading-tight">Fila de Extras</h3>
-          <span class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter group-hover:text-primary-600 transition-colors">Acessar agora</span>
-        </div>
-      </div>
+
 
       <!-- Ação: Justificativas - APENAS para BOLSISTAS -->
       <div
@@ -523,5 +671,51 @@ onMounted(() => {
         </div>
       </div>
     </div>
+
+    <!-- Dialog de Confirmação (Estilo Refinado) -->
+    <Dialog
+      v-model:visible="dialogInscricao"
+      modal
+      header="Confirmar Inscrição"
+      :style="{ width: '90%', maxWidth: '400px' }"
+      :draggable="false"
+      class="!rounded-xl overflow-hidden"
+    >
+      <div v-if="refeicaoSelecionada" class="space-y-6 py-4">
+        <div class="p-4 bg-primary-50 rounded-xl border border-primary-100">
+           <p class="text-primary-800 text-sm leading-relaxed">
+             Deseja confirmar sua inscrição para esta refeição? Sua posição será gerada por ordem de chegada na fila virtual.
+           </p>
+        </div>
+
+        <div class="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm">
+          <div class="flex justify-between">
+            <span class="text-slate-500">Data:</span>
+            <span class="font-bold text-slate-800">Hoje</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">Turno:</span>
+            <span class="font-bold text-slate-800">{{ refeicaoSelecionada.turno_label }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">Prato:</span>
+            <span class="font-bold text-slate-800">{{ refeicaoSelecionada.cardapio?.prato_principal || 'Refeição do dia' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex gap-3 w-full">
+          <Button label="Voltar" text class="flex-1 !rounded-xl" @click="dialogInscricao = false" />
+          <Button
+            label="Confirmar"
+            class="flex-1 !rounded-xl"
+            severity="success"
+            :loading="loadingAcao"
+            @click="confirmarInscricao"
+          />
+        </div>
+      </template>
+    </Dialog>
   </div>
 </template>

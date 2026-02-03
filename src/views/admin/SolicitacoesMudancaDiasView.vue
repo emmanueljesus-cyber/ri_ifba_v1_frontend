@@ -1,4 +1,4 @@
-OS DE<script setup lang="ts">
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { FilterMatchMode } from '@primevue/core/api'
@@ -13,9 +13,11 @@ import Textarea from 'primevue/textarea'
 import Avatar from 'primevue/avatar'
 import InputText from 'primevue/inputtext'
 import { useAvatar } from '../../composables/useAvatar'
+import { useErrorMessage } from '../../composables/useErrorMessage'
 
 const toast = useToast()
 const { getInitials, getAvatarStyle } = useAvatar()
+const { extractErrorMessage } = useErrorMessage()
 const solicitacoes = ref([])
 const loading = ref(false)
 const displayRejeicao = ref(false)
@@ -33,7 +35,7 @@ const carregarSolicitacoes = async () => {
     const { data } = await api.get('/admin/solicitacoes-mudanca-dias?status=pendente')
     solicitacoes.value = data.data || []
   } catch (err) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar solicitações' })
+    toast.add({ severity: 'error', summary: 'Erro', detail: extractErrorMessage(err, 'Falha ao carregar solicitações') })
   } finally {
     loading.value = false
   }
@@ -48,7 +50,7 @@ const aprovar = async (id: number) => {
     toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Mudança aprovada com sucesso' })
     carregarSolicitacoes()
   } catch (err) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Erro ao aprovar solicitação' })
+    toast.add({ severity: 'error', summary: 'Erro', detail: extractErrorMessage(err, 'Erro ao aprovar solicitação') })
   } finally {
     processando.value = false
   }
@@ -75,7 +77,7 @@ const rejeitar = async () => {
     displayRejeicao.value = false
     carregarSolicitacoes()
   } catch (err) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Erro ao rejeitar solicitação' })
+    toast.add({ severity: 'error', summary: 'Erro', detail: extractErrorMessage(err, 'Erro ao rejeitar solicitação') })
   } finally {
     processando.value = false
   }
@@ -99,8 +101,17 @@ onMounted(() => {
       <DataTable :value="solicitacoes" :loading="loading" paginator :rows="10" 
         v-model:filters="filters"
         :globalFilterFields="['user.nome', 'user.matricula']"
-        class="p-datatable-sm" responsiveLayout="stack" breakpoint="960px">
-        
+        class="p-datatable-sm" responsiveLayout="stack" breakpoint="960px"
+        emptyMessage="Nenhuma solicitação pendente no momento.">
+
+        <template #empty>
+          <div class="flex flex-col items-center justify-center py-12 text-slate-400">
+            <i class="pi pi-inbox text-6xl mb-4 text-slate-200"></i>
+            <p class="text-lg font-semibold text-slate-500">Nenhuma solicitação pendente</p>
+            <p class="text-sm text-slate-400 mt-1">Quando os bolsistas solicitarem mudança de dias, aparecerão aqui.</p>
+          </div>
+        </template>
+
         <template #header>
           <div class="flex flex-col md:flex-row justify-between gap-4 mb-2">
             <span class="text-xl font-bold text-slate-700">Solicitações Pendentes</span>
@@ -123,7 +134,7 @@ onMounted(() => {
         <Column header="Novos Dias">
           <template #body="{ data }">
             <div class="flex flex-wrap gap-1">
-              <Tag v-for="dia in data.dias_semana" :key="dia" 
+              <Tag v-for="dia in data.dias_solicitados" :key="dia" 
                 :value="['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][dia]" 
                 severity="secondary" class="!rounded-md" />
             </div>

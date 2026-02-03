@@ -12,9 +12,20 @@ export const justificativaService = {
     return data.data
   },
 
-  async enviar(payload: CriarJustificativaRequest): Promise<Justificativa> {
+  async enviar(payload: CriarJustificativaRequest & { data?: string; turno?: string }): Promise<Justificativa> {
     const formData = new FormData()
-    formData.append('refeicao_id', payload.refeicao_id.toString())
+
+    // Pode enviar refeicao_id OU (data + turno)
+    if (payload.refeicao_id) {
+      formData.append('refeicao_id', payload.refeicao_id.toString())
+    }
+    if (payload.data) {
+      formData.append('data', payload.data)
+    }
+    if (payload.turno) {
+      formData.append('turno', payload.turno)
+    }
+
     formData.append('tipo', payload.tipo)
     formData.append('motivo', payload.motivo)
     if (payload.anexo) {
@@ -36,8 +47,12 @@ export const justificativaService = {
 
   // Admin methods
   async listarTodasAdmin(params?: any): Promise<{ data: Justificativa[], meta: any }> {
-    const { data } = await api.get<ApiResponse<Justificativa[]>>('/admin/justificativas', { params })
-    return { data: data.data, meta: (data as any).meta }
+    const { data } = await api.get<any>('/admin/justificativas', { params })
+
+    // Check if data.data is the array or if it's nested in a pagination object
+    const items = Array.isArray(data.data) ? data.data : (data.data?.data || [])
+
+    return { data: items, meta: data.meta }
   },
 
   async aprovarAdmin(id: number): Promise<void> {

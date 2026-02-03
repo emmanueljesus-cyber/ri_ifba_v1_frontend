@@ -1,19 +1,16 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { FilterMatchMode } from '@primevue/core/api'
 import { useToast } from 'primevue/usetoast'
 import { cardapioService } from '../../services/cardapio'
 import PageHeader from '../../components/common/PageHeader.vue'
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import DatePicker from 'primevue/datepicker'
 import SelectButton from 'primevue/selectbutton'
 import Tag from 'primevue/tag'
+import Checkbox from 'primevue/checkbox'
 import FileUpload from 'primevue/fileupload'
-import Dropdown from 'primevue/dropdown'
 
 const toast = useToast()
 const cardapios = ref<any[]>([])
@@ -21,8 +18,7 @@ const loading = ref(false)
 const displayDialog = ref(false)
 const displayImport = ref(false)
 const loadingImport = ref(false)
-const displayTemplates = ref(false)
-const viewMode = ref('list') // 'list', 'cards' ou 'calendar'
+const viewMode = ref('cards') // 'cards' ou 'calendar'
 
 // Locale pt-BR para DatePicker
 const ptBR = {
@@ -35,13 +31,6 @@ const ptBR = {
   today: 'Hoje',
   clear: 'Limpar'
 }
-
-const filters = ref({
-  global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-  prato_principal_ptn01: { value: null, matchMode: FilterMatchMode.CONTAINS },
-  guarnicao: { value: null, matchMode: FilterMatchMode.CONTAINS },
-  data_do_cardapio: { value: null, matchMode: FilterMatchMode.CONTAINS }
-})
 
 // Opções de filtro de turno
 const turnoFiltro = ref<string | null>(null)
@@ -75,7 +64,6 @@ const cardapioForm = ref({
 })
 
 const turnosImport = ref(['almoco', 'jantar'])
-const selectedCardapios = ref<any[]>([])
 const displayDeletePeriod = ref(false)
 const periodForm = ref({
   data_inicio: null as Date | null,
@@ -88,12 +76,11 @@ const carregarCardapios = async () => {
     const data = await cardapioService.listarAdmin()
     cardapios.value = (data || []).map(c => ({
       ...c,
-      // Normalização de datas para evitar problemas de fuso horário na visualização
       _dataObj: c.data_do_cardapio ? new Date(c.data_do_cardapio + 'T12:00:00') : null
     })).sort((a, b) => {
       const dateA = a._dataObj ? a._dataObj.getTime() : 0
       const dateB = b._dataObj ? b._dataObj.getTime() : 0
-      return dateB - dateA
+      return dateA - dateB
     })
   } catch (err) {
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar cardápios' })
@@ -113,55 +100,19 @@ const excluirCardapio = async (id: number) => {
   }
 }
 
-const deletarMultiplos = async () => {
-  if (selectedCardapios.value.length === 0) return
-  if (!confirm(`Deseja realmente excluir ${selectedCardapios.value.length} cardápios selecionados?`)) return
-  
-  try {
-    const ids = selectedCardapios.value.map(c => c.id)
-    await cardapioService.deletarMultiplosAdmin(ids)
-    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Cardápios excluídos' })
-    selectedCardapios.value = []
-    carregarCardapios()
-  } catch (err) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao excluir selecionados' })
-  }
-}
-
 const deletarPorPeriodo = async () => {
   if (!periodForm.value.data_inicio || !periodForm.value.data_fim) {
     toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Selecione o período completo' })
     return
   }
-
-  const format = (d: Date) => {
-    const ano = d.getFullYear()
-    const mes = String(d.getMonth() + 1).padStart(2, '0')
-    const dia = String(d.getDate()).padStart(2, '0')
-    return `${ano}-${mes}-${dia}`
-  }
-  
+  const format = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   try {
-    await cardapioService.deletarPorPeriodoAdmin(
-      format(periodForm.value.data_inicio),
-      format(periodForm.value.data_fim)
-    )
+    await cardapioService.deletarPorPeriodoAdmin(format(periodForm.value.data_inicio), format(periodForm.value.data_fim))
     toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Cardápios do período excluídos' })
     displayDeletePeriod.value = false
     carregarCardapios()
   } catch (err: any) {
     toast.add({ severity: 'error', summary: 'Erro', detail: err.response?.data?.message || 'Falha ao excluir por período' })
-  }
-}
-
-const limparTodos = async () => {
-  if (!confirm('ATENÇÃO: Isso excluirá TODOS os cardápios do sistema. Deseja continuar?')) return
-  try {
-    await cardapioService.deletarTodosAdmin()
-    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Todos os cardápios foram removidos' })
-    carregarCardapios()
-  } catch (err) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao limpar tudo' })
   }
 }
 
@@ -202,72 +153,203 @@ const salvarCardapio = async () => {
     toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Data e Turno são obrigatórios' })
     return
   }
-
   try {
-    // Ajustar a data para o fuso horário local antes de converter para ISO string
-    // O DatePicker retorna um objeto Date. Usamos o formato YYYY-MM-DD
     const date = cardapioForm.value.data_do_cardapio
-    const ano = date.getFullYear()
-    const mes = String(date.getMonth() + 1).padStart(2, '0')
-    const dia = String(date.getDate()).padStart(2, '0')
-    const dataFormatada = `${ano}-${mes}-${dia}`
-
-    const payload = {
-      ...cardapioForm.value,
-      data_do_cardapio: dataFormatada
-    }
-    await cardapioService.salvarAdmin(payload)
+    const dataFormatada = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+    await cardapioService.salvarAdmin({ ...cardapioForm.value, data_do_cardapio: dataFormatada })
     toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Cardápio salvo com sucesso' })
     displayDialog.value = false
     carregarCardapios()
   } catch (err: any) {
-    const errorMsg = err?.response?.data?.message || 'Falha ao salvar'
-    toast.add({ severity: 'error', summary: 'Erro', detail: errorMsg })
+    toast.add({ severity: 'error', summary: 'Erro', detail: err?.response?.data?.message || 'Falha ao salvar' })
   }
 }
 
-const downloadTemplate = (tipo: string) => {
-  const url = `${import.meta.env.VITE_API_BASE_URL}/admin/${tipo}/template`
-  window.location.href = url
+import api from '../../services/api' // Importe o Axios configurado
+
+const downloadTemplate = async (tipo: string) => {
+  try {
+    // Usar rota dentro do grupo admin
+    const url = `/admin/${tipo}/template`
+
+    const response = await api.get(url, {
+      responseType: 'blob', // Importante para arquivos binários
+      headers: {
+        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      }
+    })
+
+    const blob = new Blob([response.data], { 
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+    })
+
+    const contentDisposition = response.headers['content-disposition']
+    let filename = `template_${tipo}.xlsx`
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="(.+)"/)
+      if (filenameMatch && filenameMatch[1]) {
+        filename = filenameMatch[1]
+      }
+    }
+
+    const blobUrl = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = blobUrl
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 100)
+
+    toast.add({
+      severity: 'success',
+      summary: 'Sucesso',
+      detail: 'Template baixado com sucesso!',
+      life: 3000
+    })
+  } catch (error) {
+    console.error('Erro ao baixar template:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Erro',
+      detail: 'Erro ao baixar template. Tente novamente.',
+      life: 5000
+    })
+  }
 }
 
 const onUpload = async (event: any) => {
   const file = event.files[0]
   if (!file) return
-
   loadingImport.value = true
   try {
-    await cardapioService.importarAdmin(file, turnosImport.value)
-    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Cardápios importados' })
+    const resultado = await cardapioService.importarAdmin(file, turnosImport.value)
+    console.log('Resultado da importação:', resultado)
+    
+    const total = resultado?.meta?.total_importados || resultado?.data?.length || 0
+    const erros = resultado?.meta?.total_erros || 0
+    const errosDetalhes = resultado?.meta?.errors || []
+    
+    // Mostrar mensagem de sucesso
+    let mensagem = resultado?.meta?.message || `${total} cardápio(s) importado(s) com sucesso!`
+    
+    if (total > 0) {
+      toast.add({ 
+        severity: 'success', 
+        summary: 'Sucesso', 
+        detail: mensagem,
+        life: 4000
+      })
+    } else if (erros > 0) {
+      // Se não importou nada mas tem erros, mostrar os erros
+      const primeiroErro = errosDetalhes[0]?.erro || 'Verifique o formato do arquivo'
+      toast.add({ 
+        severity: 'warn', 
+        summary: 'Atenção', 
+        detail: `Nenhum cardápio importado. ${primeiroErro}`,
+        life: 6000
+      })
+    } else {
+      toast.add({ 
+        severity: 'info', 
+        summary: 'Info', 
+        detail: 'Nenhum cardápio encontrado no arquivo',
+        life: 4000
+      })
+    }
+    
     displayImport.value = false
-    carregarCardapios()
+    // Forçar atualização após breve delay
+    setTimeout(() => carregarCardapios(), 500)
   } catch (err: any) {
-    const errorMsg = err?.response?.data?.message || 'Falha na importação'
-    toast.add({ severity: 'error', summary: 'Erro', detail: errorMsg })
+    console.error('Erro na importação:', err)
+    const errorMsg = err?.response?.data?.meta?.message || err?.response?.data?.message || 'Falha na importação'
+    toast.add({ severity: 'error', summary: 'Erro', detail: errorMsg, life: 5000 })
   } finally {
     loadingImport.value = false
   }
 }
 
-// Controles do calendário mensal
+// ============= ORGANIZAÇÃO POR SEMANAS =============
+const semanaAtual = ref(0) // Index da semana atual no array
+
+const getWeekKey = (date: Date): string => {
+  const d = new Date(date)
+  const dayOfWeek = d.getDay()
+  const weekStart = new Date(d)
+  weekStart.setDate(d.getDate() - dayOfWeek)
+  return weekStart.toISOString().split('T')[0] ?? ''
+}
+
+const cardapiosPorSemana = computed(() => {
+  const semanas: Map<string, { weekStart: Date, weekEnd: Date, cards: any[] }> = new Map()
+
+  cardapiosFiltrados.value.forEach(card => {
+    if (!card._dataObj) return
+    const key = getWeekKey(card._dataObj)
+
+    if (!semanas.has(key)) {
+      const weekStart = new Date(key + 'T12:00:00')
+      const weekEnd = new Date(weekStart)
+      weekEnd.setDate(weekStart.getDate() + 6)
+      semanas.set(key, { weekStart, weekEnd, cards: [] })
+    }
+    semanas.get(key)!.cards.push(card)
+  })
+
+  return Array.from(semanas.values()).sort((a, b) => a.weekStart.getTime() - b.weekStart.getTime())
+})
+
+const semanaAtualData = computed(() => cardapiosPorSemana.value[semanaAtual.value] || null)
+
+const navegarSemana = (dir: number) => {
+  const novoIndex = semanaAtual.value + dir
+  if (novoIndex >= 0 && novoIndex < cardapiosPorSemana.value.length) {
+    semanaAtual.value = novoIndex
+  }
+}
+
+const irParaSemanaAtual = () => {
+  const hoje = new Date()
+  const keyHoje = getWeekKey(hoje)
+  const index = cardapiosPorSemana.value.findIndex(s => getWeekKey(s.weekStart) === keyHoje)
+  semanaAtual.value = index >= 0 ? index : 0
+}
+
+// Inicializar na semana atual quando carregar
+watch(cardapiosPorSemana, () => {
+  if (cardapiosPorSemana.value.length > 0) {
+    irParaSemanaAtual()
+  }
+}, { immediate: true })
+
+const formatarSemana = (weekStart: Date, weekEnd: Date) => {
+  const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+  const diaInicio = weekStart.getDate()
+  const diaFim = weekEnd.getDate()
+  const mesInicio = meses[weekStart.getMonth()]
+  const mesFim = meses[weekEnd.getMonth()]
+
+  if (weekStart.getMonth() === weekEnd.getMonth()) {
+    return `${diaInicio} - ${diaFim} de ${mesInicio}`
+  }
+  return `${diaInicio} ${mesInicio} - ${diaFim} ${mesFim}`
+}
+
+// ============= CALENDÁRIO MENSAL =============
 const calendarioMes = ref(new Date().getMonth())
 const calendarioAno = ref(new Date().getFullYear())
 
 const mesAnoAtual = computed(() => {
-  const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+  const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
   return `${meses[calendarioMes.value]} de ${calendarioAno.value}`
 })
 
-const navegarMes = (direcao: number) => {
-  calendarioMes.value += direcao
-  if (calendarioMes.value > 11) {
-    calendarioMes.value = 0
-    calendarioAno.value++
-  } else if (calendarioMes.value < 0) {
-    calendarioMes.value = 11
-    calendarioAno.value--
-  }
+const navegarMes = (dir: number) => {
+  calendarioMes.value += dir
+  if (calendarioMes.value > 11) { calendarioMes.value = 0; calendarioAno.value++ }
+  else if (calendarioMes.value < 0) { calendarioMes.value = 11; calendarioAno.value-- }
 }
 
 const irParaHoje = () => {
@@ -275,40 +357,30 @@ const irParaHoje = () => {
   calendarioAno.value = new Date().getFullYear()
 }
 
-// Lógica para o calendário mensal
+const cardapiosMesAtual = computed(() => {
+  return cardapiosFiltrados.value.filter(c => {
+    if (!c.data_do_cardapio) return false
+    const data = new Date(c.data_do_cardapio + 'T12:00:00')
+    return data.getMonth() === calendarioMes.value && data.getFullYear() === calendarioAno.value
+  })
+})
+
 const diasCalendario = computed(() => {
-  const mes = calendarioMes.value
-  const ano = calendarioAno.value
-
-  const primeiroDia = new Date(ano, mes, 1)
-  const ultimoDia = new Date(ano, mes + 1, 0)
-
+  const primeiroDia = new Date(calendarioAno.value, calendarioMes.value, 1)
+  const ultimoDia = new Date(calendarioAno.value, calendarioMes.value + 1, 0)
   const dias: any[] = []
 
-  // Dias vazios do início da semana (para alinhar com domingo)
-  const diasVaziosInicio = primeiroDia.getDay()
-  for (let i = 0; i < diasVaziosInicio; i++) {
-    dias.push({ vazio: true })
-  }
+  for (let i = 0; i < primeiroDia.getDay(); i++) dias.push({ vazio: true })
 
-  // Dias do mês
   for (let d = 1; d <= ultimoDia.getDate(); d++) {
-    const dataString = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-    // Buscar cardápio pelo campo data_do_cardapio
-    const cardapio = cardapios.value.find(c => {
-      // Comparação direta de string
-      return c.data_do_cardapio === dataString
-    })
+    const dataString = `${calendarioAno.value}-${String(calendarioMes.value + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    const cardapio = cardapiosMesAtual.value.find(c => c.data_do_cardapio === dataString)
     dias.push({ dia: d, cardapio, dataString })
   }
-
   return dias
 })
 
-// Carregar cardápios ao montar o componente
-onMounted(() => {
-  carregarCardapios()
-})
+onMounted(() => carregarCardapios())
 </script>
 
 <template>
@@ -320,635 +392,468 @@ onMounted(() => {
       :breadcrumbs="[{ label: 'Admin', route: '/admin' }, { label: 'Gestão de Cardápio' }]"
     />
 
-    <div class="flex justify-end -mt-16 mb-4 relative z-10">
-      <div class="flex items-center gap-2 bg-white/50 backdrop-blur-sm p-1 rounded-xl border border-slate-200 shadow-sm">
-        <SelectButton 
-          v-model="viewMode" 
-          :options="[{label: 'Lista', value: 'list', icon: 'pi pi-list'}, {label: 'Cards', value: 'cards', icon: 'pi pi-th-large'}, {label: 'Mensal', value: 'calendar', icon: 'pi pi-calendar'}]" 
-          optionLabel="label" 
+    <!-- Barra de Controles -->
+    <div class="flex flex-wrap justify-between items-center gap-4 -mt-12 mb-4 relative z-10">
+      <div class="flex items-center gap-14 bg-white/90 backdrop-blur-sm p-2 rounded-2xl border border-slate-200 shadow-sm">
+        <!-- Seletor de View -->
+        <SelectButton
+          v-model="viewMode"
+          :options="[{label: 'Cards', value: 'cards', icon: 'pi pi-th-large'}, {label: 'Mensal', value: 'calendar', icon: 'pi pi-calendar'}]"
+          optionLabel="label"
           optionValue="value"
           :allowEmpty="false"
-          class="custom-select-button"
+          class="view-select"
         >
-          <template #option="slotProps">
-            <div class="flex items-center gap-2 px-1">
-              <i :class="slotProps.option.icon"></i>
-              <span class="text-xs font-bold uppercase tracking-tight">{{ slotProps.option.label }}</span>
+          <template #option="{ option }">
+            <div class="flex items-center gap-2 px-2 py-1">
+              <i :class="option.icon" class="text-sm"></i>
+              <span class="text-xs font-bold uppercase">{{ option.label }}</span>
             </div>
           </template>
         </SelectButton>
-        <div class="h-6 w-px bg-slate-200 mx-1"></div>
-        <Button v-if="selectedCardapios.length > 0" :label="'Excluir (' + selectedCardapios.length + ')'" icon="pi pi-trash" severity="danger" text size="small" @click="deletarMultiplos" class="!rounded-xl" />
-        <Button label="Limpar Período" icon="pi pi-calendar-minus" severity="warning" text size="small" @click="displayDeletePeriod = true" class="!rounded-xl" />
-        <Button label="Modelos" icon="pi pi-download" severity="info" text size="small" @click="displayTemplates = true" class="!rounded-xl" />
+
+
+        <!-- Filtro de Turno -->
+        <div class="flex items-center gap-2">
+          <SelectButton
+            v-model="turnoFiltro"
+            :options="turnoOpcoes"
+            optionLabel="label"
+            optionValue="value"
+            class="turno-select"
+          >
+            <template #option="{ option }">
+              <div class="flex items-center gap-1.5 px-2 py-1">
+                <i v-if="option.value === 'almoco'" class="pi pi-sun text-amber-500 text-xs"></i>
+                <i v-else-if="option.value === 'jantar'" class="pi pi-moon text-indigo-500 text-xs"></i>
+                <i v-else class="pi pi-circle text-slate-400 text-xs"></i>
+                <span class="text-xs font-semibold">{{ option.label }}</span>
+              </div>
+            </template>
+          </SelectButton>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
         <Button label="Importar" icon="pi pi-upload" severity="secondary" outlined size="small" @click="displayImport = true" class="!rounded-xl" />
-        <Button label="Novo" icon="pi pi-plus" severity="success" size="small" @click="abrirNovo" class="!rounded-xl shadow-md " />
+        <Button label="Novo" icon="pi pi-plus" severity="success" size="small" @click="abrirNovo" class="!rounded-xl shadow-lg" />
       </div>
     </div>
 
-    <div v-if="viewMode === 'list'" class="card bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-      <DataTable v-model:selection="selectedCardapios" v-model:filters="filters" 
-        :value="cardapiosFiltrados" :loading="loading" paginator :rows="10" dataKey="id"
-        filterDisplay="menu"
-        :globalFilterFields="['prato_principal_ptn01', 'prato_principal_ptn02', 'guarnicao', 'acompanhamento_01', 'acompanhamento_02', 'salada', 'suco', 'sobremesa', 'ovo_lacto_vegetariano']"
-        rowHover
-        :rowClass="() => 'cursor-pointer'"
-        @row-click="(e) => editarCardapio(e.data)"
-        class="cardapio-datatable">
-        <template #header>
-          <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
-            <div>
-              <span class="text-lg font-black text-slate-700">Cardápios Cadastrados</span>
-              <p class="text-xs text-slate-500">Clique em uma linha para editar</p>
+    <!-- ============= VIEW: CARDS POR SEMANA ============= -->
+    <div v-if="viewMode === 'cards'">
+      <div v-if="loading" class="flex items-center justify-center py-20">
+        <div class="text-center">
+          <i class="pi pi-spin pi-spinner text-4xl text-primary-500 mb-4"></i>
+          <p class="text-slate-500">Carregando cardápios...</p>
+        </div>
+      </div>
+
+      <div v-else-if="cardapiosPorSemana.length === 0" class="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-slate-200">
+        <i class="pi pi-calendar-times text-6xl text-slate-200 mb-4"></i>
+        <h3 class="text-lg font-bold text-slate-600 mb-2">Nenhum cardápio cadastrado</h3>
+        <p class="text-slate-400 mb-6">Comece criando seu primeiro cardápio</p>
+        <Button label="Criar Cardápio" icon="pi pi-plus" severity="success" @click="abrirNovo" class="!rounded-xl" />
+      </div>
+
+      <div v-else class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <!-- Header da Semana -->
+        <div class="bg-gradient-to-r from-slate-600 to-slate-700 px-6 py-4">
+          <div class="flex items-center justify-between">
+            <Button
+              icon="pi pi-chevron-left"
+              text
+              rounded
+              class="!text-white/80 hover:!text-white hover:!bg-white/10"
+              :disabled="semanaAtual === 0"
+              @click="navegarSemana(-1)"
+            />
+
+            <div class="text-center">
+              <p class="text-[10px] font-bold uppercase tracking-wider opacity-80 text-white">
+                Semana
+              </p>
+              <h2 v-if="semanaAtualData" class="text-xl font-black text-white">
+                {{ formatarSemana(semanaAtualData.weekStart, semanaAtualData.weekEnd) }}
+              </h2>
+              <div class="flex items-center justify-center gap-4 mt-2">
+                <span class="text-xs text-white/70">
+                  <span class="font-bold text-white">{{ semanaAtualData?.cards.length || 0 }}</span> cardápios
+                </span>
+                <span class="text-white/30">•</span>
+                <span class="text-xs text-white/70">
+                  Semana <span class="font-bold text-white">{{ semanaAtual + 1 }}</span> de {{ cardapiosPorSemana.length }}
+                </span>
+              </div>
             </div>
-            <div class="flex items-center gap-3">
-              <div class="flex items-center gap-2">
-                <label class="text-xs font-bold text-slate-500 uppercase">Turno:</label>
-                <Dropdown
-                  v-model="turnoFiltro"
-                  :options="turnoOpcoes"
-                  optionLabel="label"
-                  optionValue="value"
-                  placeholder="Todos"
-                  class="!rounded-xl !w-32"
+
+            <Button
+              icon="pi pi-chevron-right"
+              text
+              rounded
+              class="!text-white/80 hover:!text-white hover:!bg-white/10"
+              :disabled="semanaAtual >= cardapiosPorSemana.length - 1"
+              @click="navegarSemana(1)"
+            />
+          </div>
+
+          <!-- Indicador de semanas -->
+          <div class="flex justify-center gap-1.5 mt-4">
+            <button
+              v-for="(_, i) in cardapiosPorSemana"
+              :key="i"
+              @click="semanaAtual = i"
+              class="w-2 h-2 rounded-full transition-all"
+              :class="i === semanaAtual ? 'bg-white w-6' : 'bg-white/30 hover:bg-white/50'"
+            />
+          </div>
+        </div>
+
+        <!-- Grid de Cards da Semana -->
+        <div class="p-4 sm:p-6">
+          <div v-if="semanaAtualData" class="flex flex-wrap justify-center gap-4 sm:gap-6">
+            <div
+              v-for="card in semanaAtualData.cards"
+              :key="card.id"
+              class="w-full sm:w-[calc(50%-8px)] lg:w-[calc(50%-12px)] xl:w-[calc(33.333%-16px)] group bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-xl hover:border-primary-300 transition-all duration-300 cursor-pointer"
+              @click="editarCardapio(card)"
+            >
+              <!-- Header do Card com Data -->
+              <div class="bg-gradient-to-r from-primary-600 to-primary-700 p-5 text-white relative overflow-hidden">
+                <div class="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full"></div>
+                <div class="absolute -right-2 -bottom-8 w-20 h-20 bg-white/5 rounded-full"></div>
+                <div class="relative flex justify-center items-start">
+                  <div>
+                    <p class="text-xs font-bold opacity-80 uppercase tracking-wider text-center">
+                      {{ card._dataObj?.toLocaleDateString('pt-BR', { weekday: 'long' }) }}
+                    </p>
+                    <p class="text-3xl font-black mt-1">
+                      {{ card._dataObj?.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) }}
+                    </p>
+                  </div>
+                  <div class="flex gap-1.5">
+                    <Tag v-for="t in card.turnos" :key="t" class="!bg-white/20 !text-white !text-xs !px-3 !py-1.5 !rounded-full">
+                      <template #default>
+                        <i :class="t === 'almoco' ? 'pi pi-sun' : 'pi pi-moon'" class="mr-1"></i>
+                        {{ t === 'almoco' ? 'Almoço' : 'Jantar' }}
+                      </template>
+                    </Tag>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Conteúdo do Card -->
+              <div class="p-5 space-y-4">
+                <!-- Pratos Principais -->
+                <div class="space-y-2">
+                  <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pratos Principais</p>
+                  <p class="text-base font-bold text-slate-800 leading-snug">{{ card.prato_principal_ptn01 || '-' }}</p>
+                  <p v-if="card.prato_principal_ptn02" class="text-sm text-slate-600">{{ card.prato_principal_ptn02 }}</p>
+                </div>
+
+                <!-- Vegetariano -->
+                <div v-if="card.ovo_lacto_vegetariano" class="flex items-center gap-3 p-3 bg-pink-50 rounded-xl border border-pink-100">
+                  <div class="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center flex-shrink-0">
+                    <i class="pi pi-heart-fill text-pink-500"></i>
+                  </div>
+                  <div>
+                    <p class="text-[9px] font-bold text-pink-400 uppercase">Vegetariano</p>
+                    <p class="text-sm font-medium text-pink-700">{{ card.ovo_lacto_vegetariano }}</p>
+                  </div>
+                </div>
+
+                <!-- Grid de informações -->
+                <div class="grid grid-cols-2 gap-3 pt-3 border-t border-slate-100">
+                  <div v-if="card.acompanhamento_01 || card.acompanhamento_02">
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Acompanhamentos</p>
+                    <p class="text-sm text-slate-700">{{ card.acompanhamento_01 }}</p>
+                    <p v-if="card.acompanhamento_02" class="text-xs text-slate-500">{{ card.acompanhamento_02 }}</p>
+                  </div>
+                  <div v-if="card.guarnicao">
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Guarnição</p>
+                    <p class="text-sm text-slate-700">{{ card.guarnicao }}</p>
+                  </div>
+                  <div v-if="card.salada">
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Salada</p>
+                    <p class="text-sm text-slate-700">{{ card.salada }}</p>
+                  </div>
+                  <div v-if="card.sobremesa">
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Sobremesa</p>
+                    <p class="text-sm text-slate-700">{{ card.sobremesa }}</p>
+                  </div>
+                  <div v-if="card.suco">
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Suco</p>
+                    <p class="text-sm text-slate-700">{{ card.suco }}</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Footer do Card -->
+              <div class="px-5 py-3 bg-slate-50 border-t border-slate-100 flex justify-center gap-2" @click.stop>
+                <Button
+                  icon="pi pi-pencil"
+                  outlined
+                  rounded
+                  size="small"
+                  severity="secondary"
+                  @click="editarCardapio(card)"
+                  class="!text-xs"
+                />
+                <Button
+                  icon="pi pi-trash"
+                  outlined
+                  rounded
+                  size="small"
+                  severity="danger"
+                  @click="excluirCardapio(card.id)"
                 />
               </div>
-              <InputText v-model="filters['global'].value" placeholder="Buscar..." class="!rounded-xl" />
-            </div>
-          </div>
-        </template>
-        <Column selectionMode="multiple" headerStyle="width: 3rem" />
-        <Column field="data_do_cardapio" header="Data" :sortable="true" :style="{ width: '120px' }">
-          <template #body="{ data }">
-            <div class="flex flex-col">
-              <span class="font-bold text-slate-800">{{ data._dataObj ? data._dataObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '-' }}</span>
-              <span class="text-[10px] text-slate-400 uppercase">{{ data._dataObj ? data._dataObj.toLocaleDateString('pt-BR', { weekday: 'short' }) : '' }}</span>
-            </div>
-          </template>
-        </Column>
-        <Column header="Pratos Principais" :style="{ minWidth: '200px' }">
-          <template #body="{ data }">
-            <div class="flex flex-col gap-1">
-              <div class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-blue-500"></span>
-                <span class="text-sm font-semibold text-slate-700">{{ data.prato_principal_ptn01 || '-' }}</span>
-              </div>
-              <div v-if="data.prato_principal_ptn02" class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-blue-300"></span>
-                <span class="text-xs text-slate-500">{{ data.prato_principal_ptn02 }}</span>
-              </div>
-            </div>
-          </template>
-        </Column>
-        <Column header="Vegetariano" :style="{ width: '150px' }">
-          <template #body="{ data }">
-            <div v-if="data.ovo_lacto_vegetariano" class="flex items-center gap-2">
-              <i class="pi pi-heart-fill text-pink-500 text-xs"></i>
-              <span class="text-xs text-slate-600">{{ data.ovo_lacto_vegetariano }}</span>
-            </div>
-            <span v-else class="text-xs text-slate-300">-</span>
-          </template>
-        </Column>
-        <Column header="Acompanhamentos" :style="{ minWidth: '180px' }">
-          <template #body="{ data }">
-            <div class="flex flex-col gap-0.5">
-              <span v-if="data.acompanhamento_01" class="text-xs text-slate-600">{{ data.acompanhamento_01 }}</span>
-              <span v-if="data.acompanhamento_02" class="text-xs text-slate-500">{{ data.acompanhamento_02 }}</span>
-              <span v-if="!data.acompanhamento_01 && !data.acompanhamento_02" class="text-xs text-slate-300">-</span>
-            </div>
-          </template>
-        </Column>
-        <Column header="Guarnição / Salada" :style="{ minWidth: '150px' }">
-          <template #body="{ data }">
-            <div class="flex flex-col gap-0.5">
-              <div v-if="data.guarnicao" class="flex items-center gap-1">
-                <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                <span class="text-xs text-slate-600">{{ data.guarnicao }}</span>
-              </div>
-              <div v-if="data.salada" class="flex items-center gap-1">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                <span class="text-xs text-slate-600">{{ data.salada }}</span>
-              </div>
-            </div>
-          </template>
-        </Column>
-        <Column header="Sobremesa / Suco" :style="{ minWidth: '140px' }">
-          <template #body="{ data }">
-            <div class="flex flex-col gap-0.5">
-              <div v-if="data.sobremesa" class="flex items-center gap-1">
-                <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span>
-                <span class="text-xs text-slate-600">{{ data.sobremesa }}</span>
-              </div>
-              <div v-if="data.suco" class="flex items-center gap-1">
-                <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
-                <span class="text-xs text-slate-600">{{ data.suco }}</span>
-              </div>
-            </div>
-          </template>
-        </Column>
-        <Column header="Turnos" :style="{ width: '120px' }">
-          <template #body="{ data }">
-            <div class="flex flex-wrap gap-1">
-              <template v-if="data.turnos && data.turnos.length > 0">
-                <Tag v-for="t in data.turnos" :key="t"
-                  :value="t === 'almoco' ? 'Almoço' : 'Jantar'"
-                  :severity="t === 'almoco' ? 'success' : 'info'"
-                  class="!text-[9px] uppercase !rounded-full !px-2" />
-              </template>
-              <template v-else-if="data.refeicoes && data.refeicoes.length > 0">
-                <Tag v-for="r in data.refeicoes" :key="r.turno"
-                  :value="r.turno === 'almoco' ? 'Almoço' : 'Jantar'"
-                  :severity="r.turno === 'almoco' ? 'success' : 'info'"
-                  class="!text-[9px] uppercase !rounded-full !px-2" />
-              </template>
-              <span v-else class="text-xs text-slate-400">-</span>
-            </div>
-          </template>
-        </Column>
-        <Column header="Ações" :style="{ width: '120px' }">
-          <template #body="{ data }">
-            <div class="flex gap-2" @click.stop>
-              <Button
-                icon="pi pi-pencil"
-                outlined
-                rounded
-                severity="secondary"
-                size="small"
-                @click="editarCardapio(data)"
-                class="!border-slate-400 !text-slate-600"
-              />
-              <Button
-                icon="pi pi-trash"
-                outlined
-                rounded
-                severity="danger"
-                size="small"
-                @click="excluirCardapio(data.id)"
-                class="!border-red-400 !text-red-600"
-              />
-            </div>
-          </template>
-        </Column>
-      </DataTable>
-    </div>
-
-    <!-- Visualização Mensal (Calendário) -->
-    <div v-else-if="viewMode === 'calendar'" class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-        <!-- Header com navegação -->
-        <div class="flex items-center justify-between mb-6">
-          <div class="flex items-center gap-4">
-            <div class="flex items-center gap-2">
-              <Button icon="pi pi-chevron-left" text rounded severity="secondary" @click="navegarMes(-1)" class="!w-10 !h-10" />
-              <h3 class="text-xl font-bold text-slate-700 min-w-[200px] text-center capitalize">
-                {{ mesAnoAtual }}
-              </h3>
-              <Button icon="pi pi-chevron-right" text rounded severity="secondary" @click="navegarMes(1)" class="!w-10 !h-10" />
-            </div>
-            <Button label="Hoje" icon="pi pi-calendar" text severity="primary" size="small" @click="irParaHoje" class="!rounded-lg" />
-          </div>
-          <div class="flex gap-4 text-xs">
-            <div class="flex items-center gap-2">
-              <span class="w-3 h-3 rounded-full bg-primary-500"></span>
-              <span class="font-medium text-slate-600">Com cardápio</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="w-3 h-3 rounded border-2 border-dashed border-slate-300"></span>
-              <span class="font-medium text-slate-600">Sem cardápio</span>
             </div>
           </div>
         </div>
 
-        <div class="grid grid-cols-7 gap-2 mb-4">
-            <div v-for="dia in ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']" :key="dia"
-                 class="text-center font-black text-[10px] uppercase text-slate-400 tracking-widest pb-2 border-b border-slate-100">
-                {{ dia }}
-            </div>
-        </div>
-
-        <div class="grid grid-cols-7 gap-2">
-            <div v-for="(item, index) in diasCalendario" :key="index"
-                 class="min-h-[120px] border rounded-xl p-2 flex flex-col transition-all"
-                 :class="[
-                   item.vazio ? 'bg-slate-50/50 border-transparent' :
-                   item.cardapio ? 'border-primary-200 bg-primary-50/30 hover:border-primary-400 hover:bg-primary-50 cursor-pointer' :
-                   'border-slate-100 hover:border-slate-300 hover:bg-slate-50 cursor-pointer'
-                 ]"
-                 @click="item.cardapio ? editarCardapio(item.cardapio) : (item.dataString ? abrirNovoComData(item.dataString) : null)">
-                <template v-if="!item.vazio">
-                    <div class="flex justify-between items-start mb-1">
-                      <span class="text-sm font-bold" :class="item.cardapio ? 'text-primary-700' : 'text-slate-400'">{{ item.dia }}</span>
-                      <div v-if="item.cardapio" class="flex gap-0.5">
-                        <span v-for="t in item.cardapio.turnos" :key="t"
-                              class="w-2 h-2 rounded-full"
-                              :class="t === 'almoco' ? 'bg-amber-400' : 'bg-indigo-400'"
-                              :title="t === 'almoco' ? 'Almoço' : 'Jantar'"></span>
-                      </div>
-                    </div>
-
-                    <div v-if="item.cardapio" class="flex-1 flex flex-col gap-1 overflow-hidden">
-                        <div class="flex items-start gap-1">
-                          <span class="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1 flex-shrink-0"></span>
-                          <p class="text-[10px] font-bold text-slate-700 line-clamp-2 leading-tight">
-                            {{ item.cardapio.prato_principal_ptn01 }}
-                          </p>
-                        </div>
-                        <div v-if="item.cardapio.ovo_lacto_vegetariano" class="flex items-start gap-1">
-                          <i class="pi pi-heart-fill text-[8px] text-pink-500 mt-0.5"></i>
-                          <span class="text-[9px] text-pink-600 truncate">{{ item.cardapio.ovo_lacto_vegetariano }}</span>
-                        </div>
-                        <div v-if="item.cardapio.acompanhamento_01" class="flex items-start gap-1">
-                          <span class="w-1.5 h-1.5 rounded-full bg-slate-400 mt-1 flex-shrink-0"></span>
-                          <span class="text-[9px] text-slate-500 truncate">{{ item.cardapio.acompanhamento_01 }}</span>
-                        </div>
-                        <div class="mt-auto pt-1 border-t border-primary-100 flex items-center gap-2">
-                          <span v-if="item.cardapio.sobremesa" class="text-[8px] text-red-400 truncate flex-1">{{ item.cardapio.sobremesa }}</span>
-                          <span v-if="item.cardapio.suco" class="text-[8px] text-purple-400 truncate">{{ item.cardapio.suco }}</span>
-                        </div>
-                    </div>
-
-                    <div v-else class="flex-1 flex items-center justify-center">
-                      <div class="text-center">
-                        <i class="pi pi-plus text-slate-300 text-lg"></i>
-                        <p class="text-[9px] text-slate-400 mt-1">Adicionar</p>
-                      </div>
-                    </div>
-                </template>
-            </div>
-        </div>
-
-        <div class="flex gap-6 mt-6 pt-4 border-t border-slate-100 justify-center">
-            <div class="flex items-center gap-2 text-xs font-medium text-slate-500">
-                <span class="w-3 h-3 rounded-full bg-amber-400"></span> Almoço
-            </div>
-            <div class="flex items-center gap-2 text-xs font-medium text-slate-500">
-                <span class="w-3 h-3 rounded-full bg-indigo-400"></span> Jantar
-            </div>
-            <div class="flex items-center gap-2 text-xs font-medium text-slate-500">
-                <span class="w-2 h-2 rounded-full bg-blue-500"></span> Prato Principal
-            </div>
-            <div class="flex items-center gap-2 text-xs font-medium text-slate-500">
-                <i class="pi pi-heart-fill text-pink-500 text-[10px]"></i> Vegetariano
-            </div>
-        </div>
-    </div>
-
-    <!-- Visualização em Cards -->
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-      <div v-if="loading" class="col-span-full text-center py-12">
-        <i class="pi pi-spin pi-spinner text-3xl text-primary-500"></i>
-        <p class="mt-2 text-slate-500">Carregando cardápios...</p>
-      </div>
-
-      <div v-else-if="cardapios.length === 0" class="col-span-full text-center py-12 bg-white rounded-xl border border-dashed border-slate-300">
-        <i class="pi pi-calendar-times text-5xl text-slate-200 mb-4"></i>
-        <p class="text-slate-500">Nenhum cardápio cadastrado</p>
-        <Button label="Criar Primeiro Cardápio" icon="pi pi-plus" severity="success" class="mt-4 !rounded-xl" @click="abrirNovo" />
-      </div>
-
-      <div v-for="card in cardapios" :key="card.id"
-           class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-           @click="editarCardapio(card)">
-        <!-- Header do Card -->
-        <div class="bg-gradient-to-r from-primary-600 to-primary-700 p-4 text-white">
-          <div class="flex justify-between items-start">
-            <div>
-              <p class="text-xs font-bold opacity-80 uppercase tracking-wider">
-                {{ card._dataObj ? card._dataObj.toLocaleDateString('pt-BR', { weekday: 'long' }) : '-' }}
-              </p>
-              <p class="text-2xl font-black">
-                {{ card._dataObj ? card._dataObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) : '-' }}
-              </p>
-            </div>
-            <div class="flex gap-1">
-              <Tag v-for="t in card.turnos" :key="t"
-                class="!bg-white/20 !text-white !text-xs !px-2 !py-1">
-                <template #default>
-                  <i :class="t === 'almoco' ? 'pi pi-sun' : 'pi pi-moon'" class="text-xs"></i>
-                </template>
-              </Tag>
-            </div>
-          </div>
-        </div>
-
-        <!-- Conteúdo do Card -->
-        <div class="p-4 space-y-3">
-          <!-- Pratos Principais -->
-          <div class="space-y-1">
-            <p class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Pratos Principais</p>
-            <p class="text-sm font-bold text-slate-800">{{ card.prato_principal_ptn01 || '-' }}</p>
-            <p v-if="card.prato_principal_ptn02" class="text-xs text-slate-500">{{ card.prato_principal_ptn02 }}</p>
-          </div>
-
-          <!-- Vegetariano -->
-          <div v-if="card.ovo_lacto_vegetariano" class="flex items-center gap-2 p-2 bg-pink-50 rounded-lg border border-pink-100">
-            <i class="pi pi-heart-fill text-pink-500 text-xs"></i>
-            <span class="text-xs font-medium text-pink-700">{{ card.ovo_lacto_vegetariano }}</span>
-          </div>
-
-          <!-- Grid de informações -->
-          <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
-            <div v-if="card.acompanhamento_01 || card.acompanhamento_02">
-              <p class="text-[9px] font-black text-slate-400 uppercase">Acompanhamentos</p>
-              <p class="text-xs text-slate-600">{{ card.acompanhamento_01 }}</p>
-              <p v-if="card.acompanhamento_02" class="text-xs text-slate-500">{{ card.acompanhamento_02 }}</p>
-            </div>
-            <div v-if="card.guarnicao">
-              <p class="text-[9px] font-black text-slate-400 uppercase">Guarnição</p>
-              <p class="text-xs text-slate-600">{{ card.guarnicao }}</p>
-            </div>
-            <div v-if="card.salada">
-              <p class="text-[9px] font-black text-slate-400 uppercase">Salada</p>
-              <p class="text-xs text-slate-600">{{ card.salada }}</p>
-            </div>
-            <div v-if="card.sobremesa">
-              <p class="text-[9px] font-black text-slate-400 uppercase">Sobremesa</p>
-              <p class="text-xs text-slate-600">{{ card.sobremesa }}</p>
-            </div>
-            <div v-if="card.suco">
-              <p class="text-[9px] font-black text-slate-400 uppercase">Suco</p>
-              <p class="text-xs text-slate-600">{{ card.suco }}</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Footer do Card -->
-        <div class="px-4 py-3 bg-slate-50 border-t border-slate-100 flex justify-end gap-2" @click.stop>
+        <!-- Ir para Semana Atual -->
+        <div class="px-6 pb-4 flex justify-center">
           <Button
-            icon="pi pi-pencil"
-            outlined
-            rounded
+            label="Ir para Semana Atual"
+            icon="pi pi-calendar"
+            text
             size="small"
-            severity="secondary"
-            @click="editarCardapio(card)"
-            class="!border-slate-300 !text-slate-600 hover:!bg-slate-100"
-          />
-          <Button
-            icon="pi pi-trash"
-            outlined
-            rounded
-            size="small"
-            severity="danger"
-            @click="excluirCardapio(card.id)"
-            class="!border-red-300 !text-red-600 hover:!bg-red-50"
+            @click="irParaSemanaAtual"
+            class="!text-slate-500 hover:!text-primary-600"
           />
         </div>
       </div>
     </div>
 
-    <!-- Dialog Modelos -->
-    <Dialog v-model:visible="displayTemplates" header="Modelos de Planilha" :style="{ width: '400px' }" modal class="!rounded-xl">
-      <div class="space-y-6 py-4">
-        <p class="text-sm text-slate-600">Baixe os modelos oficiais para importação de dados no sistema.</p>
-        
-        <div class="grid gap-3">
-           <Button label="Modelo de Cardápio (.xlsx)" icon="pi pi-file-excel" severity="success" outlined class="!rounded-xl text-left" @click="downloadTemplate('cardapios')" />
-           <Button label="Modelo de Bolsistas (.xlsx)" icon="pi pi-file-excel" severity="emerald" outlined class="!rounded-xl text-left" @click="downloadTemplate('bolsistas')" />
+    <!-- ============= VIEW: CALENDÁRIO MENSAL ============= -->
+    <div v-else-if="viewMode === 'calendar'" class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <!-- Header -->
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-2">
+            <Button icon="pi pi-chevron-left" text rounded severity="secondary" @click="navegarMes(-1)" class="!w-10 !h-10" />
+            <div class="min-w-[220px] text-center">
+              <h3 class="text-xl font-bold text-slate-700 capitalize">{{ mesAnoAtual }}</h3>
+              <p class="text-xs text-slate-500 mt-0.5">{{ cardapiosMesAtual.length }} cardápio(s)</p>
+            </div>
+            <Button icon="pi pi-chevron-right" text rounded severity="secondary" @click="navegarMes(1)" class="!w-10 !h-10" />
+          </div>
+          <Button label="Hoje" icon="pi pi-calendar" text severity="primary" size="small" @click="irParaHoje" class="!rounded-lg" />
         </div>
-        
-        <div class="p-4 bg-blue-50 rounded-xl border border-blue-100">
-           <p class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Dica:</p>
-           <p class="text-xs text-blue-700">Preencha todas as colunas obrigatórias para evitar erros na importação.</p>
+        <div class="flex gap-4 text-xs">
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-primary-500"></span>
+            <span class="text-slate-600">Com cardápio</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded border-2 border-dashed border-slate-300"></span>
+            <span class="text-slate-600">Sem cardápio</span>
+          </div>
         </div>
       </div>
-    </Dialog>
 
+      <!-- Dias da semana -->
+      <div class="grid grid-cols-7 gap-2 mb-3">
+        <div v-for="dia in ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']" :key="dia"
+             class="text-center font-black text-[10px] uppercase text-slate-400 tracking-widest py-2">
+          {{ dia }}
+        </div>
+      </div>
+
+      <!-- Grid do calendário -->
+      <div class="grid grid-cols-7 gap-2">
+        <div
+          v-for="(item, index) in diasCalendario"
+          :key="index"
+          class="min-h-[110px] border rounded-xl p-2 flex flex-col transition-all"
+          :class="[
+            item.vazio ? 'bg-slate-50/50 border-transparent' :
+            item.cardapio ? 'border-primary-200 bg-primary-50/50 hover:border-primary-400 hover:bg-primary-50 cursor-pointer' :
+            'border-slate-100 hover:border-slate-300 hover:bg-slate-50 cursor-pointer'
+          ]"
+          @click="item.cardapio ? editarCardapio(item.cardapio) : (item.dataString ? abrirNovoComData(item.dataString) : null)"
+        >
+          <template v-if="!item.vazio">
+            <div class="flex justify-between items-start mb-1">
+              <span class="text-sm font-bold" :class="item.cardapio ? 'text-primary-700' : 'text-slate-400'">{{ item.dia }}</span>
+              <div v-if="item.cardapio" class="flex gap-0.5">
+                <span v-for="t in item.cardapio.turnos" :key="t" class="w-2 h-2 rounded-full" :class="t === 'almoco' ? 'bg-amber-400' : 'bg-indigo-400'"></span>
+              </div>
+            </div>
+            <div v-if="item.cardapio" class="flex-1 flex flex-col gap-1 overflow-hidden">
+              <p class="text-[10px] font-bold text-slate-700 line-clamp-2 leading-tight">{{ item.cardapio.prato_principal_ptn01 }}</p>
+              <div v-if="item.cardapio.ovo_lacto_vegetariano" class="flex items-center gap-1">
+                <i class="pi pi-heart-fill text-[8px] text-pink-500"></i>
+                <span class="text-[9px] text-pink-600 truncate">{{ item.cardapio.ovo_lacto_vegetariano }}</span>
+              </div>
+              <div class="mt-auto flex gap-2">
+                <span v-if="item.cardapio.sobremesa" class="text-[8px] text-slate-400 truncate">{{ item.cardapio.sobremesa }}</span>
+              </div>
+            </div>
+            <div v-else class="flex-1 flex items-center justify-center">
+              <div class="text-center opacity-50 hover:opacity-100 transition-opacity">
+                <i class="pi pi-plus text-slate-300 text-lg"></i>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============= DIALOG NOVO/EDITAR ============= -->
     <Dialog
       v-model:visible="displayDialog"
       :header="cardapioForm.id ? 'Editar Cardápio' : 'Novo Cardápio'"
-      :style="{ width: '95vw', maxWidth: '1000px' }"
+      :style="{ width: '95vw', maxWidth: '900px' }"
       modal
-      :maximizable="true"
-      class="p-fluid !rounded-xl"
-      :contentStyle="{ maxHeight: '75vh', overflow: 'auto' }"
+      class="!rounded-2xl"
     >
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-        <div class="field">
-          <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Data *</label>
-          <DatePicker v-model="cardapioForm.data_do_cardapio" dateFormat="dd/mm/yy" showIcon :locale="ptBR" class="!rounded-xl w-full" />
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Data *</label>
+          <DatePicker v-model="cardapioForm.data_do_cardapio" dateFormat="dd/mm/yy" showIcon :locale="ptBR" class="w-full" />
         </div>
-        <div class="field md:col-span-2">
-          <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Turnos *</label>
-          <SelectButton
-            v-model="cardapioForm.turnos" 
-            :options="[{label: 'Almoço', value: 'almoco'}, {label: 'Jantar', value: 'jantar'}]" 
-            optionLabel="label" 
-            optionValue="value" 
-            multiple
-            class="custom-select-button-multiple"
-          >
-            <template #option="slotProps">
-              <div class="flex items-center gap-2 px-2">
-                <i :class="slotProps.option.value === 'almoco' ? 'pi pi-sun' : 'pi pi-moon'"></i>
-                <span class="text-sm font-bold uppercase tracking-tight">{{ slotProps.option.label }}</span>
-              </div>
-            </template>
-          </SelectButton>
+        <div class="md:col-span-2">
+          <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Turnos *</label>
+          <div class="flex gap-4 p-2 bg-slate-50 rounded-lg border border-slate-200">
+            <div class="flex items-center">
+              <Checkbox v-model="cardapioForm.turnos" inputId="t-almoco" name="turno" value="almoco" />
+              <label for="t-almoco" class="ml-2 text-xs font-bold text-slate-600 cursor-pointer">Almoço</label>
+            </div>
+            <div class="flex items-center">
+              <Checkbox v-model="cardapioForm.turnos" inputId="t-jantar" name="turno" value="jantar" />
+              <label for="t-jantar" class="ml-2 text-xs font-bold text-slate-600 cursor-pointer">Jantar</label>
+            </div>
+          </div>
         </div>
-
-        <!-- Pratos Principais -->
-        <div class="field md:col-span-2">
-          <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Prato Principal 01 *</label>
-          <InputText v-model="cardapioForm.prato_principal_ptn01" placeholder="Ex: Frango Grelhado" class="!rounded-xl" />
+        <div class="md:col-span-2">
+          <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Prato Principal 01 *</label>
+          <InputText v-model="cardapioForm.prato_principal_ptn01" class="w-full" />
         </div>
-        <div class="field">
-          <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Prato Principal 02</label>
-          <InputText v-model="cardapioForm.prato_principal_ptn02" placeholder="Ex: Carne Assada" class="!rounded-xl" />
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Prato Principal 02</label>
+          <InputText v-model="cardapioForm.prato_principal_ptn02" class="w-full" />
         </div>
-
-        <!-- Acompanhamentos -->
-        <div class="field">
-          <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Acompanhamento 01 *</label>
-          <InputText v-model="cardapioForm.acompanhamento_01" placeholder="Ex: Arroz" class="!rounded-xl" />
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Acompanhamento 01 *</label>
+          <InputText v-model="cardapioForm.acompanhamento_01" class="w-full" />
         </div>
-        <div class="field">
-          <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Acompanhamento 02 *</label>
-          <InputText v-model="cardapioForm.acompanhamento_02" placeholder="Ex: Feijão" class="!rounded-xl" />
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Acompanhamento 02 *</label>
+          <InputText v-model="cardapioForm.acompanhamento_02" class="w-full" />
         </div>
-        <div class="field">
-          <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Guarnição</label>
-          <InputText v-model="cardapioForm.guarnicao" placeholder="Ex: Farofa" class="!rounded-xl" />
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Guarnição</label>
+          <InputText v-model="cardapioForm.guarnicao" class="w-full" />
         </div>
-
-        <!-- Vegetariano e Salada -->
-        <div class="field md:col-span-2">
-          <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Opção Vegetariana</label>
-          <InputText v-model="cardapioForm.ovo_lacto_vegetariano" placeholder="Ex: Omelete de legumes" class="!rounded-xl" />
+        <div class="md:col-span-2">
+          <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Opção Vegetariana</label>
+          <InputText v-model="cardapioForm.ovo_lacto_vegetariano" class="w-full" />
         </div>
-        <div class="field">
-          <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Salada</label>
-          <InputText v-model="cardapioForm.salada" placeholder="Ex: Alface com tomate" class="!rounded-xl" />
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Salada</label>
+          <InputText v-model="cardapioForm.salada" class="w-full" />
         </div>
-
-        <!-- Sobremesa e Suco -->
-        <div class="field">
-          <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Sobremesa</label>
-          <InputText v-model="cardapioForm.sobremesa" placeholder="Ex: Gelatina" class="!rounded-xl" />
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Sobremesa</label>
+          <InputText v-model="cardapioForm.sobremesa" class="w-full" />
         </div>
-        <div class="field">
-          <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Suco</label>
-          <InputText v-model="cardapioForm.suco" placeholder="Ex: Laranja" class="!rounded-xl" />
-        </div>
-        <div class="field flex items-end">
-          <!-- Espaço vazio para alinhamento -->
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Suco</label>
+          <InputText v-model="cardapioForm.suco" class="w-full" />
         </div>
       </div>
       <template #footer>
-        <div class="flex gap-3 w-full pt-4">
-          <Button label="Cancelar" icon="pi pi-times" text @click="displayDialog = false" class="flex-1 !rounded-xl" />
-          <Button label="Salvar Cardápio" icon="pi pi-check" @click="salvarCardapio" severity="success" class="flex-1 !rounded-xl shadow-md" />
+        <div class="flex gap-3 pt-4">
+          <Button label="Cancelar" icon="pi pi-times" text @click="displayDialog = false" class="flex-1" />
+          <Button label="Salvar" icon="pi pi-check" @click="salvarCardapio" severity="success" class="flex-1 shadow-lg" />
         </div>
       </template>
     </Dialog>
 
-    <!-- Dialog Importação -->
-    <Dialog v-model:visible="displayImport" header="Importar Cardápios" :style="{ width: '95%', maxWidth: '500px' }" modal class="p-fluid !rounded-xl overflow-hidden">
-      <div class="space-y-6 pt-4">
-        <div class="p-4 bg-blue-50 rounded-xl border border-blue-100">
-          <p class="text-blue-800 text-sm leading-relaxed">
-            Selecione o arquivo Excel (.xlsx, .xls) com os cardápios seguindo o modelo oficial. 
-          </p>
-        </div>
-
-        <div class="field">
-          <label class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Turnos Automáticos</label>
-          <SelectButton 
-            v-model="turnosImport" 
-            :options="[{label: 'Almoço', value: 'almoco'}, {label: 'Jantar', value: 'jantar'}]" 
-            optionLabel="label" 
-            optionValue="value" 
-            multiple
-            class="custom-select-button-multiple"
-          >
-            <template #option="slotProps">
-              <div class="flex items-center gap-2 px-2">
-                <i :class="slotProps.option.value === 'almoco' ? 'pi pi-sun' : 'pi pi-moon'"></i>
-                <span class="text-sm font-bold uppercase tracking-tight">{{ slotProps.option.label }}</span>
-              </div>
-            </template>
-          </SelectButton>
-        </div>
-
-        <div class="field">
-          <FileUpload 
-            mode="basic" 
-            name="file" 
-            accept=".xlsx,.xls" 
-            :maxFileSize="5242880" 
-            customUpload 
-            @select="onUpload" 
-            chooseLabel="Selecionar Arquivo Excel" 
-            class="w-full !rounded-xl"
-            :disabled="loadingImport"
-          />
-          <p class="text-[10px] text-slate-500 mt-2 ml-1">Tamanho máximo: 5MB (.xlsx, .xls)</p>
-          <div v-if="loadingImport" class="mt-4 p-4 bg-slate-50 rounded-xl text-center">
-            <i class="pi pi-spin pi-spinner text-primary-600 mb-2"></i>
-            <p class="text-sm text-slate-600 font-bold">Processando dados, por favor aguarde...</p>
+    <!-- ============= DIALOG IMPORTAÇÃO ============= -->
+    <Dialog v-model:visible="displayImport" header="Importar Cardápios" :style="{ width: '450px' }" modal class="!rounded-2xl">
+      <div class="space-y-4">
+        <p class="text-sm text-slate-600">Selecione o arquivo Excel com os cardápios.</p>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase mb-2 block">Turnos</label>
+          <div class="flex gap-4 p-2 bg-slate-50 rounded-lg border border-slate-200 mb-2">
+            <div class="flex items-center">
+              <Checkbox v-model="turnosImport" inputId="i-almoco" name="turnoImport" value="almoco" />
+              <label for="i-almoco" class="ml-2 text-xs font-bold text-slate-600 cursor-pointer">Almoço</label>
+            </div>
+            <div class="flex items-center">
+              <Checkbox v-model="turnosImport" inputId="i-jantar" name="turnoImport" value="jantar" />
+              <label for="i-jantar" class="ml-2 text-xs font-bold text-slate-600 cursor-pointer">Jantar</label>
+            </div>
           </div>
         </div>
+        <FileUpload mode="basic" name="arquivo" accept=".xlsx,.xls,.csv" :maxFileSize="10000000" customUpload @select="onUpload" chooseLabel="Escolher Arquivo" class="w-full" :disabled="loadingImport" />
+        <div class="p-3 bg-amber-50 rounded-xl border border-amber-200">
+          <p class="text-xs text-amber-700"><i class="pi pi-info-circle mr-1"></i> Cardápios existentes serão atualizados.</p>
+        </div>
+        <Button label="Baixar Modelo" icon="pi pi-download" severity="secondary" outlined class="w-full" @click="downloadTemplate('cardapios')" />
       </div>
-      <template #footer>
-        <Button label="Fechar" icon="pi pi-times" text @click="displayImport = false" :disabled="loadingImport" class="w-full !rounded-xl" />
-      </template>
     </Dialog>
 
-    <!-- Dialog Limpar por Período -->
-    <Dialog v-model:visible="displayDeletePeriod" header="Limpar Cardápios por Período" :style="{ width: '95%', maxWidth: '450px' }" modal class="p-fluid !rounded-xl overflow-hidden">
-      <div class="space-y-6 pt-4">
-        <div class="p-4 bg-amber-50 rounded-xl border border-amber-100">
-          <p class="text-amber-800 text-sm leading-relaxed">
-            Selecione um intervalo de datas para remover permanentemente todos os cardápios cadastrados nesse período.
-          </p>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="field">
-            <label class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Data Início</label>
-            <DatePicker v-model="periodForm.data_inicio" dateFormat="dd/mm/yy" :locale="ptBR" showIcon class="!rounded-xl" />
+    <!-- ============= DIALOG EXCLUIR PERÍODO ============= -->
+    <Dialog v-model:visible="displayDeletePeriod" header="Excluir por Período" :style="{ width: '400px' }" modal class="!rounded-2xl">
+      <div class="space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Início</label>
+            <DatePicker v-model="periodForm.data_inicio" dateFormat="dd/mm/yy" showIcon :locale="ptBR" class="w-full" />
           </div>
-          <div class="field">
-            <label class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Data Fim</label>
-            <DatePicker v-model="periodForm.data_fim" dateFormat="dd/mm/yy" :locale="ptBR" showIcon class="!rounded-xl" />
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Fim</label>
+            <DatePicker v-model="periodForm.data_fim" dateFormat="dd/mm/yy" showIcon :locale="ptBR" class="w-full" />
           </div>
         </div>
-
-        <div class="pt-4 border-t border-slate-100 mt-6">
-           <Button label="Limpar Tudo (CUIDADO)" icon="pi pi-exclamation-triangle" severity="danger" text size="small" @click="limparTodos" class="w-full !rounded-xl" />
+        <div class="p-3 bg-red-50 rounded-xl border border-red-200">
+          <p class="text-xs text-red-700"><i class="pi pi-exclamation-triangle mr-1"></i> Ação irreversível!</p>
         </div>
       </div>
       <template #footer>
-        <div class="flex gap-3 w-full">
-          <Button label="Cancelar" icon="pi pi-times" text @click="displayDeletePeriod = false" class="flex-1 !rounded-xl" />
-          <Button label="Excluir Período" icon="pi pi-trash" @click="deletarPorPeriodo" severity="danger" class="flex-1 !rounded-xl shadow-lg" />
-        </div>
+        <Button label="Cancelar" text @click="displayDeletePeriod = false" />
+        <Button label="Excluir" severity="danger" @click="deletarPorPeriodo" />
       </template>
     </Dialog>
   </div>
 </template>
 
 <style scoped>
-.custom-select-button :deep(.p-button) {
+.view-select :deep(.p-button) {
   border: 0;
   background: transparent;
   color: #64748b;
   font-weight: 700;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem;
   border-radius: 0.75rem;
 }
-
-.custom-select-button :deep(.p-button.p-highlight) {
+.view-select :deep(.p-button.p-highlight) {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+.view-select :deep(.p-button:not(.p-highlight):hover) {
   background: #f1f5f9;
-  color: #1e293b;
 }
 
-.custom-select-button :deep(.p-button:not(.p-highlight):hover) {
-  background: #f8fafc;
-}
-
-.custom-select-button-multiple :deep(.p-button) {
-  background: #f8fafc;
-  color: #64748b;
-  font-weight: 700;
-  padding: 0.5rem 1rem;
-  border-radius: 0.75rem;
+.turno-select :deep(.p-button) {
   border: 1px solid #e2e8f0;
+  background: transparent;
+  color: #64748b;
+  font-weight: 600;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.5rem;
 }
-
-.custom-select-button-multiple :deep(.p-button.p-highlight) {
-  background: var(--ifba-verde);
-  color: #ffffff;
-  border-color: var(--ifba-verde);
+.turno-select :deep(.p-button.p-highlight) {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
 }
-
-.custom-select-button-multiple :deep(.p-button:not(.p-highlight):hover) {
-  background: #f1f5f9;
-}
-
-/* DataTable de Cardápios */
-.cardapio-datatable :deep(.p-datatable-tbody > tr) {
-  transition: all 0.15s ease;
-}
-
-.cardapio-datatable :deep(.p-datatable-tbody > tr:hover) {
-  background: #f0fdf4 !important;
-}
-
-.cardapio-datatable :deep(.p-datatable-thead > tr > th) {
-  background: #f8fafc !important;
-  font-size: 0.7rem !important;
-  padding: 0.75rem 0.5rem !important;
-}
-
-.cardapio-datatable :deep(.p-datatable-tbody > tr > td) {
-  padding: 0.75rem 0.5rem !important;
-  vertical-align: top !important;
-}
-
-/* Line clamp para textos */
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.turno-select :deep(.p-button:not(.p-highlight):hover) {
+  background: #f8fafc;
 }
 </style>

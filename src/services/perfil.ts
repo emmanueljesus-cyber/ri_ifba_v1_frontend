@@ -44,7 +44,7 @@ const normalizePerfil = (raw: any): Perfil => ({
   preferencia_alimentar: raw.preferencia_alimentar ?? null,
   restricoes_alimentares: raw.restricoes_alimentares ?? [],
   alergias: raw.alergias ?? null,
-  is_ovolactovegetariano: !!raw.is_ovolactovegetariano,
+  is_ovolactovegetariano: raw.is_ovolactovegetariano ?? raw.preferencia_alimentar === 'ovolactovegetariano',
   dias_cadastrados: raw.dias_cadastrados ?? [],
   created_at: raw.created_at,
   updated_at: raw.updated_at
@@ -84,7 +84,8 @@ export const perfilService = {
   async atualizarRestricoesAlimentares(payload: {
     preferencia_alimentar?: string
     restricoes_alimentares?: string[]
-  }): Promise<{ preferencia_alimentar: string; restricoes_alimentares: string[] }> {
+    alergias?: string
+  }): Promise<{ preferencia_alimentar: string; restricoes_alimentares: string[]; alergias: string | null }> {
     const { data } = await api.put('/estudante/perfil/restricoes-alimentares', payload)
     return data.data
   },

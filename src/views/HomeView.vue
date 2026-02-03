@@ -2,7 +2,6 @@
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import PublicLayout from '../layouts/PublicLayout.vue'
-import Card from 'primevue/card'
 import Button from 'primevue/button'
 
 const auth = useAuthStore()

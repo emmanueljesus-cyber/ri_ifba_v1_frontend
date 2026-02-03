@@ -19,20 +19,32 @@ export interface FilaExtra {
 }
 
 export interface RefeicaoDisponivel {
-  id: number
-  cardapio_id: number
+  refeicao_id: number
   turno: 'almoco' | 'jantar'
-  data: string
-  prato_principal: string
-  acompanhamento: string
-  guarnicao: string
-  salada: string
-  sobremesa: string
-  vagas_disponiveis: number
-  total_inscritos: number
-  limite_inscricoes: string // hora limite (ex: "10:00")
+  turno_label: string
+  horario_inicio: string
+  horario_fim: string
+  esta_no_horario: boolean
   pode_inscrever: boolean
-  ja_inscrito: boolean
+  vagas_disponiveis: number
+  capacidade_total: number
+  presencas_confirmadas: number
+  inscrito: boolean
+  inscricao_id?: number
+  posicao_fila?: number
+  status_inscricao?: string
+  cardapio: {
+    id: number
+    prato_principal_ptn01: string
+    prato_principal_ptn02: string
+    guarnicao: string
+    acompanhamento_01: string
+    acompanhamento_02: string
+    salada: string
+    ovo_lacto_vegetariano: string
+    suco: string
+    sobremesa: string
+  }
 }
 
 export interface InscricaoRequest {

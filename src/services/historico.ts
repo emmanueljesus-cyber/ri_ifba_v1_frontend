@@ -5,16 +5,6 @@ import type {
   FiltrosHistorico
 } from '../types/historico'
 
-interface ApiResponse<T> {
-  data: T
-  message: string
-  meta?: {
-    current_page: number
-    total: number
-    per_page: number
-  }
-}
-
 export const historicoService = {
   async listar(filtros?: FiltrosHistorico): Promise<{ data: HistoricoRefeicao[], meta?: any }> {
     const response = await api.get('/estudante/historico', {
