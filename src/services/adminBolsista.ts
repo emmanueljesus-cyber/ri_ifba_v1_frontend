@@ -23,11 +23,19 @@ export const adminBolsistaService = {
   async criarBolsista(dados: {
     matricula: string
     turno_refeicao: string
+    nome?: string
+    curso?: string
+    dias_semana?: number[]
   }) {
-    const { data } = await api.post('/admin/bolsistas-aprovados', {
+    const payload: any = {
       matricula: dados.matricula,
-      turno_refeicao: dados.turno_refeicao
-    })
+      turno_refeicao: dados.turno_refeicao,
+    }
+    if (dados.nome) payload.nome = dados.nome
+    if (dados.curso) payload.curso = dados.curso
+    if (dados.dias_semana && dados.dias_semana.length) payload.dias_semana = dados.dias_semana
+
+    const { data } = await api.post('/admin/bolsistas-aprovados', payload)
     return data
   },
 

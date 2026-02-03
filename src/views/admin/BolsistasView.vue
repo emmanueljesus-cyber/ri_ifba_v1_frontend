@@ -14,6 +14,7 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Avatar from 'primevue/avatar'
 import Select from 'primevue/select'
+import MultiSelect from 'primevue/multiselect'
 
 const toast = useToast()
 const { getInitials, getAvatarStyle } = useAvatar()
@@ -31,7 +32,10 @@ const salvandoBolsista = ref(false)
 
 const novoBolsista = ref({
   matricula: '',
-  turno_refeicao: 'almoco'
+  nome: '',
+  curso: '',
+  turno_refeicao: 'almoco',
+  dias_semana: [1,2,3,4,5],
 })
 
 const statusOptions = ref([
@@ -49,6 +53,16 @@ const turnoOptions = ref([
 const turnoFormOptions = ref([
   { label: 'Almoço', value: 'almoco' },
   { label: 'Jantar', value: 'jantar' }
+])
+
+const diasSemanaOptions = ref([
+  { label: 'Domingo', value: 0 },
+  { label: 'Segunda', value: 1 },
+  { label: 'Terça', value: 2 },
+  { label: 'Quarta', value: 3 },
+  { label: 'Quinta', value: 4 },
+  { label: 'Sexta', value: 5 },
+  { label: 'Sábado', value: 6 },
 ])
 
 const filtersBolsistas = ref({
@@ -132,7 +146,10 @@ const onUpload = async (event: any) => {
 const resetNovoBolsista = () => {
   novoBolsista.value = {
     matricula: '',
-    turno_refeicao: 'almoco'
+    nome: '',
+    curso: '',
+    turno_refeicao: 'almoco',
+    dias_semana: [1,2,3,4,5],
   }
 }
 
@@ -418,16 +435,34 @@ onMounted(() => {
     </Dialog>
 
     <!-- Dialog Novo Bolsista -->
-    <Dialog v-model:visible="displayNovo" header="Novo Bolsista" :style="{ width: '450px' }" modal class="!rounded-xl">
+    <Dialog v-model:visible="displayNovo" header="Novo Bolsista" :style="{ width: '520px' }" modal class="!rounded-xl">
       <div class="space-y-4 py-2">
-        <div class="field">
-          <label class="font-bold block mb-2">Matrícula <span class="text-red-500">*</span></label>
-          <InputText v-model="novoBolsista.matricula" class="w-full" placeholder="Ex: 20231234567" />
-        </div>
+        <div class="grid grid-cols-1 gap-4">
+          <div class="field">
+            <label class="font-bold block mb-2">Matrícula <span class="text-red-500">*</span></label>
+            <InputText v-model="novoBolsista.matricula" class="w-full" placeholder="Ex: 20231234567" />
+          </div>
 
-        <div class="field">
-          <label class="font-bold block mb-2">Turno da Refeição <span class="text-red-500">*</span></label>
-          <Select v-model="novoBolsista.turno_refeicao" :options="turnoFormOptions" optionLabel="label" optionValue="value" class="w-full" />
+          <div class="field">
+            <label class="font-bold block mb-2">Nome</label>
+            <InputText v-model="novoBolsista.nome" class="w-full" placeholder="Nome completo (opcional)" />
+          </div>
+
+          <div class="field">
+            <label class="font-bold block mb-2">Curso</label>
+            <InputText v-model="novoBolsista.curso" class="w-full" placeholder="Ex: ADS" />
+          </div>
+
+          <div class="field">
+            <label class="font-bold block mb-2">Turno da Refeição <span class="text-red-500">*</span></label>
+            <Select v-model="novoBolsista.turno_refeicao" :options="turnoFormOptions" optionLabel="label" optionValue="value" class="w-full" />
+          </div>
+
+          <div class="field">
+            <label class="font-bold block mb-2">Dias da Semana</label>
+            <MultiSelect v-model="novoBolsista.dias_semana" :options="diasSemanaOptions" optionLabel="label" optionValue="value" display="chip" placeholder="Selecione os dias" class="w-full" />
+            <small class="text-slate-500 mt-1 block">Padrão: Seg a Sex.</small>
+          </div>
         </div>
 
         <div class="p-3 bg-blue-50 rounded-lg border border-blue-100">
