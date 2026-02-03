@@ -1,4 +1,3 @@
-        target: 'http://127.0.0.1:8000', // Backend local - fotos
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { fileURLToPath, URL } from 'node:url'
