@@ -13,9 +13,20 @@ export const adminBolsistaService = {
 
   async importar(arquivo: File) {
     const formData = new FormData()
-    formData.append('arquivo', arquivo)
+    formData.append('file', arquivo)
     const { data } = await api.post('/admin/bolsistas/import', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    return data
+  },
+
+  async criarBolsista(dados: {
+    matricula: string
+    turno_refeicao: string
+  }) {
+    const { data } = await api.post('/admin/bolsistas-aprovados', {
+      matricula: dados.matricula,
+      turno_refeicao: dados.turno_refeicao
     })
     return data
   },

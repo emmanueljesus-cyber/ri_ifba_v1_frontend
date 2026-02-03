@@ -164,11 +164,59 @@ const salvarCardapio = async () => {
   }
 }
 
-const downloadTemplate = (tipo: string) => {
-  // Usar a rota V2 pública que já foi validada e não requer autenticação complexa
-  // Nota: A rota v2 não tem prefixo /admin
-  const url = `${import.meta.env.VITE_API_BASE_URL}/${tipo}/template-v2`
-  window.open(url, '_blank')
+import api from '../../services/api' // Importe o Axios configurado
+
+const downloadTemplate = async (tipo: string) => {
+  try {
+    // Usar rota V2 protegida (dentro do grupo admin)
+    // O interceptor do api.ts vai adicionar o token Bearer automaticamente
+    const url = `/admin/${tipo}/template-v2`
+
+    const response = await api.get(url, {
+      responseType: 'blob', // Importante para arquivos binários
+      headers: {
+        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      }
+    })
+
+    const blob = new Blob([response.data], { 
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+    })
+
+    const contentDisposition = response.headers['content-disposition']
+    let filename = `template_${tipo}.xlsx`
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="(.+)"/)
+      if (filenameMatch && filenameMatch[1]) {
+        filename = filenameMatch[1]
+      }
+    }
+
+    const blobUrl = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = blobUrl
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 100)
+
+    toast.add({
+      severity: 'success',
+      summary: 'Sucesso',
+      detail: 'Template baixado com sucesso!',
+      life: 3000
+    })
+  } catch (error) {
+    console.error('Erro ao baixar template:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Erro',
+      detail: 'Erro ao baixar template. Tente novamente.',
+      life: 5000
+    })
+  }
 }
 
 const onUpload = async (event: any) => {
