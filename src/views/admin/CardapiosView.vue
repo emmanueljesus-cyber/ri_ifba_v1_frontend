@@ -9,6 +9,7 @@ import InputText from 'primevue/inputtext'
 import DatePicker from 'primevue/datepicker'
 import SelectButton from 'primevue/selectbutton'
 import Tag from 'primevue/tag'
+import Checkbox from 'primevue/checkbox'
 import FileUpload from 'primevue/fileupload'
 
 const toast = useToast()
@@ -715,7 +716,16 @@ onMounted(() => carregarCardapios())
         </div>
         <div class="md:col-span-2">
           <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Turnos *</label>
-          <SelectButton v-model="cardapioForm.turnos" :options="[{label: 'Almoço', value: 'almoco'}, {label: 'Jantar', value: 'jantar'}]" optionLabel="label" optionValue="value" multiple class="turno-select" />
+          <div class="flex gap-4 p-2 bg-slate-50 rounded-lg border border-slate-200">
+            <div class="flex items-center">
+              <Checkbox v-model="cardapioForm.turnos" inputId="t-almoco" name="turno" value="almoco" />
+              <label for="t-almoco" class="ml-2 text-xs font-bold text-slate-600 cursor-pointer">Almoço</label>
+            </div>
+            <div class="flex items-center">
+              <Checkbox v-model="cardapioForm.turnos" inputId="t-jantar" name="turno" value="jantar" />
+              <label for="t-jantar" class="ml-2 text-xs font-bold text-slate-600 cursor-pointer">Jantar</label>
+            </div>
+          </div>
         </div>
         <div class="md:col-span-2">
           <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Prato Principal 01 *</label>
@@ -768,7 +778,16 @@ onMounted(() => carregarCardapios())
         <p class="text-sm text-slate-600">Selecione o arquivo Excel com os cardápios.</p>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase mb-2 block">Turnos</label>
-          <SelectButton v-model="turnosImport" :options="[{label: 'Almoço', value: 'almoco'}, {label: 'Jantar', value: 'jantar'}]" optionLabel="label" optionValue="value" multiple class="turno-select" />
+          <div class="flex gap-4 p-2 bg-slate-50 rounded-lg border border-slate-200 mb-2">
+            <div class="flex items-center">
+              <Checkbox v-model="turnosImport" inputId="i-almoco" name="turnoImport" value="almoco" />
+              <label for="i-almoco" class="ml-2 text-xs font-bold text-slate-600 cursor-pointer">Almoço</label>
+            </div>
+            <div class="flex items-center">
+              <Checkbox v-model="turnosImport" inputId="i-jantar" name="turnoImport" value="jantar" />
+              <label for="i-jantar" class="ml-2 text-xs font-bold text-slate-600 cursor-pointer">Jantar</label>
+            </div>
+          </div>
         </div>
         <FileUpload mode="basic" name="arquivo" accept=".xlsx,.xls,.csv" :maxFileSize="10000000" customUpload @select="onUpload" chooseLabel="Escolher Arquivo" class="w-full" :disabled="loadingImport" />
         <div class="p-3 bg-amber-50 rounded-xl border border-amber-200">

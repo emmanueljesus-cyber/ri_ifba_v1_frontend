@@ -16,10 +16,26 @@ import Avatar from 'primevue/avatar'
 import Select from 'primevue/select'
 import MultiSelect from 'primevue/multiselect'
 
+import Checkbox from 'primevue/checkbox'
+
 const toast = useToast()
 const { getInitials, getAvatarStyle } = useAvatar()
 const bolsistas = ref<any[]>([])
 const loading = ref(false)
+const totalRecords = ref(0)
+const lazyParams = ref({
+  first: 0,
+  rows: 10,
+  page: 0,
+  sortField: null,
+  sortOrder: null,
+  filters: {
+    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    ativo: { value: null, matchMode: FilterMatchMode.EQUALS },
+    turno_refeicao: { value: null, matchMode: FilterMatchMode.EQUALS }
+  }
+})
+
 const displayImport = ref(false)
 const displayDesligar = ref(false)
 const displayReativar = ref(false)
@@ -74,15 +90,18 @@ const filtersBolsistas = ref({
 const carregarBolsistas = async () => {
   loading.value = true
   try {
-    const params: any = {}
-    if (filtersBolsistas.value.ativo.value !== null) {
-      params.ativo = filtersBolsistas.value.ativo.value
+    const params: any = {
+      page: lazyParams.value.page + 1,
+      per_page: lazyParams.value.rows,
+      search: lazyParams.value.filters.global.value || undefined,
+      ativo: lazyParams.value.filters.ativo.value !== null ? lazyParams.value.filters.ativo.value : undefined,
+      turno: lazyParams.value.filters.turno_refeicao.value || undefined
     }
-    if (filtersBolsistas.value.turno_refeicao.value) {
-      params.turno_refeicao = filtersBolsistas.value.turno_refeicao.value
-    }
-    const data = await adminBolsistaService.listarTodos(params)
-    bolsistas.value = Array.isArray(data) ? data : (data?.data || data || [])
+
+    const response = await adminBolsistaService.listarTodos(params)
+    const data = response.data
+    bolsistas.value = data.data || []
+    totalRecords.value = data.meta?.total || bolsistas.value.length
   } catch (err: any) {
     console.error('Erro ao carregar bolsistas:', err)
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar usuários bolsistas' })
@@ -91,10 +110,26 @@ const carregarBolsistas = async () => {
   }
 }
 
-
-
-watch([() => filtersBolsistas.value.ativo.value, () => filtersBolsistas.value.turno_refeicao.value], () => {
+const onPage = (event: any) => {
+  lazyParams.value = event
   carregarBolsistas()
+}
+
+const onFilter = () => {
+  lazyParams.value.page = 0
+  carregarBolsistas()
+}
+
+watch([() => lazyParams.value.filters.ativo.value, () => lazyParams.value.filters.turno_refeicao.value], () => {
+  onFilter()
+})
+
+let searchTimeout: any = null
+watch(() => lazyParams.value.filters.global.value, () => {
+  if (searchTimeout) clearTimeout(searchTimeout)
+  searchTimeout = setTimeout(() => {
+    onFilter()
+  }, 500)
 })
 
 const onUpload = async (event: any) => {
@@ -310,15 +345,26 @@ onMounted(() => {
 
     <div class="animate-fadein">
       <div class="card bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-        <DataTable v-model:filters="filtersBolsistas" :value="bolsistas" :loading="loading" paginator :rows="10"
+        <DataTable 
+          :value="bolsistas" 
+          :lazy="true"
+          :paginator="true" 
+          :rows="lazyParams.rows"
+          :totalRecords="totalRecords"
+          :loading="loading"
+          @page="onPage"
+          @filter="onFilter"
+          v-model:filters="lazyParams.filters"
+          filterDisplay="menu"
+          dataKey="id"
           :globalFilterFields="['nome', 'matricula', 'curso']">
           <template #header>
             <div class="flex flex-col md:flex-row justify-between items-center mb-2 gap-4">
-              <span class="text-xl font-bold text-slate-700">Usuários Ativos</span>
+              <span class="text-xl font-bold text-slate-700">Bolsistas</span>
               <div class="flex gap-3 items-center w-full md:w-auto">
-                <Select v-model="filtersBolsistas['turno_refeicao'].value" :options="turnoOptions" optionLabel="label" optionValue="value" placeholder="Refeição" class="flex-1 md:w-40" />
-                <Select v-model="filtersBolsistas['ativo'].value" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Status" class="flex-1 md:w-40" />
-                <InputText v-model="filtersBolsistas['global'].value" placeholder="Buscar bolsista..." class="flex-1 md:w-60 !rounded-xl" />
+                <Select v-model="lazyParams.filters['turno_refeicao'].value" :options="turnoOptions" optionLabel="label" optionValue="value" placeholder="Refeição" class="flex-1 md:w-40" />
+                <Select v-model="lazyParams.filters['ativo'].value" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Status" class="flex-1 md:w-40" />
+                <InputText v-model="lazyParams.filters['global'].value" placeholder="Buscar bolsista..." class="flex-1 md:w-60 !rounded-xl" />
               </div>
             </div>
           </template>
@@ -438,6 +484,12 @@ onMounted(() => {
     <Dialog v-model:visible="displayNovo" header="Novo Bolsista" :style="{ width: '520px' }" modal class="!rounded-xl">
       <div class="space-y-4 py-2">
         <div class="grid grid-cols-1 gap-4">
+          <div class="p-3 bg-blue-50 rounded-lg border border-blue-100">
+            <p class="text-xs text-blue-700">
+              <i class="pi pi-info-circle mr-1"></i>
+              Ao adicionar a matrícula, o estudante será automaticamente reconhecido como bolsista quando se cadastrar no sistema.
+            </p>
+          </div>
           <div class="field">
             <label class="font-bold block mb-2">Matrícula <span class="text-red-500">*</span></label>
             <InputText v-model="novoBolsista.matricula" class="w-full" placeholder="Ex: 20231234567" />
@@ -455,22 +507,27 @@ onMounted(() => {
 
           <div class="field">
             <label class="font-bold block mb-2">Turno da Refeição <span class="text-red-500">*</span></label>
-            <Select v-model="novoBolsista.turno_refeicao" :options="turnoFormOptions" optionLabel="label" optionValue="value" class="w-full" />
+            <div class="flex gap-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
+              <div v-for="option in turnoFormOptions" :key="option.value" class="flex items-center">
+                <Checkbox v-model="novoBolsista.turno_refeicao" :inputId="option.value" :name="option.value" :value="option.value" :binary="false" 
+                  @update:modelValue="(val) => { if(Array.isArray(val)) novoBolsista.turno_refeicao = val[val.length-1] }" />
+                <label :for="option.value" class="ml-2 cursor-pointer">{{ option.label }}</label>
+              </div>
+            </div>
           </div>
 
           <div class="field">
             <label class="font-bold block mb-2">Dias da Semana</label>
-            <MultiSelect v-model="novoBolsista.dias_semana" :options="diasSemanaOptions" optionLabel="label" optionValue="value" display="chip" placeholder="Selecione os dias" class="w-full" />
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
+              <div v-for="dia in diasSemanaOptions" :key="dia.value" class="flex items-center">
+                <Checkbox v-model="novoBolsista.dias_semana" :inputId="'dia-'+dia.value" :name="'dia-'+dia.value" :value="dia.value" />
+                <label :for="'dia-'+dia.value" class="ml-2 text-sm cursor-pointer">{{ dia.label }}</label>
+              </div>
+            </div>
             <small class="text-slate-500 mt-1 block">Padrão: Seg a Sex.</small>
           </div>
         </div>
 
-        <div class="p-3 bg-blue-50 rounded-lg border border-blue-100">
-          <p class="text-xs text-blue-700">
-            <i class="pi pi-info-circle mr-1"></i>
-            Ao adicionar a matrícula, o estudante será automaticamente reconhecido como bolsista quando se cadastrar no sistema.
-          </p>
-        </div>
       </div>
       <template #footer>
         <Button label="Cancelar" icon="pi pi-times" text @click="displayNovo = false; resetNovoBolsista()" />
