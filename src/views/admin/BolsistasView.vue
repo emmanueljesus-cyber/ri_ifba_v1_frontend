@@ -86,15 +86,39 @@ watch([() => filtersBolsistas.value.ativo.value, () => filtersBolsistas.value.tu
 const onUpload = async (event: any) => {
   try {
     const resultado = await adminBolsistaService.importar(event.files[0])
+    console.log('Resultado da importação de bolsistas:', resultado)
+    
     const criados = resultado?.data?.criados?.length || 0
     const atualizados = resultado?.data?.atualizados?.length || 0
     const total = criados + atualizados
-    toast.add({ 
-      severity: 'success', 
-      summary: 'Sucesso', 
-      detail: `${total} bolsista(s) importado(s) (${criados} novos, ${atualizados} atualizados)`,
-      life: 4000
-    })
+    const erros = resultado?.meta?.total_erros || resultado?.meta?.errors?.length || 0
+    const errosDetalhes = resultado?.meta?.errors || []
+    
+    if (total > 0) {
+      toast.add({ 
+        severity: 'success', 
+        summary: 'Sucesso', 
+        detail: `${total} bolsista(s) importado(s) (${criados} novos, ${atualizados} atualizados)`,
+        life: 4000
+      })
+    } else if (erros > 0) {
+      // Se não importou nada mas tem erros, mostrar os erros
+      const primeiroErro = errosDetalhes[0]?.erro || 'Verifique o formato do arquivo'
+      toast.add({ 
+        severity: 'warn', 
+        summary: 'Atenção', 
+        detail: `Nenhum bolsista importado. ${primeiroErro}`,
+        life: 6000
+      })
+    } else {
+      toast.add({ 
+        severity: 'info', 
+        summary: 'Info', 
+        detail: 'Nenhum bolsista encontrado no arquivo. Verifique se o cabeçalho contém "Matrícula".',
+        life: 5000
+      })
+    }
+    
     displayImport.value = false
     // Forçar atualização após breve delay
     setTimeout(() => carregarBolsistas(), 500)

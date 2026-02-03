@@ -225,13 +225,40 @@ const onUpload = async (event: any) => {
   loadingImport.value = true
   try {
     const resultado = await cardapioService.importarAdmin(file, turnosImport.value)
+    console.log('Resultado da importação:', resultado)
+    
     const total = resultado?.meta?.total_importados || resultado?.data?.length || 0
-    toast.add({ 
-      severity: 'success', 
-      summary: 'Sucesso', 
-      detail: `${total} cardápio(s) importado(s) com sucesso!`,
-      life: 4000
-    })
+    const erros = resultado?.meta?.total_erros || 0
+    const errosDetalhes = resultado?.meta?.errors || []
+    
+    // Mostrar mensagem de sucesso
+    let mensagem = resultado?.meta?.message || `${total} cardápio(s) importado(s) com sucesso!`
+    
+    if (total > 0) {
+      toast.add({ 
+        severity: 'success', 
+        summary: 'Sucesso', 
+        detail: mensagem,
+        life: 4000
+      })
+    } else if (erros > 0) {
+      // Se não importou nada mas tem erros, mostrar os erros
+      const primeiroErro = errosDetalhes[0]?.erro || 'Verifique o formato do arquivo'
+      toast.add({ 
+        severity: 'warn', 
+        summary: 'Atenção', 
+        detail: `Nenhum cardápio importado. ${primeiroErro}`,
+        life: 6000
+      })
+    } else {
+      toast.add({ 
+        severity: 'info', 
+        summary: 'Info', 
+        detail: 'Nenhum cardápio encontrado no arquivo',
+        life: 4000
+      })
+    }
+    
     displayImport.value = false
     // Forçar atualização após breve delay
     setTimeout(() => carregarCardapios(), 500)
