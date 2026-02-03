@@ -195,8 +195,8 @@ onMounted(async () => {
       :breadcrumbs="[]"
     />
 
-    <div v-if="isBolsista && carteirinha" class="flex justify-end -mt-16 relative z-10">
-      <Button label="Minha Carteirinha" icon="pi pi-qrcode" severity="success" @click="router.push('/dashboard/carteirinha')" class="!rounded-xl shadow-md" />
+    <div v-if="isBolsista && carteirinha" class="flex justify-center sm:justify-end -mt-12 sm:-mt-16 mb-4 relative z-10">
+      <Button label="Minha Carteirinha" icon="pi pi-qrcode" severity="success" @click="router.push('/dashboard/carteirinha')" class="!rounded-xl shadow-md w-full sm:w-auto" />
     </div>
 
     <!-- Dialog QR Code -->
@@ -237,9 +237,9 @@ onMounted(async () => {
     </Dialog>
 
     <!-- Grid de Cards -->
-    <div class="grid gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <!-- Card: Cardápio do Dia (Visual Refinado) -->
-      <Card class="overflow-hidden !rounded-xl border border-slate-200 shadow-sm">
+      <Card class="overflow-hidden !rounded-xl border border-slate-200 shadow-sm md:col-span-2 lg:col-span-3">
         <template #title>
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">

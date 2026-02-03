@@ -160,34 +160,14 @@ const handleSubmit = async () => {
 
       <!-- Cadastro Form -->
       <form class="space-y-5" @submit.prevent="handleSubmit">
-        <!-- Nome completo -->
-        <div class="space-y-2">
-          <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1" for="nome">
-            Nome completo *
-          </label>
-          <div class="relative group">
-            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-600 transition-colors">
-              <i class="pi pi-user"></i>
-            </span>
-            <InputText 
-              id="nome" 
-              v-model="form.nome" 
-              placeholder="Digite seu nome completo" 
-              class="w-full !pl-12 !rounded-xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all" 
-              required 
-              :disabled="ehBolsista === true"
-            />
-          </div>
-        </div>
-
         <!-- E-mail e Matrícula -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div class="space-y-2">
             <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1" for="email">
               E-mail *
             </label>
-            <div class="relative group">
-              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-600 transition-colors">
+            <div class="relative flex items-center group">
+              <span class="absolute left-4 text-slate-400 group-focus-within:text-primary-600 transition-colors pointer-events-none z-10">
                 <i class="pi pi-envelope"></i>
               </span>
               <InputText 
@@ -206,8 +186,8 @@ const handleSubmit = async () => {
             <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1" for="matricula">
               Matricula *
             </label>
-            <div class="relative group">
-              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-600 transition-colors">
+            <div class="relative flex items-center group">
+              <span class="absolute left-4 text-slate-400 group-focus-within:text-primary-600 transition-colors pointer-events-none z-10">
                 <i class="pi pi-id-card"></i>
               </span>
               <InputText 
@@ -245,14 +225,34 @@ const handleSubmit = async () => {
           </div>
         </div>
 
+        <!-- Nome completo -->
+        <div class="space-y-2">
+          <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1" for="nome">
+            Nome completo *
+          </label>
+          <div class="relative flex items-center group">
+            <span class="absolute left-4 text-slate-400 group-focus-within:text-primary-600 transition-colors pointer-events-none z-10">
+              <i class="pi pi-user"></i>
+            </span>
+            <InputText 
+              id="nome" 
+              v-model="form.nome" 
+              placeholder="Digite seu nome completo" 
+              class="w-full !pl-12 !rounded-xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all" 
+              required 
+              :disabled="ehBolsista === true"
+            />
+          </div>
+        </div>
+
         <!-- Curso e Turno (apenas para estudante) -->
         <div v-if="perfil === 'estudante'" class="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div class="space-y-2">
             <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1" for="curso">
               Curso
             </label>
-            <div class="relative group">
-              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-600 transition-colors">
+            <div class="relative flex items-center group">
+              <span class="absolute left-4 text-slate-400 group-focus-within:text-primary-600 transition-colors pointer-events-none z-10">
                 <i class="pi pi-book"></i>
               </span>
               <InputText 
@@ -308,8 +308,8 @@ const handleSubmit = async () => {
             <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1" for="senha">
               Senha *
             </label>
-            <div class="relative group">
-              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-600 transition-colors z-10">
+            <div class="relative flex items-center group">
+              <span class="absolute left-4 text-slate-400 group-focus-within:text-primary-600 transition-colors pointer-events-none z-10">
                 <i class="pi pi-lock"></i>
               </span>
               <Password 
@@ -330,8 +330,8 @@ const handleSubmit = async () => {
             <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1" for="senha2">
               Confirmar senha *
             </label>
-            <div class="relative group">
-              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-600 transition-colors z-10">
+            <div class="relative flex items-center group">
+              <span class="absolute left-4 text-slate-400 group-focus-within:text-primary-600 transition-colors pointer-events-none z-10">
                 <i class="pi pi-lock"></i>
               </span>
               <Password 

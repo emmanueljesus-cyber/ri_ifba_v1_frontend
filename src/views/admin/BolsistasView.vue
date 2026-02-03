@@ -336,11 +336,11 @@ onMounted(() => {
       :breadcrumbs="[{ label: 'Admin', route: '/admin' }, { label: 'Gestão de Bolsistas' }]"
     />
 
-    <div class="flex justify-end items-center -mt-16 mb-4 relative z-10">
-      <div class="flex gap-2">
-        <Button label="Novo" icon="pi pi-plus" severity="success" @click="displayNovo = true" />
-        <Button label="Modelo Excel" icon="pi pi-download" severity="info" text @click="displayTemplates = true" />
-        <Button label="Importar Planilha" icon="pi pi-upload" severity="secondary" outlined @click="displayImport = true" />
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 -mt-12 sm:-mt-16 mb-4 relative z-10">
+      <div class="flex flex-wrap gap-2 w-full sm:w-auto justify-end">
+        <Button label="Novo" icon="pi pi-plus" severity="success" @click="displayNovo = true" class="flex-1 sm:flex-initial" />
+        <Button label="Modelo Excel" icon="pi pi-download" severity="info" text @click="displayTemplates = true" class="flex-1 sm:flex-initial" />
+        <Button label="Importar Planilha" icon="pi pi-upload" severity="secondary" outlined @click="displayImport = true" class="flex-1 sm:flex-initial" />
       </div>
     </div>
 
