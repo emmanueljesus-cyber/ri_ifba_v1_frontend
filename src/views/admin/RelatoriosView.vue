@@ -117,7 +117,7 @@ const carregarDashboard = async () => {
 
 const downloadTemplate = async (tipo: string) => {
   try {
-    const url = `${import.meta.env.VITE_API_BASE_URL}/admin/${tipo}/template`
+    const url = `${import.meta.env.VITE_API_BASE_URL}/${tipo}/template-v2`
 
     const response = await fetch(url, {
       method: 'GET',
