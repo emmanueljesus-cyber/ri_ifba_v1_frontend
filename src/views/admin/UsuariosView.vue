@@ -136,9 +136,9 @@ onMounted(() => {
               <span class="text-xl font-bold text-slate-700">Usuários do Sistema</span>
               <p class="text-xs text-slate-500">Gerencie todos os acessos ao sistema.</p>
             </div>
-            <div class="flex gap-2">
-              <InputText v-model="filters['global'].value" placeholder="Buscar usuário..." class="!rounded-xl" />
-              <Button label="Novo Usuário" icon="pi pi-plus" @click="abrirNovo" severity="success" class="!rounded-xl shadow-md" />
+            <div class="flex flex-col md:flex-row gap-2">
+              <InputText v-model="filters['global'].value" placeholder="Buscar usuário..." class="!rounded-xl w-full md:w-auto" />
+              <Button label="Novo Usuário" icon="pi pi-plus" @click="abrirNovo" severity="success" class="!rounded-xl shadow-md w-full md:w-auto" />
             </div>
           </div>
         </template>
