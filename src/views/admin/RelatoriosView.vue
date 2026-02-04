@@ -423,7 +423,7 @@ const geralChartOptions = {
   },
   cutout: '65%',
   responsive: true,
-  maintainAspectRatio: true
+  maintainAspectRatio: false
 }
 
 // Gráfico de Pizza (sem cutout)
@@ -474,7 +474,7 @@ const geralPizzaChartOptions = {
     }
   },
   responsive: true,
-  maintainAspectRatio: true
+  maintainAspectRatio: false
 }
 
 // Gráfico de Barras para aba geral
@@ -526,7 +526,7 @@ const geralBarChartOptions = {
     }
   },
   responsive: true,
-  maintainAspectRatio: true
+  maintainAspectRatio: false
 }
 
 // Legendas externas customizadas
@@ -622,7 +622,7 @@ const presencasChartOptions = {
   },
   cutout: '65%',
   responsive: true,
-  maintainAspectRatio: true
+  maintainAspectRatio: false
 }
 
 // Gráfico de Pizza para presenças
@@ -673,7 +673,7 @@ const presencasPizzaChartOptions = {
     }
   },
   responsive: true,
-  maintainAspectRatio: true
+  maintainAspectRatio: false
 }
 
 // Gráfico de Barras para presenças
@@ -736,7 +736,7 @@ const presencasBarChartOptions = {
     }
   },
   responsive: true,
-  maintainAspectRatio: true
+  maintainAspectRatio: false
 }
 
 const presencasLegendasComPorcentagem = computed(() => {
@@ -831,7 +831,7 @@ const extrasChartOptions = {
   },
   cutout: '65%',
   responsive: true,
-  maintainAspectRatio: true
+  maintainAspectRatio: false
 }
 
 // Gráfico de Pizza para extras
@@ -882,7 +882,7 @@ const extrasPizzaChartOptions = {
     }
   },
   responsive: true,
-  maintainAspectRatio: true
+  maintainAspectRatio: false
 }
 
 // Gráfico de Barras para extras
@@ -938,7 +938,7 @@ const extrasBarChartOptions = {
     }
   },
   responsive: true,
-  maintainAspectRatio: true
+  maintainAspectRatio: false
 }
 
 const extrasLegendasComPorcentagem = computed(() => {
@@ -990,19 +990,19 @@ watch(activeTab, (newTab) => {
     />
 
     <!-- Seletor de Aba usando SelectButton -->
-    <div class="flex justify-center mb-6">
+    <div class="flex justify-center mb-6 px-4">
       <SelectButton
         v-model="activeTab"
         :options="tabOptions"
         optionLabel="label"
         optionValue="value"
         :allowEmpty="false"
-        class="tab-select-button"
+        class="tab-select-button overflow-x-auto max-w-full"
       >
         <template #option="slotProps">
-          <div class="flex items-center gap-2 px-2">
+          <div class="flex items-center gap-2 px-1 sm:px-2 whitespace-nowrap">
             <i :class="slotProps.option.icon"></i>
-            <span class="font-bold">{{ slotProps.option.label }}</span>
+            <span class="font-bold text-xs sm:text-sm">{{ slotProps.option.label }}</span>
           </div>
         </template>
       </SelectButton>
@@ -1013,12 +1013,12 @@ watch(activeTab, (newTab) => {
       <Card class="!rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <template #content>
               <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-                <div class="flex gap-2 items-center">
+                <div class="flex flex-wrap gap-2 items-center justify-center md:justify-start">
                   <Select v-model="mesSelecionado" :options="meses" optionLabel="label" optionValue="value" class="w-40" @change="carregarRelatorio" />
                   <Select v-model="anoSelecionado" :options="anos" class="w-24" @change="carregarRelatorio" />
                   <Button icon="pi pi-refresh" text rounded @click="carregarRelatorio" :loading="loading" />
                 </div>
-                <Button label="Exportar Excel" icon="pi pi-file-excel" severity="success" class="!rounded-xl" @click="exportarExcel" />
+                <Button label="Exportar Excel" icon="pi pi-file-excel" severity="success" class="!rounded-xl w-full md:w-auto" @click="exportarExcel" />
               </div>
 
               <div v-if="loading" class="flex flex-col items-center py-20">
@@ -1056,7 +1056,7 @@ watch(activeTab, (newTab) => {
                     <!-- Gráfico de Barras -->
                     <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
                       <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">📊 Gráfico de Barras</h4>
-                      <Chart v-if="geralBarChartData" type="bar" :data="geralBarChartData" :options="geralBarChartOptions" class="h-48" />
+                      <Chart v-if="geralBarChartData" type="bar" :data="geralBarChartData" :options="geralBarChartOptions" class="h-64" />
                       <!-- Legenda Externa com Porcentagem -->
                       <div class="mt-4 space-y-2">
                         <div v-for="item in geralLegendasComPorcentagem" :key="item.label" class="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
@@ -1075,13 +1075,13 @@ watch(activeTab, (newTab) => {
                     <!-- Gráfico de Donut -->
                     <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
                       <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">🍩 Gráfico de Donut</h4>
-                      <Chart type="doughnut" :data="geralChartData" :options="geralChartOptions" class="h-48" />
+                      <Chart type="doughnut" :data="geralChartData" :options="geralChartOptions" class="h-64" />
                     </div>
 
                     <!-- Gráfico de Pizza -->
                     <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
                       <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">🍰 Gráfico de Pizza</h4>
-                      <Chart type="pie" :data="geralChartData" :options="geralPizzaChartOptions" class="h-48" />
+                      <Chart type="pie" :data="geralChartData" :options="geralPizzaChartOptions" class="h-64" />
                     </div>
                   </div>
                 </div>
@@ -1150,29 +1150,29 @@ watch(activeTab, (newTab) => {
             <template #content>
               <!-- Filtros -->
               <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-                <div class="flex flex-wrap gap-4 items-end">
+                <div class="flex flex-wrap gap-4 items-end justify-center md:justify-start">
                   <div class="flex flex-col gap-1">
-                    <label class="text-[10px] font-bold uppercase text-slate-500">Início</label>
-                    <DatePicker v-model="filtroDataInicio" dateFormat="dd/mm/yy" class="w-36" :locale="ptBR" showIcon />
+                    <label class="text-[10px] font-bold uppercase text-slate-500 text-center md:text-left">Início</label>
+                    <DatePicker v-model="filtroDataInicio" dateFormat="dd/mm/yy" class="w-full sm:w-36" :locale="ptBR" showIcon />
                   </div>
                   <div class="flex flex-col gap-1">
-                    <label class="text-[10px] font-bold uppercase text-slate-500">Fim</label>
-                    <DatePicker v-model="filtroDataFim" dateFormat="dd/mm/yy" class="w-36" :locale="ptBR" showIcon />
+                    <label class="text-[10px] font-bold uppercase text-slate-500 text-center md:text-left">Fim</label>
+                    <DatePicker v-model="filtroDataFim" dateFormat="dd/mm/yy" class="w-full sm:w-36" :locale="ptBR" showIcon />
                   </div>
-                  <div class="flex flex-col gap-1">
-                    <label class="text-[10px] font-bold uppercase text-slate-500">Turno</label>
+                  <div class="flex flex-col gap-1 w-full sm:w-auto">
+                    <label class="text-[10px] font-bold uppercase text-slate-500 text-center md:text-left">Turno</label>
                     <SelectButton
                       v-model="filtroTurno" 
                       :options="turnos" 
                       optionLabel="label" 
                       optionValue="value" 
                       :allowEmpty="false"
-                      class="custom-select-button"
+                      class="custom-select-button w-full sm:w-auto"
                     />
                   </div>
-                  <Button icon="pi pi-search" label="Buscar" severity="primary" @click="carregarPresencas" :loading="loading" class="!rounded-xl" />
+                  <Button icon="pi pi-search" label="Buscar" severity="primary" @click="carregarPresencas" :loading="loading" class="!rounded-xl w-full sm:w-auto" />
                 </div>
-                <Button label="Exportar Excel" icon="pi pi-file-excel" severity="success" outlined class="!rounded-xl" @click="exportarGeral" />
+                <Button label="Exportar Excel" icon="pi pi-file-excel" severity="success" outlined class="!rounded-xl w-full md:w-auto" @click="exportarGeral" />
               </div>
 
               <!-- Resumo -->
@@ -1206,7 +1206,7 @@ watch(activeTab, (newTab) => {
                   <!-- Gráfico de Barras -->
                   <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
                     <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">📊 Gráfico de Barras</h4>
-                    <Chart v-if="presencasBarChartData" type="bar" :data="presencasBarChartData" :options="presencasBarChartOptions" class="h-48" />
+                    <Chart v-if="presencasBarChartData" type="bar" :data="presencasBarChartData" :options="presencasBarChartOptions" class="h-64" />
                     <!-- Legenda Externa com Porcentagem -->
                     <div class="mt-4 space-y-2">
                       <div v-for="item in presencasLegendasComPorcentagem" :key="item.label" class="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
@@ -1225,13 +1225,13 @@ watch(activeTab, (newTab) => {
                   <!-- Gráfico de Donut -->
                   <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
                     <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">🍩 Gráfico de Donut</h4>
-                    <Chart type="doughnut" :data="presencasChartData" :options="presencasChartOptions" class="h-48" />
+                    <Chart type="doughnut" :data="presencasChartData" :options="presencasChartOptions" class="h-64" />
                   </div>
 
                   <!-- Gráfico de Pizza -->
                   <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
                     <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">🍰 Gráfico de Pizza</h4>
-                    <Chart type="pie" :data="presencasChartData" :options="presencasPizzaChartOptions" class="h-48" />
+                    <Chart type="pie" :data="presencasChartData" :options="presencasPizzaChartOptions" class="h-64" />
                   </div>
                 </div>
               </div>
@@ -1245,13 +1245,15 @@ watch(activeTab, (newTab) => {
                 :rows="15"
                 :rowsPerPageOptions="[10, 15, 25, 50]"
                 class="p-datatable-sm"
+                responsiveLayout="stack"
+                breakpoint="960px"
                 :globalFilterFields="['data', 'turno']"
                 stripedRows
               >
                 <template #header>
-                  <div class="flex justify-between items-center">
+                  <div class="flex flex-col sm:flex-row justify-between items-center gap-3">
                     <span class="text-lg font-bold text-slate-700">Registro de Presenças por Dia</span>
-                    <InputText v-model="filters['global'].value" placeholder="Buscar..." class="!rounded-xl w-60" />
+                    <InputText v-model="filters['global'].value" placeholder="Buscar..." class="!rounded-xl w-full sm:w-60" />
                   </div>
                 </template>
                 <template #empty>
@@ -1318,29 +1320,29 @@ watch(activeTab, (newTab) => {
             <template #content>
               <!-- Filtros -->
               <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-                <div class="flex flex-wrap gap-4 items-end">
+                <div class="flex flex-wrap gap-4 items-end justify-center md:justify-start">
                   <div class="flex flex-col gap-1">
-                    <label class="text-[10px] font-bold uppercase text-slate-500">Início</label>
-                    <DatePicker v-model="filtroDataInicio" dateFormat="dd/mm/yy" class="w-36" :locale="ptBR" showIcon />
+                    <label class="text-[10px] font-bold uppercase text-slate-500 text-center md:text-left">Início</label>
+                    <DatePicker v-model="filtroDataInicio" dateFormat="dd/mm/yy" class="w-full sm:w-36" :locale="ptBR" showIcon />
                   </div>
                   <div class="flex flex-col gap-1">
-                    <label class="text-[10px] font-bold uppercase text-slate-500">Fim</label>
-                    <DatePicker v-model="filtroDataFim" dateFormat="dd/mm/yy" class="w-36" :locale="ptBR" showIcon />
+                    <label class="text-[10px] font-bold uppercase text-slate-500 text-center md:text-left">Fim</label>
+                    <DatePicker v-model="filtroDataFim" dateFormat="dd/mm/yy" class="w-full sm:w-36" :locale="ptBR" showIcon />
                   </div>
-                  <div class="flex flex-col gap-1">
-                    <label class="text-[10px] font-bold uppercase text-slate-500">Turno</label>
+                  <div class="flex flex-col gap-1 w-full sm:w-auto">
+                    <label class="text-[10px] font-bold uppercase text-slate-500 text-center md:text-left">Turno</label>
                     <SelectButton
                       v-model="filtroTurno"
                       :options="turnos"
                       optionLabel="label"
                       optionValue="value"
                       :allowEmpty="false"
-                      class="custom-select-button"
+                      class="custom-select-button w-full sm:w-auto"
                     />
                   </div>
-                  <Button icon="pi pi-search" label="Buscar" severity="primary" @click="carregarExtras" :loading="loadingExtras" class="!rounded-xl" />
+                  <Button icon="pi pi-search" label="Buscar" severity="primary" @click="carregarExtras" :loading="loadingExtras" class="!rounded-xl w-full sm:w-auto" />
                 </div>
-                <Button label="Exportar Excel" icon="pi pi-file-excel" severity="success" outlined class="!rounded-xl" @click="exportarExtras" />
+                <Button label="Exportar Excel" icon="pi pi-file-excel" severity="success" outlined class="!rounded-xl w-full md:w-auto" @click="exportarExtras" />
               </div>
 
               <!-- Estatísticas -->
@@ -1370,7 +1372,7 @@ watch(activeTab, (newTab) => {
                   <!-- Gráfico de Barras -->
                   <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
                     <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">📊 Gráfico de Barras</h4>
-                    <Chart v-if="extrasBarChartData" type="bar" :data="extrasBarChartData" :options="extrasBarChartOptions" class="h-48" />
+                    <Chart v-if="extrasBarChartData" type="bar" :data="extrasBarChartData" :options="extrasBarChartOptions" class="h-64" />
                     <!-- Legenda Externa com Porcentagem -->
                     <div class="mt-4 space-y-2">
                       <div v-for="item in extrasLegendasComPorcentagem" :key="item.label" class="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
@@ -1389,13 +1391,13 @@ watch(activeTab, (newTab) => {
                   <!-- Gráfico de Donut -->
                   <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
                     <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">🍩 Gráfico de Donut</h4>
-                    <Chart type="doughnut" :data="extrasChartData" :options="extrasChartOptions" class="h-48" />
+                    <Chart type="doughnut" :data="extrasChartData" :options="extrasChartOptions" class="h-64" />
                   </div>
 
                   <!-- Gráfico de Pizza -->
                   <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
                     <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">🍰 Gráfico de Pizza</h4>
-                    <Chart type="pie" :data="extrasChartData" :options="extrasPizzaChartOptions" class="h-48" />
+                    <Chart type="pie" :data="extrasChartData" :options="extrasPizzaChartOptions" class="h-64" />
                   </div>
                 </div>
               </div>
@@ -1409,13 +1411,15 @@ watch(activeTab, (newTab) => {
                 :rows="15"
                 :rowsPerPageOptions="[10, 15, 25, 50]"
                 class="p-datatable-sm"
+                responsiveLayout="stack"
+                breakpoint="960px"
                 :globalFilterFields="['user.nome', 'user.matricula', 'status']"
                 stripedRows
               >
                 <template #header>
-                  <div class="flex justify-between items-center">
+                  <div class="flex flex-col sm:flex-row justify-between items-center gap-3">
                     <span class="text-lg font-bold text-slate-700">Inscrições na Fila de Extras</span>
-                    <InputText v-model="filtersExtras['global'].value" placeholder="Buscar..." class="!rounded-xl w-60" />
+                    <InputText v-model="filtersExtras['global'].value" placeholder="Buscar..." class="!rounded-xl w-full sm:w-60" />
                   </div>
                 </template>
                 <template #empty>

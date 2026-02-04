@@ -381,20 +381,20 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
             class="p-datatable-sm custom-table"
           >
             <template #header>
-              <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div class="flex gap-2">
-                  <Button type="button" icon="pi pi-filter-slash" label="Limpar" variant="outlined" @click="clearFilter()" size="small" class="!rounded-xl" />
-                  <InputText v-model="filters['global'].value" placeholder="Buscar aluno..." size="small" class="!rounded-xl" />
+              <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                <div class="flex flex-wrap gap-2 w-full lg:w-auto">
+                  <Button type="button" icon="pi pi-filter-slash" label="Limpar" variant="outlined" @click="clearFilter()" size="small" class="!rounded-xl flex-1 lg:flex-initial" />
+                  <InputText v-model="filters['global'].value" placeholder="Buscar aluno..." size="small" class="!rounded-xl flex-[2] lg:flex-initial" />
                 </div>
-                <div class="flex gap-2 items-center">
-                  <DatePicker v-model="dataFiltro" dateFormat="dd/mm/yy" showIcon class="w-36" :locale="ptBR" size="small" />
+                <div class="flex flex-wrap gap-2 items-center w-full lg:w-auto">
+                  <DatePicker v-model="dataFiltro" dateFormat="dd/mm/yy" showIcon class="flex-1 lg:w-36" :locale="ptBR" size="small" />
                   <SelectButton 
                     v-model="turnoFiltro" 
                     :options="turnos" 
                     optionLabel="label" 
                     optionValue="value" 
                     :allowEmpty="false"
-                    class="custom-select-button"
+                    class="custom-select-button flex-1 lg:flex-initial"
                   >
                     <template #option="slotProps">
                       <div class="flex items-center gap-1 px-1">

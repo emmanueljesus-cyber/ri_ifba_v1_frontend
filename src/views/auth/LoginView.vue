@@ -55,8 +55,8 @@ const handleSubmit = async () => {
           <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1" for="matricula">
             Matrícula
           </label>
-          <div class="relative group">
-            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-600 transition-colors">
+          <div class="relative flex items-center group">
+            <span class="absolute left-4 text-slate-400 group-focus-within:text-primary-600 transition-colors pointer-events-none z-10">
               <i class="pi pi-user"></i>
             </span>
             <InputText 
@@ -80,8 +80,8 @@ const handleSubmit = async () => {
               Esqueceu a senha?
             </RouterLink>
           </div>
-          <div class="relative group">
-            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-600 transition-colors z-10">
+          <div class="relative flex items-center group">
+            <span class="absolute left-4 text-slate-400 group-focus-within:text-primary-600 transition-colors pointer-events-none z-10">
               <i class="pi pi-lock"></i>
             </span>
             <Password 
