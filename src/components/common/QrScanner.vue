@@ -61,44 +61,48 @@ const startScanning = async () => {
       disableFlip: false, // Permitir flip da imagem
     }
 
-    // Configuração da câmera
-    const cameraConfig = isMobile.value 
-      ? { facingMode: { exact: 'environment' } } // Câmera traseira em mobile
-      : { facingMode: 'user' } // Câmera frontal em desktop
+    // Configuração da câmera com tentativa de fallback
+    const tryStart = async (facingMode: any) => {
+      const cameraConfig = isMobile.value 
+        ? { facingMode: facingMode } 
+        : { facingMode: 'user' }
+      
+      return await html5QrCode!.start(
+        cameraConfig,
+        config,
+        async (decodedText) => {
+          const now = Date.now()
+          if (lastScannedCode.value === decodedText && (now - lastScannedTime.value) < SCAN_COOLDOWN_MS.value) {
+            return
+          }
+          lastScannedCode.value = decodedText
+          lastScannedTime.value = now
+          if (isMobile.value && navigator.vibrate) {
+            navigator.vibrate(200)
+          }
+          lastScanResult.value = null
+          if (props.stopAfterScan) {
+            await stopScanning()
+          }
+          emit('scan', decodedText)
+        },
+        () => {}
+      )
+    }
 
-    await html5QrCode.start(
-      cameraConfig,
-      config,
-      async (decodedText) => {
-        // Verificar debounce: ignorar se for o mesmo código lido recentemente
-        const now = Date.now()
-        if (lastScannedCode.value === decodedText && (now - lastScannedTime.value) < SCAN_COOLDOWN_MS.value) {
-          return // Ignorar leitura duplicada
-        }
-
-        // Atualizar controle de debounce
-        lastScannedCode.value = decodedText
-        lastScannedTime.value = now
-
-        // Vibrar ao escanear (apenas mobile)
-        if (isMobile.value && navigator.vibrate) {
-          navigator.vibrate(200)
-        }
-
-        // Limpar último resultado
-        lastScanResult.value = null
-
-        // Parar scanner se configurado
-        if (props.stopAfterScan) {
-          await stopScanning()
-        }
-
-        emit('scan', decodedText)
-      },
-      (_errorMessage) => {
-        // Ignorar erros de scan contínuo
+    try {
+      // Primeira tentativa: facingMode exact environment (mobile)
+      await tryStart({ exact: 'environment' })
+    } catch (firstErr) {
+      console.warn('Falha ao iniciar com exact environment, tentando fallback...', firstErr)
+      try {
+        // Segunda tentativa: facingMode environment simples
+        await tryStart('environment')
+      } catch (secondErr) {
+        // Terceira tentativa: qualquer câmera
+        await tryStart(undefined)
       }
-    )
+    }
     
     isScanning.value = true
     isLoading.value = false
@@ -106,7 +110,8 @@ const startScanning = async () => {
     isLoading.value = false
     
     // Detectar se é erro de permissão
-    if (err.name === 'NotAllowedError' || err.message.includes('Permission')) {
+    const errorStr = String(err?.message || err || '')
+    if (err.name === 'NotAllowedError' || errorStr.includes('Permission')) {
       permissionDenied.value = true
       error.value = 'Permissão de câmera negada. Por favor, permita o acesso à câmera nas configurações do navegador.'
     } else if (err.name === 'NotFoundError') {

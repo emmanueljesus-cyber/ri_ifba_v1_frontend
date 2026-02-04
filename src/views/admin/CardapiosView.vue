@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { cardapioService } from '../../services/cardapio'
 import PageHeader from '../../components/common/PageHeader.vue'
+import Skeleton from 'primevue/skeleton'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
@@ -394,36 +395,38 @@ onMounted(() => carregarCardapios())
 
     <!-- Barra de Controles -->
     <div class="flex flex-wrap justify-center sm:justify-between items-center gap-4 -mt-10 sm:-mt-12 mb-4 relative z-10 px-2 sm:px-0">
-      <div class="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 bg-white/90 backdrop-blur-sm p-2 rounded-2xl border border-slate-200 shadow-sm w-full lg:w-auto">
+      <div class="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 bg-white/90 backdrop-blur-sm p-2 rounded-2xl border border-slate-200 shadow-sm w-full lg:w-auto">
         <!-- Seletor de View -->
-        <SelectButton
-          v-model="viewMode"
-          :options="[{label: 'Cards', value: 'cards', icon: 'pi pi-th-large'}, {label: 'Mensal', value: 'calendar', icon: 'pi pi-calendar'}]"
-          optionLabel="label"
-          optionValue="value"
-          :allowEmpty="false"
-          class="view-select w-full sm:w-auto"
-        >
-          <template #option="{ option }">
-            <div class="flex items-center gap-2 px-1 sm:px-2 py-1 justify-center">
-              <i :class="option.icon" class="text-sm"></i>
-              <span class="text-[10px] sm:text-xs font-bold uppercase">{{ option.label }}</span>
-            </div>
-          </template>
-        </SelectButton>
+        <div class="w-full sm:w-auto overflow-x-auto no-scrollbar">
+          <SelectButton
+            v-model="viewMode"
+            :options="[{label: 'Cards', value: 'cards', icon: 'pi pi-th-large'}, {label: 'Mensal', value: 'calendar', icon: 'pi pi-calendar'}]"
+            optionLabel="label"
+            optionValue="value"
+            :allowEmpty="false"
+            class="view-select w-full flex-nowrap"
+          >
+            <template #option="{ option }">
+              <div class="flex items-center gap-2 px-1 sm:px-2 py-1 justify-center whitespace-nowrap">
+                <i :class="option.icon" class="text-sm"></i>
+                <span class="text-[10px] sm:text-xs font-bold uppercase">{{ option.label }}</span>
+              </div>
+            </template>
+          </SelectButton>
+        </div>
 
 
         <!-- Filtro de Turno -->
-        <div class="flex items-center gap-2 w-full sm:w-auto">
+        <div class="flex items-center gap-2 w-full sm:w-auto overflow-x-auto no-scrollbar">
           <SelectButton
             v-model="turnoFiltro"
             :options="turnoOpcoes"
             optionLabel="label"
             optionValue="value"
-            class="turno-select w-full"
+            class="turno-select w-full flex-nowrap"
           >
             <template #option="{ option }">
-              <div class="flex items-center gap-1.5 px-1 sm:px-2 py-1 justify-center">
+              <div class="flex items-center gap-1.5 px-1 sm:px-2 py-1 justify-center whitespace-nowrap">
                 <i v-if="option.value === 'almoco'" class="pi pi-sun text-amber-500 text-xs"></i>
                 <i v-else-if="option.value === 'jantar'" class="pi pi-moon text-indigo-500 text-xs"></i>
                 <i v-else class="pi pi-circle text-slate-400 text-xs"></i>
@@ -435,17 +438,22 @@ onMounted(() => carregarCardapios())
       </div>
 
       <div class="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-end">
-        <Button label="Importar" icon="pi pi-upload" severity="secondary" outlined size="small" @click="displayImport = true" class="!rounded-xl flex-1 sm:flex-initial" />
-        <Button label="Novo" icon="pi pi-plus" severity="success" size="small" @click="abrirNovo" class="!rounded-xl shadow-lg flex-1 sm:flex-initial" />
+        <Button label="Importar" icon="pi pi-upload" severity="secondary" outlined size="small" @click="displayImport = true" class="!rounded-xl flex-1 sm:flex-initial min-w-[100px]" />
+        <Button label="Novo" icon="pi pi-plus" severity="success" size="small" @click="abrirNovo" class="!rounded-xl shadow-lg flex-1 sm:flex-initial min-w-[100px]" />
       </div>
     </div>
 
     <!-- ============= VIEW: CARDS POR SEMANA ============= -->
     <div v-if="viewMode === 'cards'">
-      <div v-if="loading" class="flex items-center justify-center py-20">
-        <div class="text-center">
-          <i class="pi pi-spin pi-spinner text-4xl text-primary-500 mb-4"></i>
-          <p class="text-slate-500">Carregando cardápios...</p>
+      <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div v-for="i in 6" :key="i" class="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
+          <Skeleton height="100px" border-radius="1rem" />
+          <Skeleton height="20px" width="60%" />
+          <Skeleton height="20px" width="80%" />
+          <div class="grid grid-cols-2 gap-4">
+            <Skeleton height="40px" border-radius="0.5rem" />
+            <Skeleton height="40px" border-radius="0.5rem" />
+          </div>
         </div>
       </div>
 

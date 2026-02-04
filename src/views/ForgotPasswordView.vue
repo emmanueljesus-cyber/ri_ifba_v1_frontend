@@ -4,14 +4,18 @@ import { useToast } from 'primevue/usetoast'
 import { authService } from '../services/auth'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
 
 const toast = useToast()
 
 const email = ref('')
 const loading = ref(false)
 const enviado = ref(false)
+const submitted = ref(false)
 
 const handleSubmit = async () => {
+  submitted.value = true
   if (!email.value) {
     toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Informe seu e-mail', life: 3000 })
     return
@@ -50,21 +54,23 @@ const handleSubmit = async () => {
         <!-- Conteúdo -->
         <div class="p-8">
           <template v-if="!enviado">
-            <form @submit.prevent="handleSubmit" class="space-y-6">
+            <form @submit.prevent="handleSubmit" class="space-y-6" novalidate>
               <div>
                 <label class="text-xs font-black text-slate-500 uppercase tracking-wider mb-2 block">
                   E-mail cadastrado
                 </label>
-                <div class="relative">
-                  <i class="pi pi-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <IconField>
+                  <InputIcon class="pi pi-envelope text-slate-400" />
                   <InputText
                     v-model="email"
                     type="email"
                     placeholder="seu.email@ifba.edu.br"
-                    class="w-full !pl-12 !py-3 !rounded-xl"
+                    class="w-full !py-3 !rounded-xl"
+                    :invalid="submitted && !email"
                     :disabled="loading"
                   />
-                </div>
+                </IconField>
+                <small v-if="submitted && !email" class="p-error ml-1 block mt-1">O e-mail é obrigatório</small>
               </div>
 
               <Button

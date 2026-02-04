@@ -3,6 +3,8 @@ import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import AuthLayout from '../../layouts/AuthLayout.vue'
@@ -18,10 +20,18 @@ const form = ref({
 })
 
 const errorMessage = ref('')
+const submitted = ref(false)
 const loading = computed(() => auth.loading)
 
 const handleSubmit = async () => {
   errorMessage.value = ''
+  submitted.value = true
+
+  // Validacao basica
+  if (!form.value.matricula || !form.value.password) {
+    return
+  }
+
   try {
     await auth.login({ ...form.value })
     const redirect = (route.query.redirect as string) || '/dashboard'
@@ -49,25 +59,24 @@ const handleSubmit = async () => {
       </header>
 
       <!-- Login Form -->
-      <form class="space-y-5" @submit.prevent="handleSubmit">
+      <form class="space-y-5" @submit.prevent="handleSubmit" novalidate>
         <!-- Matrícula -->
         <div class="space-y-2">
           <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1" for="matricula">
             Matrícula
           </label>
-          <div class="relative flex items-center group">
-            <span class="absolute left-4 text-slate-400 group-focus-within:text-primary-600 transition-colors pointer-events-none z-10">
-              <i class="pi pi-user"></i>
-            </span>
+          <IconField>
+            <InputIcon class="pi pi-user text-slate-400" />
             <InputText 
               id="matricula" 
               v-model="form.matricula" 
               placeholder="Ex: 2025123456" 
-              class="w-full !pl-12 !rounded-xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all"
+              class="w-full !rounded-xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all"
+              :invalid="submitted && !form.matricula"
               autocomplete="username"
-              required 
             />
-          </div>
+          </IconField>
+          <small v-if="submitted && !form.matricula" class="p-error ml-1 block">Matrícula é obrigatória</small>
         </div>
 
         <!-- Senha -->
@@ -80,22 +89,21 @@ const handleSubmit = async () => {
               Esqueceu a senha?
             </RouterLink>
           </div>
-          <div class="relative flex items-center group">
-            <span class="absolute left-4 text-slate-400 group-focus-within:text-primary-600 transition-colors pointer-events-none z-10">
-              <i class="pi pi-lock"></i>
-            </span>
+          <IconField>
+            <InputIcon class="pi pi-lock text-slate-400" />
             <Password 
               v-model="form.password" 
               inputId="senha" 
               :feedback="false" 
               toggleMask 
               class="w-full" 
-              inputClass="w-full !pl-12 !rounded-xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all" 
+              inputClass="w-full !rounded-xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all" 
+              :invalid="submitted && !form.password"
               placeholder="Digite sua senha" 
               autocomplete="current-password"
-              required 
             />
-          </div>
+          </IconField>
+          <small v-if="submitted && !form.password" class="p-error ml-1 block">Senha é obrigatória</small>
         </div>
 
         <!-- Error Message -->

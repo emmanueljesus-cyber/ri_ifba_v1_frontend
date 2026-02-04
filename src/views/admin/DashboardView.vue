@@ -5,6 +5,7 @@ import { adminPresencaService } from '../../services/adminPresenca'
 import { useAvatar } from '../../composables/useAvatar'
 import { useToast } from 'primevue/usetoast'
 import PageHeader from '../../components/common/PageHeader.vue'
+import Skeleton from 'primevue/skeleton'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
@@ -120,73 +121,91 @@ onMounted(() => {
       <Button icon="pi pi-refresh" rounded outlined @click="carregarDados(); carregarBolsistasHoje()" :loading="loading || loadingBolsistas" severity="secondary" />
     </div>
 
-    <!-- Métricas Rápidas - Simplificadas para 4 Essenciais -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+    <!-- Métricas Rápidas - Redesenhadas para Elegância e Profissionalismo -->
+    <div v-if="loading" class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      <Skeleton v-for="i in 4" :key="i" height="110px" border-radius="16px" />
+    </div>
+    <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
       <!-- 1. Bolsistas Ativos -->
-      <div class="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 sm:gap-4 group relative">
-        <div class="p-2 sm:p-3 bg-emerald-50 rounded-xl text-emerald-600">
-          <i class="pi pi-users text-xl sm:text-2xl"></i>
+      <div class="bg-white p-5 sm:p-6 rounded-2xl border-l-4 border-l-emerald-500 border border-slate-200 shadow-sm flex items-center gap-4 group hover:shadow-md transition-all duration-300">
+        <div class="p-3 bg-emerald-50 rounded-2xl text-emerald-600 group-hover:scale-110 transition-transform">
+          <i class="pi pi-users text-2xl sm:text-3xl"></i>
         </div>
         <div class="flex-1">
           <div class="flex items-center gap-2">
-            <p class="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Bolsistas Ativos</p>
-            <i class="pi pi-info-circle text-slate-300 cursor-help text-xs" v-tooltip.top="'Total de bolsistas cadastrados e ativos no sistema'"></i>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Bolsistas Ativos</p>
           </div>
-          <p class="text-xl sm:text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.bolsistas_ativos || 0 }}</p>
+          <p class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.bolsistas_ativos || 0 }}</p>
+          <div class="flex items-center gap-1 mt-1">
+            <span class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">Sistema RI</span>
+          </div>
         </div>
       </div>
 
-      <!-- 2. Presenças Hoje (com %) -->
-      <div class="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 sm:gap-4">
-        <div class="p-2 sm:p-3 bg-blue-50 rounded-xl text-blue-600">
-          <i class="pi pi-check-circle text-xl sm:text-2xl"></i>
+      <!-- 2. Presenças Hoje -->
+      <div class="bg-white p-5 sm:p-6 rounded-2xl border-l-4 border-l-blue-500 border border-slate-200 shadow-sm flex items-center gap-4 group hover:shadow-md transition-all duration-300">
+        <div class="p-3 bg-blue-50 rounded-2xl text-blue-600 group-hover:scale-110 transition-transform">
+          <i class="pi pi-check-circle text-2xl sm:text-3xl"></i>
         </div>
         <div class="flex-1">
           <div class="flex items-center gap-2">
-            <p class="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Presenças Hoje</p>
-            <i class="pi pi-info-circle text-slate-300 cursor-help text-xs" v-tooltip.top="'Presenças confirmadas hoje vs total esperado para o turno'"></i>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Presenças Hoje</p>
           </div>
           <div class="flex items-baseline gap-2">
-            <p class="text-xl sm:text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.presencas_hoje || 0 }}</p>
-            <span v-if="resumo?.refeicao_atual?.total_esperados > 0" class="text-xs font-bold text-blue-600">
-              {{ Math.round((resumo?.metricas.presencas_hoje || 0) / resumo.refeicao_atual.total_esperados * 100) }}%
+            <p class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.refeicao_atual?.confirmados || 0 }}</p>
+            <span class="text-xs text-slate-400 font-bold">/ {{ resumo?.refeicao_atual?.total_esperados || 0 }}</span>
+          </div>
+          <div class="w-full bg-blue-100 h-1.5 rounded-full mt-2 overflow-hidden">
+             <div class="bg-blue-500 h-full rounded-full transition-all duration-500" 
+                  :style="{ width: (resumo?.refeicao_atual?.total_esperados > 0 ? (resumo.refeicao_atual.confirmados / resumo.refeicao_atual.total_esperados) * 100 : 0) + '%' }"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Justificativas -->
+      <div class="bg-white p-5 sm:p-6 rounded-2xl border-l-4 border-l-orange-500 border border-slate-200 shadow-sm flex items-center gap-4 group hover:shadow-md transition-all duration-300 cursor-pointer" @click="$router.push('/admin/justificativas')">
+        <div class="p-3 bg-orange-50 rounded-2xl text-orange-600 group-hover:scale-110 transition-transform">
+          <i class="pi pi-exclamation-triangle text-2xl sm:text-3xl"></i>
+        </div>
+        <div class="flex-1">
+          <div class="flex items-center gap-2">
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pendências</p>
+          </div>
+          <p class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight lato-black">
+            {{ (resumo?.metricas.justificativas_pendentes || 0) + (resumo?.refeicao_atual?.total_esperados - resumo?.refeicao_atual?.confirmados > 0 ? resumo?.refeicao_atual?.total_esperados - resumo?.refeicao_atual?.confirmados : 0) }}
+          </p>
+          <div class="flex flex-col gap-0.5 mt-1">
+            <span v-if="resumo?.metricas.justificativas_pendentes > 0" class="text-[9px] text-orange-600 font-bold bg-orange-50 px-1.5 py-0.5 rounded w-fit">
+              {{ resumo.metricas.justificativas_pendentes }} Justificativas
+            </span>
+            <span class="text-[9px] text-slate-400 font-bold px-1.5 py-0.5">
+              {{ resumo?.refeicao_atual?.total_esperados - resumo?.refeicao_atual?.confirmados }} Faltas no turno
             </span>
           </div>
         </div>
+        <i class="pi pi-chevron-right text-slate-300"></i>
       </div>
 
-      <!-- 3. Justificativas Pendentes (acionável) -->
-      <div class="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 sm:gap-4 cursor-pointer hover:shadow-md transition-shadow" @click="$router.push('/admin/justificativas')">
-        <div class="p-2 sm:p-3 bg-orange-50 rounded-xl text-orange-600">
-          <i class="pi pi-file-edit text-xl sm:text-2xl"></i>
+      <!-- 4. Aproveitamento -->
+      <div class="bg-white p-5 sm:p-6 rounded-2xl border-l-4 border-l-purple-500 border border-slate-200 shadow-sm flex items-center gap-4 group hover:shadow-md transition-all duration-300">
+        <div class="p-3 bg-purple-50 rounded-2xl text-purple-600 group-hover:scale-110 transition-transform">
+          <i class="pi pi-chart-line text-2xl sm:text-3xl"></i>
         </div>
         <div class="flex-1">
           <div class="flex items-center gap-2">
-            <p class="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Pendentes</p>
-            <i class="pi pi-info-circle text-slate-300 cursor-help text-xs" v-tooltip.top="'Justificativas aguardando sua análise. Clique para revisar'"></i>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Aproveitamento</p>
           </div>
-          <p class="text-xl sm:text-2xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.justificativas_pendentes || 0 }}</p>
-        </div>
-        <i class="pi pi-chevron-right text-slate-300 text-sm"></i>
-      </div>
-
-      <!-- 4. Taxa de Aproveitamento do Mês -->
-      <div class="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 sm:gap-4">
-        <div class="p-2 sm:p-3 bg-purple-50 rounded-xl text-purple-600">
-          <i class="pi pi-chart-line text-xl sm:text-2xl"></i>
-        </div>
-        <div class="flex-1">
-          <div class="flex items-center gap-2">
-            <p class="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Aproveitamento</p>
-            <i class="pi pi-info-circle text-slate-300 cursor-help text-xs" v-tooltip.top="'Percentual de presenças em relação ao total de bolsistas esperados no turno'"></i>
-          </div>
-          <div class="flex items-baseline gap-2">
-            <p class="text-xl sm:text-2xl font-black text-slate-800 leading-tight lato-black">
-              {{ resumo?.refeicao_atual?.confirmados && resumo?.refeicao_atual?.total_esperados > 0
+          <div class="flex items-baseline gap-1">
+            <p class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight lato-black">
+              {{ (resumo?.refeicao_atual?.total_esperados > 0)
                 ? Math.round((resumo.refeicao_atual.confirmados / resumo.refeicao_atual.total_esperados) * 100)
                 : 0 }}%
             </p>
-            <span class="text-xs text-slate-500">do turno</span>
+            <span class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">no turno</span>
+          </div>
+          <div class="flex items-center gap-1 mt-2">
+             <i class="pi pi-bolt text-purple-400 text-xs"></i>
+             <span class="text-[10px] text-purple-600 font-bold">Meta: 100%</span>
           </div>
         </div>
       </div>
@@ -195,18 +214,21 @@ onMounted(() => {
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
       <!-- Bolsistas do Dia -->
       <div class="xl:col-span-2">
-        <Card class="!rounded-xl !border-slate-200 overflow-hidden shadow-sm">
+        <Card class="!rounded-2xl !border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
           <template #title>
-            <div class="flex flex-col gap-4">
+            <div class="flex flex-col gap-5 p-2">
               <div class="flex flex-col sm:flex-row justify-between items-start gap-4">
-                <div>
-                  <div class="flex flex-wrap items-center gap-2 sm:gap-3">
-                    <h3 class="text-base sm:text-lg font-black text-slate-700 uppercase tracking-wider">Bolsistas do Dia</h3>
-                    <span class="px-2 sm:px-3 py-1 bg-primary-100 text-primary-700 text-xs sm:text-sm font-bold rounded-full" v-tooltip.top="'Total de bolsistas esperados para o turno selecionado (RF09)'">
-                      {{ resumo?.refeicao_atual?.total_esperados || bolsistasHoje.length }} esperados
-                    </span>
+                <div class="flex items-center gap-3">
+                  <div class="w-1.5 h-10 bg-primary-500 rounded-full"></div>
+                  <div>
+                    <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                      <h3 class="text-lg sm:text-xl font-black text-slate-800 uppercase tracking-tight">Bolsistas do Dia</h3>
+                      <Tag severity="info" class="!rounded-full px-3 py-1 text-[10px] font-black tracking-widest uppercase">
+                        {{ resumo?.refeicao_atual?.total_esperados || bolsistasHoje.length }} esperados
+                      </Tag>
+                    </div>
+                    <p class="text-xs text-slate-500 font-medium mt-0.5">Controle de acesso em tempo real (RF09)</p>
                   </div>
-                  <p class="text-xs text-slate-500 font-medium mt-1">Lista de quem tem direito à refeição hoje.</p>
                 </div>
                 <SelectButton
                   v-model="turnoSelecionado"
@@ -214,17 +236,17 @@ onMounted(() => {
                   optionLabel="label"
                   optionValue="value"
                   :unselectable="false"
-                  class="!rounded-xl w-full sm:w-auto"
+                  class="!rounded-xl shadow-sm border-slate-100"
                 />
               </div>
               <!-- Filtro de busca -->
-              <div class="flex items-center gap-2">
-                <IconField class="flex-1">
+              <div class="flex flex-col sm:flex-row items-center gap-3">
+                <IconField class="flex-1 w-full">
                   <InputIcon class="pi pi-search" />
                   <InputText
                     v-model="buscaBolsista"
-                    placeholder="Buscar por nome ou matrícula..."
-                    class="w-full !rounded-xl"
+                    placeholder="Pesquisar por nome, matrícula ou curso..."
+                    class="w-full !rounded-xl !bg-slate-50/50 border-slate-200 focus:!bg-white"
                   />
                 </IconField>
               </div>
@@ -237,9 +259,31 @@ onMounted(() => {
               paginator 
               :rows="10" 
               class="p-datatable-sm"
-              :rowsPerPageOptions="[5, 10, 20]"
+              responsiveLayout="stack"
+              breakpoint="960px"
+              :rowsPerPageOptions="[5, 10, 20, 50]"
               paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
             >
+              <template #loading>
+                <!-- Skeleton Padronizado e Profissional -->
+                <div class="p-4 space-y-6">
+                  <div v-for="i in 5" :key="i" class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-50 pb-4 last:border-0">
+                    <div class="flex items-center gap-3 w-full md:w-1/3">
+                      <Skeleton shape="circle" size="3rem" class="flex-shrink-0 hidden md:block" />
+                      <div class="space-y-2 w-full">
+                        <Skeleton width="70%" height="1rem" />
+                        <Skeleton width="40%" height="0.6rem" />
+                      </div>
+                    </div>
+                    <div class="w-full md:w-1/3">
+                      <Skeleton width="60%" height="0.875rem" />
+                    </div>
+                    <div class="flex justify-end w-full md:w-auto">
+                      <Skeleton width="80px" height="1.5rem" border-radius="20px" />
+                    </div>
+                  </div>
+                </div>
+              </template>
               <template #empty>
                 <div class="flex flex-col items-center justify-center py-12 text-slate-400">
                   <i class="pi pi-users text-6xl mb-4 text-slate-200"></i>
@@ -254,7 +298,7 @@ onMounted(() => {
                       :label="getInitials(data.nome)" 
                       shape="circle" 
                       size="large"
-                      class="flex-shrink-0" 
+                      class="flex-shrink-0 hidden sm:flex" 
                       :style="getAvatarStyle(data.nome)" 
                     />
                     <div class="flex flex-col">
@@ -281,7 +325,7 @@ onMounted(() => {
             </DataTable>
             
             <div 
-              class="mt-4 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl flex justify-between items-center" 
+              class="mt-4 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-3" 
               v-if="resumo?.refeicao_atual"
             >
               <div class="flex items-center gap-2">
@@ -290,11 +334,11 @@ onMounted(() => {
                   Presenças do {{ resumo.refeicao_atual.turno }}:
                 </span>
               </div>
-              <div class="flex items-center gap-3">
-                <span class="text-sm font-black text-emerald-800">
+              <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                <span class="text-sm font-black text-emerald-800 whitespace-nowrap">
                   {{ resumo.refeicao_atual.confirmados }} / {{ resumo.refeicao_atual.total_esperados || bolsistasHoje.length }} confirmados
                 </span>
-                <div class="w-32 h-2.5 bg-emerald-200 rounded-full overflow-hidden">
+                <div class="flex-1 sm:w-32 h-2.5 bg-emerald-200 rounded-full overflow-hidden">
                   <div 
                     class="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300" 
                     :style="{ width: (resumo.refeicao_atual.total_esperados || bolsistasHoje.length) > 0 ? Math.min(100, (resumo.refeicao_atual.confirmados / (resumo.refeicao_atual.total_esperados || bolsistasHoje.length)) * 100) + '%' : '0%' }"
@@ -308,40 +352,88 @@ onMounted(() => {
 
       <!-- Ações Rápidas -->
       <div class="space-y-6">
-        <Card class="!rounded-xl !border-slate-200 overflow-hidden shadow-sm">
+        <Card class="!rounded-2xl !border-slate-200 overflow-hidden shadow-sm border-t-4 border-t-success-500 bg-gradient-to-b from-white to-slate-50">
           <template #title>
-             <span class="text-base font-black text-slate-700 uppercase tracking-wider">Registrar Presença</span>
+             <div class="flex items-center gap-2">
+               <div class="w-2 h-6 bg-success-500 rounded-full"></div>
+               <span class="text-base font-black text-slate-700 uppercase tracking-wider">Registrar Presença</span>
+             </div>
           </template>
           <template #content>
-            <div class="space-y-4">
-              <p class="text-xs text-slate-500">Digite a matrícula do bolsista para registrar presença manualmente.</p>
+            <div class="space-y-5">
+              <p class="text-xs text-slate-500 font-medium">Digite a matrícula do bolsista para registro manual ultra-rápido.</p>
               <div class="flex flex-col gap-3">
-                <IconField iconPosition="left">
-                  <InputIcon class="pi pi-user" />
-                  <InputText v-model="buscaRapida" placeholder="Matrícula do bolsista..." class="w-full !rounded-xl" @keyup.enter="validarMatriculaRapida" />
+                <IconField>
+                  <InputIcon class="pi pi-user text-slate-400" />
+                  <InputText 
+                    v-model="buscaRapida" 
+                    placeholder="Digite a matrícula..." 
+                    class="w-full !rounded-xl !py-4 !px-10 text-lg font-bold shadow-inner border-slate-200 focus:!border-success-500" 
+                    :class="{ 'p-invalid': !buscaRapida && validandoToken }" 
+                    @keyup.enter="validarMatriculaRapida" 
+                  />
                 </IconField>
-                <Button label="Confirmar Presença" icon="pi pi-check" class="w-full !rounded-xl shadow-md" severity="success" :loading="validandoToken" @click="validarMatriculaRapida" />
+                <small v-if="!buscaRapida && validandoToken" class="p-error ml-1 block -mt-2 font-bold animate-shake">Matrícula é necessária</small>
+                <Button label="Confirmar Presença" icon="pi pi-check" class="w-full !rounded-xl !py-4 shadow-lg font-black uppercase tracking-widest transform active:scale-95 transition-all" severity="success" :loading="validandoToken" @click="validarMatriculaRapida" />
               </div>
               
-              <div class="relative py-2">
-                <div class="absolute inset-0 flex items-center"><span class="w-full border-t border-slate-100"></span></div>
-                <div class="relative flex justify-center text-[10px] font-black text-slate-400 uppercase"><span class="bg-white px-2">ou</span></div>
+              <div class="relative py-4">
+                <div class="absolute inset-0 flex items-center"><span class="w-full border-t border-slate-200"></span></div>
+                <div class="relative flex justify-center text-[10px] font-black text-slate-400 uppercase"><span class="bg-white px-3 tracking-[0.2em]">ou se preferir</span></div>
               </div>
               
-              <Button label="Escanear QR Code" icon="pi pi-qrcode" class="w-full !rounded-xl" severity="secondary" outlined @click="$router.push('/admin/presencas')" />
+              <Button label="Escanear QR Code" icon="pi pi-qrcode" class="w-full !rounded-xl !py-3 font-bold" severity="secondary" outlined @click="$router.push('/admin/presencas')" />
             </div>
           </template>
         </Card>
 
-        <Card class="!rounded-xl !border-slate-200 overflow-hidden shadow-sm">
+        <Card class="!rounded-2xl !border-slate-200 overflow-hidden shadow-sm">
           <template #title>
-             <span class="text-base font-black text-slate-700 uppercase tracking-wider">Outras Ações</span>
+             <div class="flex items-center gap-2">
+               <div class="w-2 h-6 bg-slate-400 rounded-full"></div>
+               <span class="text-base font-black text-slate-700 uppercase tracking-wider">Acesso Rápido</span>
+             </div>
           </template>
           <template #content>
-            <div class="flex flex-col gap-2">
-              <Button label="Gerenciar Cardápios" icon="pi pi-calendar-plus" text class="!justify-start !text-slate-600 hover:!bg-slate-50 !rounded-xl" @click="$router.push('/admin/cardapios')" />
-              <Button label="Relatórios Gerais" icon="pi pi-file-pdf" text class="!justify-start !text-slate-600 hover:!bg-slate-50 !rounded-xl" @click="$router.push('/admin/relatorios')" />
-              <Button label="Gestão de Bolsistas" icon="pi pi-users" text class="!justify-start !text-slate-600 hover:!bg-slate-50 !rounded-xl" @click="$router.push('/admin/bolsistas')" />
+            <div class="grid grid-cols-1 gap-2">
+              <button 
+                @click="$router.push('/admin/cardapios')"
+                class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 group"
+              >
+                <div class="p-2 bg-primary-50 text-primary-600 rounded-lg group-hover:bg-primary-600 group-hover:text-white transition-all">
+                  <i class="pi pi-calendar-plus"></i>
+                </div>
+                <div class="text-left text-sm">
+                  <p class="font-bold text-slate-700">Cardápios</p>
+                  <p class="text-[10px] text-slate-400 uppercase font-black tracking-tighter">Gerenciar semana</p>
+                </div>
+              </button>
+
+              <button 
+                @click="$router.push('/admin/relatorios')"
+                class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 group"
+              >
+                <div class="p-2 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-all">
+                  <i class="pi pi-file-pdf"></i>
+                </div>
+                <div class="text-left text-sm">
+                  <p class="font-bold text-slate-700">Relatórios</p>
+                  <p class="text-[10px] text-slate-400 uppercase font-black tracking-tighter">Exportar dados</p>
+                </div>
+              </button>
+
+              <button 
+                @click="$router.push('/admin/bolsistas')"
+                class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 group"
+              >
+                <div class="p-2 bg-emerald-50 text-emerald-600 rounded-lg group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                  <i class="pi pi-users"></i>
+                </div>
+                <div class="text-left text-sm">
+                  <p class="font-bold text-slate-700">Bolsistas</p>
+                  <p class="text-[10px] text-slate-400 uppercase font-black tracking-tighter">Lista completa</p>
+                </div>
+              </button>
             </div>
           </template>
         </Card>

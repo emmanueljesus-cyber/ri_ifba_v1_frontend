@@ -481,6 +481,25 @@ onMounted(() => {
           class="p-datatable-sm"
           :globalFilterFields="['motivo', 'tipo', 'status']"
         >
+          <template #loading>
+            <div class="p-4">
+              <div v-for="i in 5" :key="i" class="grid grid-cols-4 gap-4 py-4 border-b border-slate-100 last:border-0 items-center">
+                <div class="flex items-center gap-3">
+                  <Skeleton width="2.5rem" height="2.5rem" border-radius="0.75rem" />
+                  <div class="space-y-2">
+                    <Skeleton width="80px" height="1rem" />
+                    <Skeleton width="40px" height="0.75rem" />
+                  </div>
+                </div>
+                <div class="space-y-2">
+                  <Skeleton width="100px" height="1rem" />
+                  <Skeleton width="60px" height="0.75rem" />
+                </div>
+                <div class="flex justify-center"><Skeleton width="80px" height="1.5rem" border-radius="1rem" /></div>
+                <div class="flex justify-end"><Skeleton width="2rem" height="2rem" border-radius="0.5rem" /></div>
+              </div>
+            </div>
+          </template>
           <template #header>
             <div class="flex justify-between items-center mb-2">
               <span class="text-sm font-black text-slate-400 uppercase tracking-widest">Minhas Justificativas</span>

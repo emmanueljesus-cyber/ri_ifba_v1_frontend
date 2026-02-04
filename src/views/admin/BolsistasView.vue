@@ -13,6 +13,7 @@ import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Avatar from 'primevue/avatar'
+import Skeleton from 'primevue/skeleton'
 import Select from 'primevue/select'
 
 import Checkbox from 'primevue/checkbox'
@@ -91,17 +92,22 @@ const carregarBolsistas = async () => {
     }
 
     const response = await adminBolsistaService.listarTodos(params)
-    const res = response.data // O corpo da resposta da API (ApiResponse)
     
-    // Se a resposta for paginada via Resource, os dados reais estarão em res.data.data
-    // Se não for paginada ou for coleção simples, estarão em res.data
-    if (res.data && Array.isArray(res.data.data)) {
-      bolsistas.value = res.data.data
-    } else {
-      bolsistas.value = res.data || []
+    // O service já retorna response.data (o corpo do JSON)
+    const res = response 
+    
+    // Suporte a diferentes formatos de resposta da API
+    let listaBolsistas = []
+    if (Array.isArray(res.data)) {
+      listaBolsistas = res.data
+    } else if (Array.isArray(res)) {
+      listaBolsistas = res
+    } else if (res.data && Array.isArray(res.data.data)) {
+      listaBolsistas = res.data.data
     }
 
-    totalRecords.value = res.meta?.pagination?.total || res.meta?.total || bolsistas.value.length
+    bolsistas.value = listaBolsistas
+    totalRecords.value = res.meta?.pagination?.total || res.meta?.total || listaBolsistas.length
   } catch (err: any) {
     console.error('Erro ao carregar bolsistas:', err)
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar usuários bolsistas' })
@@ -335,10 +341,10 @@ onMounted(() => {
       :breadcrumbs="[{ label: 'Admin', route: '/admin' }, { label: 'Gestão de Bolsistas' }]"
     />
 
-    <div class="flex justify-end items-center gap-4 -mt-10 sm:-mt-12 mb-4 relative z-10">
-      <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
-        <Button label="Importar" icon="pi pi-upload" severity="secondary" outlined size="small" @click="displayImport = true" class="!rounded-xl flex-1 sm:flex-initial" />
-        <Button label="Novo" icon="pi pi-plus" severity="success" size="small" @click="displayNovo = true" class="!rounded-xl shadow-lg flex-1 sm:flex-initial" />
+    <div class="flex flex-wrap justify-center sm:justify-between items-center gap-4 -mt-10 sm:-mt-12 mb-4 relative z-10 px-2 sm:px-0">
+      <div class="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-end ml-auto">
+        <Button label="Importar" icon="pi pi-upload" severity="secondary" outlined size="small" @click="displayImport = true" class="!rounded-xl flex-1 sm:flex-initial min-w-[100px]" />
+        <Button label="Novo" icon="pi pi-plus" severity="success" size="small" @click="displayNovo = true" class="!rounded-xl shadow-lg flex-1 sm:flex-initial min-w-[100px]" />
       </div>
     </div>
 
@@ -364,13 +370,47 @@ onMounted(() => {
               <span class="text-xl font-bold text-slate-700">Bolsistas</span>
               <div class="flex flex-col sm:flex-row gap-3 items-center w-full lg:w-auto">
                 <div class="flex gap-3 w-full sm:w-auto">
-                  <Select v-model="lazyParams.filters['turno_refeicao'].value" :options="turnoOptions" optionLabel="label" optionValue="value" placeholder="Refeição" class="flex-1 sm:w-40" />
-                  <Select v-model="lazyParams.filters['ativo'].value" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Status" class="flex-1 sm:w-40" />
+                  <Select v-model="lazyParams.filters['turno_refeicao'].value" :options="turnoOptions" optionLabel="label" optionValue="value" placeholder="Refeição" class="flex-1 sm:w-40 !rounded-xl" />
+                  <Select v-model="lazyParams.filters['ativo'].value" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Status" class="flex-1 sm:w-40 !rounded-xl" />
                 </div>
-                <InputText v-model="lazyParams.filters['global'].value" placeholder="Buscar bolsista..." class="w-full sm:w-60 !rounded-xl" />
+                <IconField class="w-full sm:w-60">
+                  <InputIcon class="pi pi-search" />
+                  <InputText v-model="lazyParams.filters['global'].value" placeholder="Buscar bolsista..." class="w-full !rounded-xl" />
+                </IconField>
               </div>
             </div>
           </template>
+          
+          <template #loading>
+            <div class="p-4 space-y-6">
+              <div v-for="i in 8" :key="i" class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-50 pb-4 last:border-0">
+                <div class="flex items-center gap-3 w-full md:w-1/3">
+                  <Skeleton shape="circle" size="3rem" class="flex-shrink-0 hidden md:block" />
+                  <div class="space-y-2 w-full">
+                    <Skeleton width="70%" height="1rem" />
+                    <Skeleton width="40%" height="0.6rem" />
+                  </div>
+                </div>
+                <div class="w-full md:w-1/3 space-y-2">
+                  <Skeleton width="60%" height="0.875rem" />
+                  <Skeleton width="40%" height="0.875rem" />
+                </div>
+                <div class="flex justify-end w-full md:w-auto gap-2">
+                  <Skeleton width="80px" height="1.5rem" border-radius="20px" />
+                  <Skeleton width="36px" height="36px" border-radius="10px" />
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <template #empty>
+            <div class="flex flex-col items-center justify-center py-12 text-slate-400">
+              <i class="pi pi-inbox text-6xl mb-4 text-slate-200"></i>
+              <p class="text-sm font-bold text-slate-500 uppercase tracking-widest">Nenhum bolsista encontrado</p>
+              <p class="text-xs text-slate-400 mt-1">Tente ajustar seus filtros ou importe uma nova lista.</p>
+            </div>
+          </template>
+
           <Column field="nome" header="Bolsista">
             <template #body="{ data }">
               <div class="flex items-center gap-3">
@@ -378,15 +418,17 @@ onMounted(() => {
                   v-if="data.foto"
                   :image="data.foto"
                   shape="circle"
+                  class="hidden sm:flex"
                 />
                 <Avatar
                   v-else
                   :label="getInitials(data.nome)"
                   shape="circle"
                   :style="getAvatarStyle(data.nome)"
+                  class="hidden sm:flex"
                 />
                 <div class="flex flex-col">
-                  <span class="font-bold text-slate-700">{{ data.nome }}</span>
+                  <span class="font-bold text-slate-700 leading-tight">{{ data.nome }}</span>
                   <span class="text-[10px] text-slate-400 font-black uppercase">{{ data.matricula }}</span>
                 </div>
               </div>

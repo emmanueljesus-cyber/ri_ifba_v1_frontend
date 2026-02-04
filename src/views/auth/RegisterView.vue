@@ -4,6 +4,8 @@ import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
 import Dropdown from 'primevue/dropdown'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
@@ -42,6 +44,7 @@ const dadosBolsista = ref<{ nome: string; curso: string; turno_refeicao: string 
 const matriculaJaCadastrada = ref(false)
 
 const errorMessage = ref('')
+const submitted = ref(false)
 const loading = computed(() => auth.loading)
 
 // Debounce para verificar matricula
@@ -106,7 +109,20 @@ watch(perfil, (value) => {
 
 const handleSubmit = async () => {
   errorMessage.value = ''
+  submitted.value = true
   
+  // Validacao basica
+  const camposObrigatorios = ['nome', 'email', 'matricula', 'password', 'password_confirmation']
+  if (perfil.value === 'estudante' && !form.value.curso) camposObrigatorios.push('curso')
+  if (perfil.value === 'estudante' && !ehBolsista.value && !form.value.turno_aula) camposObrigatorios.push('turno_aula')
+  
+  const algumVazio = camposObrigatorios.some(campo => !form.value[campo as keyof typeof form.value])
+  
+  if (algumVazio) {
+    errorMessage.value = 'Por favor, preencha todos os campos obrigatórios'
+    return
+  }
+
   if (matriculaJaCadastrada.value) {
     errorMessage.value = 'Esta matricula ja esta cadastrada no sistema'
     return
@@ -159,70 +175,67 @@ const handleSubmit = async () => {
       </header>
 
       <!-- Cadastro Form -->
-      <form class="space-y-5" @submit.prevent="handleSubmit">
-        <!-- E-mail e Matrícula -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div class="space-y-2">
-            <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1" for="email">
-              E-mail *
-            </label>
-            <div class="relative flex items-center group">
-              <span class="absolute left-4 text-slate-400 group-focus-within:text-primary-600 transition-colors pointer-events-none z-10">
-                <i class="pi pi-envelope"></i>
-              </span>
-              <InputText 
-                id="email" 
-                v-model="form.email" 
-                type="email" 
-                placeholder="exemplo@ifba.edu.br" 
-                class="w-full !pl-12 !rounded-xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all" 
-                autocomplete="email"
-                required 
-              />
-            </div>
-          </div>
+      <form class="space-y-5" @submit.prevent="handleSubmit" novalidate>
+        <!-- Matrícula -->
+        <div class="space-y-2">
+          <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1" for="matricula">
+            Matrícula *
+          </label>
+          <IconField>
+            <InputIcon class="pi pi-id-card text-slate-400" />
+            <InputText 
+              id="matricula" 
+              v-model="form.matricula" 
+              placeholder="Sua matrícula SUAP"
+              class="w-full !pr-12 !rounded-xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all"
+              :invalid="(submitted && !form.matricula) || matriculaJaCadastrada"
+              :class="{ '!border-green-400': ehBolsista === true }"
+            />
+            <!-- Indicador de verificação -->
+            <span v-if="verificandoMatricula" class="absolute right-4 top-1/2 -translate-y-1/2 z-20">
+              <i class="pi pi-spin pi-spinner text-slate-400"></i>
+            </span>
+            <span v-else-if="ehBolsista === true" class="absolute right-4 top-1/2 -translate-y-1/2 z-20">
+              <i class="pi pi-check-circle text-green-500"></i>
+            </span>
+            <span v-else-if="matriculaJaCadastrada" class="absolute right-4 top-1/2 -translate-y-1/2 z-20">
+              <i class="pi pi-times-circle text-red-500"></i>
+            </span>
+          </IconField>
+          <small v-if="submitted && !form.matricula" class="p-error ml-1 block">Matrícula é obrigatória</small>
+          <!-- Mensagem de status da matrícula -->
+          <p v-if="ehBolsista === true" class="text-xs text-green-600 ml-1 font-medium">
+            <i class="pi pi-verified mr-1"></i>
+            Bolsista identificado! Turno: {{ dadosBolsista?.turno_refeicao === 'almoco' ? 'Almoço' : 'Jantar' }}
+          </p>
+          <p v-else-if="ehBolsista === false && form.matricula.length >= 5" class="text-xs text-amber-600 ml-1">
+            <i class="pi pi-info-circle mr-1"></i>
+            Matrícula não encontrada na lista de bolsistas. Selecione seu turno de aula.
+          </p>
+          <small v-if="matriculaJaCadastrada" class="p-error ml-1 block">
+            <i class="pi pi-exclamation-circle mr-1"></i>
+            Esta matrícula já está cadastrada no sistema.
+          </small>
+        </div>
 
-          <div class="space-y-2">
-            <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1" for="matricula">
-              Matricula *
-            </label>
-            <div class="relative flex items-center group">
-              <span class="absolute left-4 text-slate-400 group-focus-within:text-primary-600 transition-colors pointer-events-none z-10">
-                <i class="pi pi-id-card"></i>
-              </span>
-              <InputText 
-                id="matricula" 
-                v-model="form.matricula" 
-                placeholder="Sua matricula SUAP"
-                class="w-full !pl-12 !pr-12 !rounded-xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all"
-                :class="{ '!border-red-400': matriculaJaCadastrada, '!border-green-400': ehBolsista === true }"
-                required
-              />
-              <!-- Indicador de verificacao -->
-              <span v-if="verificandoMatricula" class="absolute right-4 top-1/2 -translate-y-1/2">
-                <i class="pi pi-spin pi-spinner text-slate-400"></i>
-              </span>
-              <span v-else-if="ehBolsista === true" class="absolute right-4 top-1/2 -translate-y-1/2">
-                <i class="pi pi-check-circle text-green-500"></i>
-              </span>
-              <span v-else-if="matriculaJaCadastrada" class="absolute right-4 top-1/2 -translate-y-1/2">
-                <i class="pi pi-times-circle text-red-500"></i>
-              </span>
-            </div>
-            <!-- Mensagem de status da matricula -->
-            <p v-if="ehBolsista === true" class="text-xs text-green-600 ml-1 font-medium">
-              <i class="pi pi-verified mr-1"></i>
-              Bolsista identificado! Turno: {{ dadosBolsista?.turno_refeicao === 'almoco' ? 'Almoco' : 'Jantar' }}
-            </p>
-            <p v-else-if="ehBolsista === false && form.matricula.length >= 5" class="text-xs text-amber-600 ml-1">
-              <i class="pi pi-info-circle mr-1"></i>
-              Matricula nao encontrada na lista de bolsistas. Selecione seu turno de aula.
-            </p>
-            <p v-else-if="matriculaJaCadastrada" class="text-xs text-red-600 ml-1">
-              <i class="pi pi-exclamation-circle mr-1"></i>
-              Esta matricula ja esta cadastrada no sistema.
-            </p>
-          </div>
+        <!-- E-mail -->
+        <div class="space-y-2">
+          <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1" for="email">
+            E-mail *
+          </label>
+          <IconField>
+            <InputIcon class="pi pi-envelope text-slate-400" />
+            <InputText 
+              id="email" 
+              v-model="form.email" 
+              type="email" 
+              placeholder="Digite seu email"
+              class="w-full !rounded-xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all" 
+              :invalid="submitted && !form.email"
+              autocomplete="email"
+            />
+          </IconField>
+          <small v-if="submitted && !form.email" class="p-error ml-1 block">E-mail é obrigatório</small>
         </div>
 
         <!-- Nome completo -->
@@ -230,19 +243,18 @@ const handleSubmit = async () => {
           <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1" for="nome">
             Nome completo *
           </label>
-          <div class="relative flex items-center group">
-            <span class="absolute left-4 text-slate-400 group-focus-within:text-primary-600 transition-colors pointer-events-none z-10">
-              <i class="pi pi-user"></i>
-            </span>
+          <IconField>
+            <InputIcon class="pi pi-user text-slate-400" />
             <InputText 
               id="nome" 
               v-model="form.nome" 
               placeholder="Digite seu nome completo" 
-              class="w-full !pl-12 !rounded-xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all" 
-              required 
+              class="w-full !rounded-xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all" 
+              :invalid="submitted && !form.nome"
               :disabled="ehBolsista === true"
             />
-          </div>
+          </IconField>
+          <small v-if="submitted && !form.nome" class="p-error ml-1 block">Nome é obrigatório</small>
         </div>
 
         <!-- Curso e Turno (apenas para estudante) -->
@@ -251,24 +263,24 @@ const handleSubmit = async () => {
             <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1" for="curso">
               Curso
             </label>
-            <div class="relative flex items-center group">
-              <span class="absolute left-4 text-slate-400 group-focus-within:text-primary-600 transition-colors pointer-events-none z-10">
-                <i class="pi pi-book"></i>
-              </span>
+            <IconField>
+              <InputIcon class="pi pi-book text-slate-400" />
               <InputText 
                 id="curso" 
                 v-model="form.curso" 
-                placeholder="Nome do seu curso" 
-                class="w-full !pl-12 !rounded-xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all"
+                placeholder="Ex: Mecânica"
+                class="w-full !rounded-xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all"
+                :invalid="submitted && !form.curso && perfil === 'estudante'"
                 :disabled="ehBolsista === true"
               />
-            </div>
+            </IconField>
+            <small v-if="submitted && !form.curso && perfil === 'estudante'" class="p-error ml-1 block">Curso é obrigatório</small>
           </div>
           
           <!-- Turno de AULA - apenas para NAO bolsistas -->
           <div v-if="ehBolsista !== true" class="space-y-2">
             <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1" for="turno">
-              Turno de Aula
+              Turno
             </label>
             <Dropdown 
               id="turno" 
@@ -276,13 +288,11 @@ const handleSubmit = async () => {
               :options="turnosAula"
               optionLabel="label"
               optionValue="value" 
-              placeholder="Selecione seu turno de aula"
+              placeholder="Selecione seu turno"
               class="w-full !rounded-xl !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all"
+              :invalid="submitted && !form.turno_aula && perfil === 'estudante' && !ehBolsista"
             />
-            <p class="text-xs text-slate-400 ml-1">
-              <i class="pi pi-info-circle mr-1"></i>
-              Informe o turno das suas aulas
-            </p>
+            <small v-if="submitted && !form.turno_aula && perfil === 'estudante' && !ehBolsista" class="p-error ml-1 block">Turno é obrigatório</small>
           </div>
 
           <!-- Turno do bolsista - apenas informativo -->
@@ -308,44 +318,43 @@ const handleSubmit = async () => {
             <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1" for="senha">
               Senha *
             </label>
-            <div class="relative flex items-center group">
-              <span class="absolute left-4 text-slate-400 group-focus-within:text-primary-600 transition-colors pointer-events-none z-10">
-                <i class="pi pi-lock"></i>
-              </span>
+            <IconField>
+              <InputIcon class="pi pi-lock text-slate-400" />
               <Password 
                 v-model="form.password" 
                 inputId="senha" 
                 :feedback="true"
                 toggleMask 
                 class="w-full" 
-                inputClass="w-full !pl-12 !rounded-xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all" 
+                inputClass="w-full !rounded-xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all" 
+                :invalid="submitted && (!form.password || (form.password_confirmation && form.password !== form.password_confirmation))"
                 placeholder="Crie uma senha" 
                 autocomplete="new-password"
-                required 
               />
-            </div>
+            </IconField>
+            <small v-if="submitted && !form.password" class="p-error ml-1 block">Senha é obrigatória</small>
           </div>
-          
+        
           <div class="space-y-2">
             <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1" for="senha2">
               Confirmar senha *
             </label>
-            <div class="relative flex items-center group">
-              <span class="absolute left-4 text-slate-400 group-focus-within:text-primary-600 transition-colors pointer-events-none z-10">
-                <i class="pi pi-lock"></i>
-              </span>
+            <IconField>
+              <InputIcon class="pi pi-lock text-slate-400" />
               <Password 
                 v-model="form.password_confirmation" 
                 inputId="senha2" 
                 :feedback="false" 
                 toggleMask 
                 class="w-full" 
-                inputClass="w-full !pl-12 !rounded-xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all" 
+                inputClass="w-full !rounded-xl !py-3.5 !border-slate-200 focus:!border-primary-500 focus:!ring-4 focus:!ring-primary-100 transition-all" 
+                :invalid="submitted && (!form.password_confirmation || (form.password && form.password !== form.password_confirmation))"
                 placeholder="Repita a senha" 
                 autocomplete="new-password"
-                required 
               />
-            </div>
+            </IconField>
+            <small v-if="submitted && !form.password_confirmation" class="p-error ml-1 block">Confirmação de senha é obrigatória</small>
+            <small v-else-if="submitted && form.password !== form.password_confirmation" class="p-error ml-1 block">As senhas não conferem</small>
           </div>
         </div>
 

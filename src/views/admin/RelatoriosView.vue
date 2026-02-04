@@ -29,6 +29,7 @@ import DatePicker from 'primevue/datepicker'
 import InputText from 'primevue/inputtext'
 import Chart from 'primevue/chart'
 import { useToast } from 'primevue/usetoast'
+import Skeleton from 'primevue/skeleton'
 const toast = useToast()
 const loading = ref(false)
 const loadingExtras = ref(false)
@@ -61,6 +62,16 @@ const turnos = [
   { label: 'Jantar', value: 'jantar' }
 ]
 
+const chartTypeGeral = ref('bar')
+const chartTypePresencas = ref('bar')
+const chartTypeExtras = ref('bar')
+
+const chartTypeOptions = [
+  { icon: 'pi pi-chart-bar', value: 'bar', label: 'Barras' },
+  { icon: 'pi pi-chart-pie', value: 'doughnut', label: 'Donut' },
+  { icon: 'pi pi-chart-scatter', value: 'pie', label: 'Pizza' }
+]
+
 const carregarRelatorio = async () => {
   loading.value = true
   try {
@@ -69,6 +80,10 @@ const carregarRelatorio = async () => {
     if (relatorio.value && (!relatorio.value.semanas || relatorio.value.semanas.length === 0)) {
        relatorio.value = null
     }
+    // Carregar estatísticas do dashboard para os cards do topo na aba geral
+    const inicio = `${anoSelecionado.value}-${String(mesSelecionado.value).padStart(2, '0')}-01`
+    const fim = new Date(anoSelecionado.value, mesSelecionado.value, 0).toISOString().split('T')[0]
+    statsDashboard.value = await relatorioService.dashboard({ data_inicio: inicio, data_fim: fim })
   } catch (error) {
     console.error('Erro ao carregar relatório:', error)
     relatorio.value = null
@@ -100,6 +115,27 @@ const carregarPresencas = async () => {
     })
   } finally {
     loading.value = false
+  }
+}
+
+const carregarExtras = async () => {
+  loadingExtras.value = true
+  try {
+    const inicio = filtroDataInicio.value.toISOString().split('T')[0] ?? ''
+    const fim = filtroDataFim.value.toISOString().split('T')[0] ?? ''
+    const turno = filtroTurno.value === 'todos' ? undefined : (filtroTurno.value as 'almoco' | 'jantar')
+
+    const response = await adminExtrasService.listar({ data_inicio: inicio, data_fim: fim, turno })
+    relatorioExtras.value = response.data
+    const stats = await adminExtrasService.estatisticas(inicio, fim)
+    estatisticasExtras.value = stats
+    
+    // Log para depuração se os gráficos não aparecerem
+    console.log('Estatísticas Extras carregadas:', stats)
+  } catch (error) {
+    console.error('Erro ao carregar extras:', error)
+  } finally {
+    loadingExtras.value = false
   }
 }
 
@@ -246,29 +282,6 @@ const exportarGeral = async () => {
 }
 
 // ===== RELATÓRIO DE EXTRAS =====
-const carregarExtras = async () => {
-  loadingExtras.value = true
-  try {
-    const inicio = filtroDataInicio.value.toISOString().split('T')[0]
-    const fim = filtroDataFim.value.toISOString().split('T')[0]
-    const turno = filtroTurno.value === 'todos' ? undefined : filtroTurno.value
-
-    const { data } = await adminExtrasService.listar({
-      data: inicio,
-      turno: turno as any
-    })
-    relatorioExtras.value = data || []
-
-    // Carregar estatísticas
-    estatisticasExtras.value = await adminExtrasService.estatisticas(inicio, fim)
-  } catch (error) {
-    console.error('Erro ao carregar extras:', error)
-    relatorioExtras.value = []
-  } finally {
-    loadingExtras.value = false
-  }
-}
-
 const exportarExtras = async () => {
   try {
     if (!validarIntervaloDatas(filtroDataInicio.value, filtroDataFim.value)) {
@@ -356,9 +369,86 @@ const chartPalette = [
   '#3b82f6',
   '#ef4444',
   '#f97316',
-  '#f59e0b',
-  '#64748b'
+  '#f59e0b'
 ]
+
+const presencasPorDiaChartData = computed(() => {
+  const dados = relatorioPresencas.value?.data
+  if (!dados || !Array.isArray(dados)) return null
+
+  // Filtrar apenas dias úteis (Segunda a Sexta)
+  const diasUteisMap: Record<string, string> = {
+    'Segunda': 'Seg',
+    'Terça': 'Ter',
+    'Quarta': 'Qua',
+    'Quinta': 'Qui',
+    'Sexta': 'Sex'
+  }
+
+  // Se a API retornar o nome do dia em português, filtramos por ele
+  // Ou se retornar data ISO, precisamos calcular o dia da semana
+  const labels: string[] = []
+  const presentes: number[] = []
+  const faltas: number[] = []
+
+  dados.forEach(d => {
+    // Tenta converter string de data (DD/MM/YYYY ou YYYY-MM-DD) em objeto Date
+    let dataObj: Date | null = null
+    
+    if (d.data.includes('/')) {
+      const partes = d.data.split('/')
+      if (partes.length === 3) {
+        dataObj = new Date(Number(partes[2]), Number(partes[1]) - 1, Number(partes[0]))
+      }
+    } else if (d.data.includes('-')) {
+      dataObj = new Date(d.data + 'T12:00:00')
+    }
+
+    if (dataObj && !isNaN(dataObj.getTime())) {
+      const diaSemana = dataObj.getDay() // 0=Dom, 1=Seg...
+      
+      // FILTRO RIGOROSO: Apenas Segunda (1) a Sexta (5)
+      if (diaSemana >= 1 && diaSemana <= 5) {
+        const nomesDias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+        labels.push(nomesDias[diaSemana] || '')
+        presentes.push(d.presentes || 0)
+        faltas.push((d.falta_justificada || 0) + (d.falta_injustificada || 0))
+      }
+    }
+  })
+
+  if (labels.length === 0) return null
+
+  return {
+    labels,
+    datasets: [
+      {
+        label: 'Presentes',
+        data: presentes,
+        backgroundColor: '#10b981',
+        borderRadius: 4
+      },
+      {
+        label: 'Faltas',
+        data: faltas,
+        backgroundColor: '#ef4444',
+        borderRadius: 4
+      }
+    ]
+  }
+})
+
+const presencasPorDiaChartOptions = {
+  plugins: {
+    legend: { position: 'top', labels: { usePointStyle: true, font: { weight: '600' } } }
+  },
+  scales: {
+    y: { beginAtZero: true, ticks: { stepSize: 1 } },
+    x: { grid: { display: false } }
+  },
+  responsive: true,
+  maintainAspectRatio: false
+}
 
 const geralChartData = computed(() => {
   if (!relatorio.value?.totais) return null
@@ -990,100 +1080,132 @@ watch(activeTab, (newTab) => {
     />
 
     <!-- Seletor de Aba usando SelectButton -->
-    <div class="flex justify-center mb-6 px-4">
-      <SelectButton
-        v-model="activeTab"
-        :options="tabOptions"
-        optionLabel="label"
-        optionValue="value"
-        :allowEmpty="false"
-        class="tab-select-button overflow-x-auto max-w-full"
-      >
-        <template #option="slotProps">
-          <div class="flex items-center gap-2 px-1 sm:px-2 whitespace-nowrap">
-            <i :class="slotProps.option.icon"></i>
-            <span class="font-bold text-xs sm:text-sm">{{ slotProps.option.label }}</span>
-          </div>
-        </template>
-      </SelectButton>
+    <div class="flex justify-center mb-6 px-2 sm:px-4">
+      <div class="w-full max-w-4xl overflow-x-auto no-scrollbar pb-2">
+        <SelectButton
+          v-model="activeTab"
+          :options="tabOptions"
+          optionLabel="label"
+          optionValue="value"
+          :allowEmpty="false"
+          class="tab-select-button flex-nowrap whitespace-nowrap"
+        >
+          <template #option="slotProps">
+            <div class="flex items-center gap-2 px-2 sm:px-4 whitespace-nowrap py-1">
+              <i :class="slotProps.option.icon" class="text-xs sm:text-base"></i>
+              <span class="font-bold text-[10px] sm:text-sm uppercase">{{ slotProps.option.label }}</span>
+            </div>
+          </template>
+        </SelectButton>
+      </div>
     </div>
 
     <!-- ABA: RELATÓRIO GERAL MENSAL -->
     <div v-if="activeTab === 'geral'">
       <Card class="!rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <template #content>
-              <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-                <div class="flex flex-wrap gap-2 items-center justify-center md:justify-start">
-                  <Select v-model="mesSelecionado" :options="meses" optionLabel="label" optionValue="value" class="w-40" @change="carregarRelatorio" />
-                  <Select v-model="anoSelecionado" :options="anos" class="w-24" @change="carregarRelatorio" />
-                  <Button icon="pi pi-refresh" text rounded @click="carregarRelatorio" :loading="loading" />
+              <div class="flex flex-col lg:flex-row justify-between items-center gap-4 mb-6">
+                <div class="flex flex-wrap gap-2 items-center justify-center lg:justify-start">
+                  <Select v-model="mesSelecionado" :options="meses" optionLabel="label" optionValue="value" class="w-full sm:w-40" @change="carregarRelatorio" />
+                  <Select v-model="anoSelecionado" :options="anos" class="w-full sm:w-24" @change="carregarRelatorio" />
+                  <Button icon="pi pi-refresh" text rounded @click="carregarRelatorio" :loading="loading" class="hidden sm:inline-flex" />
+                  <Button label="Atualizar" icon="pi pi-refresh" severity="secondary" @click="carregarRelatorio" :loading="loading" class="w-full sm:hidden !rounded-xl" />
                 </div>
-                <Button label="Exportar Excel" icon="pi pi-file-excel" severity="success" class="!rounded-xl w-full md:w-auto" @click="exportarExcel" />
+                <Button label="Exportar Excel" icon="pi pi-file-excel" severity="success" class="!rounded-xl w-full lg:w-auto shadow-sm" @click="exportarExcel" />
               </div>
 
-              <div v-if="loading" class="flex flex-col items-center py-20">
-                <ProgressSpinner />
-                <p class="text-slate-500 mt-4">Gerando relatório...</p>
+              <div v-if="loading" class="space-y-6">
+                <!-- Skeleton Resumo -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <Skeleton v-for="i in 4" :key="i" height="80px" border-radius="12px" />
+                </div>
+                <!-- Skeleton Grafico -->
+                <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
+                   <div class="flex justify-between mb-4">
+                     <Skeleton width="150px" height="20px" />
+                     <Skeleton width="100px" height="30px" />
+                   </div>
+                   <Skeleton height="300px" border-radius="12px" />
+                </div>
+                <!-- Skeleton Tabela -->
+                <Skeleton height="400px" border-radius="12px" />
               </div>
 
               <div v-else-if="relatorio" class="overflow-x-auto">
                 <!-- Resumo Rápido -->
                 <div v-if="statsDashboard" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                   <div class="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
-                      <p class="text-[10px] font-black text-emerald-600 uppercase">Presentes</p>
-                      <p class="text-2xl font-black text-emerald-700">{{ statsDashboard.resumo?.total_presentes || 0 }}</p>
+                   <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm hover:border-emerald-200 transition-colors">
+                      <p class="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Presentes</p>
+                      <p class="text-3xl font-black text-slate-800">{{ statsDashboard.resumo?.total_presentes || 0 }}</p>
                    </div>
-                   <div class="p-4 bg-blue-50 rounded-xl border border-blue-100">
-                      <p class="text-[10px] font-black text-blue-600 uppercase">Extras</p>
-                      <p class="text-2xl font-black text-blue-700">{{ statsDashboard.extras?.total || 0 }}</p>
+                   <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm hover:border-blue-200 transition-colors">
+                      <p class="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Extras</p>
+                      <p class="text-3xl font-black text-slate-800">{{ statsDashboard.extras?.total || 0 }}</p>
                    </div>
-                   <div class="p-4 bg-red-50 rounded-xl border border-red-100">
-                      <p class="text-[10px] font-black text-red-600 uppercase">Faltas</p>
-                      <p class="text-2xl font-black text-red-700">{{ statsDashboard.resumo?.total_faltas || 0 }}</p>
+                   <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm hover:border-red-200 transition-colors">
+                      <p class="text-[10px] font-black text-red-600 uppercase tracking-widest mb-1">Faltas</p>
+                      <p class="text-3xl font-black text-slate-800">{{ statsDashboard.resumo?.total_faltas || 0 }}</p>
                    </div>
-                   <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                      <p class="text-[10px] font-black text-slate-600 uppercase">Aproveitamento</p>
-                      <p class="text-2xl font-black text-slate-700">{{ statsDashboard.taxa_presenca?.porcentagem || '0%' }}</p>
+                   <div class="p-4 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl border border-primary-600 shadow-lg">
+                      <p class="text-[10px] font-black text-white/80 uppercase tracking-widest mb-1">Aproveitamento</p>
+                      <p class="text-3xl font-black text-white">{{ statsDashboard.taxa_presenca?.porcentagem || '0%' }}</p>
                    </div>
                 </div>
 
                 <div v-if="geralChartData" class="space-y-6 mb-8">
-                  <!-- Título da Seção -->
-                 <h3 class="text-lg font-black text-slate-700 uppercase tracking-wide">📊 Visualizações Gráficas</h3>
+                  <!-- Título da Seção e Seletor de Tipo -->
+                    <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+                      <h3 class="text-lg font-black text-slate-700 uppercase tracking-wide flex items-center gap-2 text-center sm:text-left">
+                        <i class="pi pi-chart-line text-primary-500"></i>
+                        Visualizações Gráficas
+                      </h3>
+                      <div class="overflow-x-auto no-scrollbar max-w-full pb-1">
+                        <SelectButton v-model="chartTypeGeral" :options="chartTypeOptions" optionLabel="label" optionValue="value" :allowEmpty="false" class="custom-select-button scale-90 sm:scale-100 flex-nowrap whitespace-nowrap">
+                          <template #option="slotProps">
+                            <i :class="slotProps.option.icon"></i>
+                          </template>
+                        </SelectButton>
+                      </div>
+                    </div>
                   
-                  <!-- Grid com 3 gráficos -->
-                  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <!-- Gráfico de Barras -->
-                    <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
-                      <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">📊 Gráfico de Barras</h4>
-                      <Chart v-if="geralBarChartData" type="bar" :data="geralBarChartData" :options="geralBarChartOptions" class="h-64" />
-                      <!-- Legenda Externa com Porcentagem -->
-                      <div class="mt-4 space-y-2">
-                        <div v-for="item in geralLegendasComPorcentagem" :key="item.label" class="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
-                          <div class="flex items-center gap-2">
+                  <!-- Container do Gráfico Único e Otimizado -->
+                  <div class="p-4 sm:p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
+                    <div class="flex justify-between items-center mb-6">
+                      <h4 class="text-sm font-black text-slate-400 uppercase tracking-widest">
+                        Distribuição de Frequência Mensal
+                      </h4>
+                      <Tag :value="chartTypeGeral.toUpperCase()" severity="secondary" class="!rounded-full px-3 text-[10px]" />
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                      <!-- Área do Gráfico -->
+                      <div class="lg:col-span-2 min-h-[320px]">
+                        <Chart v-if="chartTypeGeral === 'bar'" type="bar" :data="geralBarChartData" :options="geralBarChartOptions" class="h-full" />
+                        <Chart v-else-if="chartTypeGeral === 'doughnut'" type="doughnut" :data="geralChartData" :options="geralChartOptions" class="h-full" />
+                        <Chart v-else type="pie" :data="geralChartData" :options="geralPizzaChartOptions" class="h-full" />
+                      </div>
+
+                      <!-- Legendas Customizadas e Estatísticas -->
+                      <div class="flex flex-col justify-center gap-2">
+                        <div v-for="item in geralLegendasComPorcentagem" :key="item.label" class="flex items-center justify-between p-3 bg-slate-50/50 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors">
+                          <div class="flex items-center gap-3">
                             <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: item.color }"></div>
-                            <span class="text-xs font-semibold text-slate-700">{{ item.label }}</span>
+                            <span class="text-xs font-bold text-slate-600">{{ item.label }}</span>
                           </div>
-                          <div class="flex items-center gap-2">
-                            <span class="text-xs font-bold text-slate-900">{{ item.value }}</span>
-                            <span class="text-[10px] font-black text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded-full">{{ item.percentage }}%</span>
+                          <div class="flex items-center gap-3">
+                            <span class="text-sm font-black text-slate-800">{{ item.value }}</span>
+                            <span class="text-[10px] font-black text-slate-400 bg-white border border-slate-200 px-2 py-0.5 rounded-full">{{ item.percentage }}%</span>
                           </div>
                         </div>
                       </div>
                     </div>
-
-                    <!-- Gráfico de Donut -->
-                    <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
-                      <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">🍩 Gráfico de Donut</h4>
-                      <Chart type="doughnut" :data="geralChartData" :options="geralChartOptions" class="h-64" />
-                    </div>
-
-                    <!-- Gráfico de Pizza -->
-                    <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
-                      <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">🍰 Gráfico de Pizza</h4>
-                      <Chart type="pie" :data="geralChartData" :options="geralPizzaChartOptions" class="h-64" />
-                    </div>
                   </div>
+                </div>
+
+                <!-- Estado Vazio para Gráficos -->
+                <div v-else class="p-12 text-center bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 mb-8">
+                  <i class="pi pi-chart-bar text-5xl text-slate-300 mb-4"></i>
+                  <p class="text-slate-500 font-medium">Nenhum dado estatístico disponível para este período.</p>
                 </div>
 
                 <div class="min-w-[800px]">
@@ -1149,107 +1271,127 @@ watch(activeTab, (newTab) => {
           <Card class="!rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <template #content>
               <!-- Filtros -->
-              <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-                <div class="flex flex-wrap gap-4 items-end justify-center md:justify-start">
-                  <div class="flex flex-col gap-1">
-                    <label class="text-[10px] font-bold uppercase text-slate-500 text-center md:text-left">Início</label>
-                    <DatePicker v-model="filtroDataInicio" dateFormat="dd/mm/yy" class="w-full sm:w-36" :locale="ptBR" showIcon />
+              <div class="flex flex-col lg:flex-row justify-between items-center gap-4 mb-6">
+                <div class="flex flex-wrap gap-4 items-end justify-center lg:justify-start w-full lg:w-auto">
+                  <div class="flex flex-col gap-1 w-full sm:w-36">
+                    <label class="text-[10px] font-bold uppercase text-slate-500 text-center lg:text-left">Início</label>
+                    <DatePicker v-model="filtroDataInicio" dateFormat="dd/mm/yy" class="w-full" :locale="ptBR" showIcon />
                   </div>
-                  <div class="flex flex-col gap-1">
-                    <label class="text-[10px] font-bold uppercase text-slate-500 text-center md:text-left">Fim</label>
-                    <DatePicker v-model="filtroDataFim" dateFormat="dd/mm/yy" class="w-full sm:w-36" :locale="ptBR" showIcon />
+                  <div class="flex flex-col gap-1 w-full sm:w-36">
+                    <label class="text-[10px] font-bold uppercase text-slate-500 text-center lg:text-left">Fim</label>
+                    <DatePicker v-model="filtroDataFim" dateFormat="dd/mm/yy" class="w-full" :locale="ptBR" showIcon />
                   </div>
-                  <div class="flex flex-col gap-1 w-full sm:w-auto">
-                    <label class="text-[10px] font-bold uppercase text-slate-500 text-center md:text-left">Turno</label>
+                  <div class="flex flex-col gap-1 w-full sm:w-auto overflow-x-auto no-scrollbar">
+                    <label class="text-[10px] font-bold uppercase text-slate-500 text-center lg:text-left">Turno</label>
                     <SelectButton
                       v-model="filtroTurno" 
                       :options="turnos" 
                       optionLabel="label" 
                       optionValue="value" 
                       :allowEmpty="false"
-                      class="custom-select-button w-full sm:w-auto"
+                      class="custom-select-button w-full sm:w-auto flex-nowrap whitespace-nowrap"
                     />
                   </div>
-                  <Button icon="pi pi-search" label="Buscar" severity="primary" @click="carregarPresencas" :loading="loading" class="!rounded-xl w-full sm:w-auto" />
+                  <Button icon="pi pi-search" label="Buscar" severity="primary" @click="carregarPresencas" :loading="loading" class="!rounded-xl w-full lg:w-auto shadow-sm" />
                 </div>
-                <Button label="Exportar Excel" icon="pi pi-file-excel" severity="success" outlined class="!rounded-xl w-full md:w-auto" @click="exportarGeral" />
+                <Button label="Exportar Excel" icon="pi pi-file-excel" severity="success" outlined class="!rounded-xl w-full lg:w-auto" @click="exportarGeral" />
               </div>
 
               <!-- Resumo -->
               <div v-if="relatorioPresencas?.meta?.totais" class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-                <div class="p-4 bg-emerald-50 rounded-xl border border-emerald-100 text-center">
-                  <p class="text-[10px] font-bold text-emerald-600 uppercase">Presentes</p>
-                  <p class="text-2xl font-black text-emerald-700">{{ relatorioPresencas.meta.totais.presentes }}</p>
+                <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm text-center">
+                  <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Presentes</p>
+                  <p class="text-2xl font-black text-slate-800">{{ relatorioPresencas.meta.totais.presentes }}</p>
                 </div>
-                <div class="p-4 bg-blue-50 rounded-xl border border-blue-100 text-center">
-                  <p class="text-[10px] font-bold text-blue-600 uppercase">Faltas Just.</p>
-                  <p class="text-2xl font-black text-blue-700">{{ relatorioPresencas.meta.totais.falta_justificada }}</p>
+                <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm text-center">
+                  <p class="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Faltas Just.</p>
+                  <p class="text-2xl font-black text-slate-800">{{ relatorioPresencas.meta.totais.falta_justificada }}</p>
                 </div>
-                <div class="p-4 bg-red-50 rounded-xl border border-red-100 text-center">
-                  <p class="text-[10px] font-bold text-red-600 uppercase">Faltas Injust.</p>
-                  <p class="text-2xl font-black text-red-700">{{ relatorioPresencas.meta.totais.falta_injustificada }}</p>
+                <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm text-center">
+                  <p class="text-[10px] font-bold text-red-600 uppercase tracking-widest">Faltas Injust.</p>
+                  <p class="text-2xl font-black text-slate-800">{{ relatorioPresencas.meta.totais.falta_injustificada }}</p>
                 </div>
-                <div class="p-4 bg-amber-50 rounded-xl border border-amber-100 text-center">
-                  <p class="text-[10px] font-bold text-amber-600 uppercase">Cancelados</p>
-                  <p class="text-2xl font-black text-amber-700">{{ relatorioPresencas.meta.totais.cancelados }}</p>
+                <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm text-center">
+                  <p class="text-[10px] font-bold text-amber-600 uppercase tracking-widest">Cancelados</p>
+                  <p class="text-2xl font-black text-slate-800">{{ relatorioPresencas.meta.totais.cancelados }}</p>
                 </div>
-                <div class="p-4 bg-slate-100 rounded-xl border border-slate-200 text-center">
-                  <p class="text-[10px] font-bold text-slate-600 uppercase">Total</p>
-                  <p class="text-2xl font-black text-slate-700">{{ relatorioPresencas.meta.totais.total_registros }}</p>
+                <div class="p-4 bg-slate-800 rounded-xl border border-slate-900 shadow-lg text-center">
+                  <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total</p>
+                  <p class="text-2xl font-black text-white">{{ relatorioPresencas.meta.totais.total_registros }}</p>
                 </div>
               </div>
 
-              <div v-if="presencasChartData" class="space-y-6 mb-8">
-                <h3 class="text-lg font-black text-slate-700 uppercase tracking-wide">📊 Visualizações Gráficas - Presenças</h3>
-                
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <!-- Gráfico de Barras -->
-                  <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
-                    <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">📊 Gráfico de Barras</h4>
-                    <Chart v-if="presencasBarChartData" type="bar" :data="presencasBarChartData" :options="presencasBarChartOptions" class="h-64" />
-                    <!-- Legenda Externa com Porcentagem -->
-                    <div class="mt-4 space-y-2">
-                      <div v-for="item in presencasLegendasComPorcentagem" :key="item.label" class="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
-                        <div class="flex items-center gap-2">
-                          <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: item.color }"></div>
-                          <span class="text-xs font-semibold text-slate-700">{{ item.label }}</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                          <span class="text-xs font-bold text-slate-900">{{ item.value }}</span>
-                          <span class="text-[10px] font-black text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded-full">{{ item.percentage }}%</span>
+                <div v-if="presencasChartData" class="space-y-6 mb-8">
+                  <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <h3 class="text-lg font-black text-slate-700 uppercase tracking-wide flex items-center gap-2 text-center sm:text-left">
+                      <i class="pi pi-chart-bar text-primary-500"></i>
+                      Visualizações Gráficas - Presenças
+                    </h3>
+                    <div class="overflow-x-auto no-scrollbar max-w-full pb-1">
+                      <SelectButton v-model="chartTypePresencas" :options="chartTypeOptions" optionLabel="label" optionValue="value" :allowEmpty="false" class="custom-select-button scale-90 sm:scale-100 flex-nowrap whitespace-nowrap">
+                        <template #option="slotProps">
+                          <i :class="slotProps.option.icon"></i>
+                        </template>
+                      </SelectButton>
+                    </div>
+                  </div>
+                  
+                  <div class="p-4 sm:p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                      <!-- Gráfico de Presenças por Categoria -->
+                      <div class="lg:col-span-2 min-h-[320px]">
+                        <Chart v-if="chartTypePresencas === 'bar'" type="bar" :data="presencasBarChartData" :options="presencasBarChartOptions" class="h-full" />
+                        <Chart v-else-if="chartTypePresencas === 'doughnut'" type="doughnut" :data="presencasChartData" :options="presencasChartOptions" class="h-full" />
+                        <Chart v-else type="pie" :data="presencasChartData" :options="presencasPizzaChartOptions" class="h-full" />
+                      </div>
+
+                      <div class="flex flex-col justify-center gap-2">
+                        <div v-for="item in presencasLegendasComPorcentagem" :key="item.label" class="flex items-center justify-between p-3 bg-slate-50/50 rounded-xl border border-slate-100">
+                          <div class="flex items-center gap-3">
+                            <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: item.color }"></div>
+                            <span class="text-xs font-bold text-slate-600">{{ item.label }}</span>
+                          </div>
+                          <div class="flex items-center gap-3">
+                            <span class="text-sm font-black text-slate-800">{{ item.value }}</span>
+                            <span class="text-[10px] font-black text-slate-400 bg-white border border-slate-200 px-2 py-0.5 rounded-full">{{ item.percentage }}%</span>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <!-- Gráfico de Donut -->
-                  <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
-                    <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">🍩 Gráfico de Donut</h4>
-                    <Chart type="doughnut" :data="presencasChartData" :options="presencasChartOptions" class="h-64" />
-                  </div>
-
-                  <!-- Gráfico de Pizza -->
-                  <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
-                    <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">🍰 Gráfico de Pizza</h4>
-                    <Chart type="pie" :data="presencasChartData" :options="presencasPizzaChartOptions" class="h-64" />
+                  <!-- Gráfico de Presenças por Dia (Seg-Sex) -->
+                  <div v-if="presencasPorDiaChartData" class="p-4 sm:p-6 bg-white rounded-xl border border-slate-200 shadow-sm mt-6">
+                    <h4 class="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Frequência Diária (Dias Úteis)</h4>
+                    <div class="h-[300px]">
+                      <Chart type="bar" :data="presencasPorDiaChartData" :options="presencasPorDiaChartOptions" class="h-full" />
+                    </div>
                   </div>
                 </div>
+
+              <div v-else-if="!loading" class="p-12 text-center bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 mb-8">
+                <i class="pi pi-inbox text-5xl text-slate-300 mb-4"></i>
+                <p class="text-slate-500 font-medium">Nenhum dado de presenças para o período selecionado.</p>
               </div>
 
-              <!-- Tabela de dados -->
-              <DataTable
-                v-model:filters="filters"
-                :value="relatorioPresencas?.data || []" 
-                :loading="loading" 
-                paginator 
-                :rows="15"
-                :rowsPerPageOptions="[10, 15, 25, 50]"
-                class="p-datatable-sm"
-                responsiveLayout="stack"
-                breakpoint="960px"
-                :globalFilterFields="['data', 'turno']"
-                stripedRows
-              >
+                <!-- Tabela de dados -->
+                <div v-if="loading" class="space-y-4">
+                  <Skeleton v-for="i in 10" :key="i" height="50px" border-radius="8px" />
+                </div>
+                <DataTable
+                  v-else
+                  v-model:filters="filters"
+                  :value="relatorioPresencas?.data || []" 
+                  :loading="loading" 
+                  paginator 
+                  :rows="15"
+                  :rowsPerPageOptions="[10, 15, 25, 50]"
+                  class="p-datatable-sm"
+                  responsiveLayout="stack"
+                  breakpoint="960px"
+                  :globalFilterFields="['data', 'turno']"
+                  stripedRows
+                >
                 <template #header>
                   <div class="flex flex-col sm:flex-row justify-between items-center gap-3">
                     <span class="text-lg font-bold text-slate-700">Registro de Presenças por Dia</span>
@@ -1347,63 +1489,74 @@ watch(activeTab, (newTab) => {
 
               <!-- Estatísticas -->
               <div v-if="estatisticasExtras?.resumo" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 text-center">
-                  <p class="text-[10px] font-bold text-slate-600 uppercase">Total Inscritos</p>
-                  <p class="text-2xl font-black text-slate-700">{{ estatisticasExtras.resumo.total_inscritos || 0 }}</p>
+                <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm text-center">
+                  <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Total Inscritos</p>
+                  <p class="text-2xl font-black text-slate-800">{{ estatisticasExtras.resumo.total_inscritos || 0 }}</p>
                 </div>
-                <div class="p-4 bg-emerald-50 rounded-xl border border-emerald-100 text-center">
-                  <p class="text-[10px] font-bold text-emerald-600 uppercase">Aprovados</p>
-                  <p class="text-2xl font-black text-emerald-700">{{ estatisticasExtras.resumo.aprovados || 0 }}</p>
+                <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm text-center">
+                  <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Aprovados</p>
+                  <p class="text-2xl font-black text-slate-800">{{ estatisticasExtras.resumo.aprovados || 0 }}</p>
                 </div>
-                <div class="p-4 bg-amber-50 rounded-xl border border-amber-100 text-center">
-                  <p class="text-[10px] font-bold text-amber-600 uppercase">Aguardando</p>
-                  <p class="text-2xl font-black text-amber-700">{{ estatisticasExtras.resumo.aguardando || 0 }}</p>
+                <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm text-center">
+                  <p class="text-[10px] font-bold text-amber-600 uppercase tracking-widest">Aguardando</p>
+                  <p class="text-2xl font-black text-slate-800">{{ estatisticasExtras.resumo.aguardando || 0 }}</p>
                 </div>
-                <div class="p-4 bg-red-50 rounded-xl border border-red-100 text-center">
-                  <p class="text-[10px] font-bold text-red-600 uppercase">Rejeitados</p>
-                  <p class="text-2xl font-black text-red-700">{{ estatisticasExtras.resumo.rejeitados || 0 }}</p>
+                <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm text-center">
+                  <p class="text-[10px] font-bold text-red-600 uppercase tracking-widest">Rejeitados</p>
+                  <p class="text-2xl font-black text-slate-800">{{ estatisticasExtras.resumo.rejeitados || 0 }}</p>
                 </div>
               </div>
 
               <div v-if="extrasChartData" class="space-y-6 mb-8">
-                <h3 class="text-lg font-black text-slate-700 uppercase tracking-wide">📊 Visualizações Gráficas - Extras</h3>
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+                  <h3 class="text-lg font-black text-slate-700 uppercase tracking-wide flex items-center gap-2 text-center sm:text-left">
+                    <i class="pi pi-ticket text-primary-500"></i>
+                    Visualizações Gráficas - Extras
+                  </h3>
+                  <div class="overflow-x-auto no-scrollbar max-w-full pb-1">
+                    <SelectButton v-model="chartTypeExtras" :options="chartTypeOptions" optionLabel="label" optionValue="value" :allowEmpty="false" class="custom-select-button scale-90 sm:scale-100 flex-nowrap whitespace-nowrap">
+                      <template #option="slotProps">
+                        <i :class="slotProps.option.icon"></i>
+                      </template>
+                    </SelectButton>
+                  </div>
+                </div>
                 
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <!-- Gráfico de Barras -->
-                  <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
-                    <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">📊 Gráfico de Barras</h4>
-                    <Chart v-if="extrasBarChartData" type="bar" :data="extrasBarChartData" :options="extrasBarChartOptions" class="h-64" />
-                    <!-- Legenda Externa com Porcentagem -->
-                    <div class="mt-4 space-y-2">
-                      <div v-for="item in extrasLegendasComPorcentagem" :key="item.label" class="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
-                        <div class="flex items-center gap-2">
+                <div class="p-4 sm:p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
+                  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2 min-h-[320px]">
+                      <Chart v-if="chartTypeExtras === 'bar'" type="bar" :data="extrasBarChartData" :options="extrasBarChartOptions" class="h-full" />
+                      <Chart v-else-if="chartTypeExtras === 'doughnut'" type="doughnut" :data="extrasChartData" :options="extrasChartOptions" class="h-full" />
+                      <Chart v-else type="pie" :data="extrasChartData" :options="extrasPizzaChartOptions" class="h-full" />
+                    </div>
+
+                    <div class="flex flex-col justify-center gap-2">
+                      <div v-for="item in extrasLegendasComPorcentagem" :key="item.label" class="flex items-center justify-between p-3 bg-slate-50/50 rounded-xl border border-slate-100">
+                        <div class="flex items-center gap-3">
                           <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: item.color }"></div>
-                          <span class="text-xs font-semibold text-slate-700">{{ item.label }}</span>
+                          <span class="text-xs font-bold text-slate-600">{{ item.label }}</span>
                         </div>
-                        <div class="flex items-center gap-2">
-                          <span class="text-xs font-bold text-slate-900">{{ item.value }}</span>
-                          <span class="text-[10px] font-black text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded-full">{{ item.percentage }}%</span>
+                        <div class="flex items-center gap-3">
+                          <span class="text-sm font-black text-slate-800">{{ item.value }}</span>
+                          <span class="text-[10px] font-black text-slate-400 bg-white border border-slate-200 px-2 py-0.5 rounded-full">{{ item.percentage }}%</span>
                         </div>
                       </div>
                     </div>
                   </div>
-
-                  <!-- Gráfico de Donut -->
-                  <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
-                    <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">🍩 Gráfico de Donut</h4>
-                    <Chart type="doughnut" :data="extrasChartData" :options="extrasChartOptions" class="h-64" />
-                  </div>
-
-                  <!-- Gráfico de Pizza -->
-                  <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
-                    <h4 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">🍰 Gráfico de Pizza</h4>
-                    <Chart type="pie" :data="extrasChartData" :options="extrasPizzaChartOptions" class="h-64" />
-                  </div>
                 </div>
               </div>
 
+              <div v-else-if="!loadingExtras" class="p-12 text-center bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 mb-8">
+                <i class="pi pi-chart-pie text-5xl text-slate-300 mb-4"></i>
+                <p class="text-slate-500 font-medium">Nenhum dado de fila extra para o período selecionado.</p>
+              </div>
+
               <!-- Tabela -->
+              <div v-if="loadingExtras" class="space-y-4">
+                <Skeleton v-for="i in 10" :key="i" height="50px" border-radius="8px" />
+              </div>
               <DataTable
+                v-else
                 v-model:filters="filtersExtras"
                 :value="relatorioExtras"
                 :loading="loadingExtras"
@@ -1431,9 +1584,17 @@ watch(activeTab, (newTab) => {
 
                 <Column header="Estudante" field="user.nome" :sortable="true">
                   <template #body="{ data }">
-                    <div class="flex flex-col">
-                      <span class="font-bold text-slate-800">{{ data.user?.nome || '-' }}</span>
-                      <span class="text-[10px] text-slate-400 font-black uppercase">{{ data.user?.matricula || '-' }}</span>
+                    <div class="flex items-center gap-3">
+                      <Avatar 
+                        v-if="data.user?.foto" 
+                        :image="data.user.foto" 
+                        shape="circle" 
+                        class="hidden sm:flex" 
+                      />
+                      <div class="flex flex-col">
+                        <span class="font-bold text-slate-800">{{ data.user?.nome || '-' }}</span>
+                        <span class="text-[10px] text-slate-400 font-black uppercase">{{ data.user?.matricula || '-' }}</span>
+                      </div>
                     </div>
                   </template>
                 </Column>
@@ -1612,12 +1773,28 @@ table th, table td {
   border-radius: 0.75rem;
 }
 
-.custom-select-button :deep(.p-togglebutton.p-togglebutton-checked) {
-  background: #f1f5f9;
-  color: #1e293b;
+.custom-select-button :deep(.p-button) {
+  border: 1px solid #e2e8f0;
+  background: white;
+  color: #64748b;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  transition: all 0.2s;
 }
 
-.custom-select-button :deep(.p-togglebutton:hover:not(.p-togglebutton-checked)) {
-  background: #f8fafc;
+.custom-select-button :deep(.p-button.p-highlight) {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
+}
+
+.custom-select-button :deep(.p-button:first-child) {
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+}
+
+.custom-select-button :deep(.p-button:last-child) {
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
 }
 </style>

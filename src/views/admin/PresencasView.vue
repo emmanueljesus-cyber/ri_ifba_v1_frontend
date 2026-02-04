@@ -28,6 +28,7 @@ import Tag from 'primevue/tag'
 import DatePicker from 'primevue/datepicker'
 import SelectButton from 'primevue/selectbutton'
 import Avatar from 'primevue/avatar'
+import Skeleton from 'primevue/skeleton'
 
 const toast = useToast()
 const { getInitials, getAvatarStyle } = useAvatar()
@@ -380,29 +381,56 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
             :globalFilterFields="['nome', 'matricula']"
             class="p-datatable-sm custom-table"
           >
+            <template #loading>
+              <div class="p-4 space-y-6">
+                <div v-for="i in 8" :key="i" class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-50 pb-4 last:border-0">
+                  <div class="flex items-center gap-3 w-full md:w-1/2">
+                    <Skeleton shape="circle" size="3rem" class="flex-shrink-0 hidden md:block" />
+                    <div class="space-y-2 w-full">
+                      <Skeleton width="70%" height="1rem" />
+                      <Skeleton width="40%" height="0.6rem" />
+                    </div>
+                  </div>
+                  <div class="w-full md:w-1/4 flex md:justify-center">
+                    <Skeleton width="80px" height="1.5rem" border-radius="20px" />
+                  </div>
+                  <div class="flex justify-end w-full md:w-auto gap-2">
+                    <Skeleton width="36px" height="36px" border-radius="10px" />
+                    <Skeleton width="36px" height="36px" border-radius="10px" />
+                  </div>
+                </div>
+              </div>
+            </template>
             <template #header>
               <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                <div class="flex flex-wrap gap-2 w-full lg:w-auto">
-                  <Button type="button" icon="pi pi-filter-slash" label="Limpar" variant="outlined" @click="clearFilter()" size="small" class="!rounded-xl flex-1 lg:flex-initial" />
-                  <InputText v-model="filters['global'].value" placeholder="Buscar aluno..." size="small" class="!rounded-xl flex-[2] lg:flex-initial" />
+                <div class="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
+                  <div class="flex gap-2 w-full sm:w-auto">
+                    <Button type="button" icon="pi pi-filter-slash" label="Limpar" variant="outlined" @click="clearFilter()" size="small" class="!rounded-xl flex-1 sm:flex-initial" />
+                    <IconField class="flex-[2] sm:w-64">
+                      <InputIcon class="pi pi-search" />
+                      <InputText v-model="filters['global'].value" placeholder="Buscar aluno..." size="small" class="w-full !rounded-xl" />
+                    </IconField>
+                  </div>
                 </div>
-                <div class="flex flex-wrap gap-2 items-center w-full lg:w-auto">
-                  <DatePicker v-model="dataFiltro" dateFormat="dd/mm/yy" showIcon class="flex-1 lg:w-36" :locale="ptBR" size="small" />
-                  <SelectButton 
-                    v-model="turnoFiltro" 
-                    :options="turnos" 
-                    optionLabel="label" 
-                    optionValue="value" 
-                    :allowEmpty="false"
-                    class="custom-select-button flex-1 lg:flex-initial"
-                  >
-                    <template #option="slotProps">
-                      <div class="flex items-center gap-1 px-1">
-                        <i :class="slotProps.option.value === 'almoco' ? 'pi pi-sun' : 'pi pi-moon'" class="text-xs"></i>
-                        <span class="text-[10px] font-bold uppercase tracking-tight">{{ slotProps.option.label }}</span>
-                      </div>
-                    </template>
-                  </SelectButton>
+                <div class="flex flex-col sm:flex-row gap-2 items-center w-full lg:w-auto">
+                  <DatePicker v-model="dataFiltro" dateFormat="dd/mm/yy" showIcon class="w-full sm:w-40" :locale="ptBR" size="small" />
+                  <div class="w-full sm:w-auto overflow-x-auto no-scrollbar">
+                    <SelectButton 
+                      v-model="turnoFiltro" 
+                      :options="turnos" 
+                      optionLabel="label" 
+                      optionValue="value" 
+                      :allowEmpty="false"
+                      class="custom-select-button flex-nowrap whitespace-nowrap"
+                    >
+                      <template #option="slotProps">
+                        <div class="flex items-center gap-1 px-2 py-1 justify-center">
+                          <i :class="slotProps.option.value === 'almoco' ? 'pi pi-sun' : 'pi pi-moon'" class="text-xs"></i>
+                          <span class="text-[10px] font-bold uppercase tracking-tight">{{ slotProps.option.label }}</span>
+                        </div>
+                      </template>
+                    </SelectButton>
+                  </div>
                 </div>
               </div>
             </template>
@@ -427,17 +455,17 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
                     v-if="data.foto"
                     :image="data.foto"
                     shape="circle"
-                    class="flex-shrink-0"
+                    class="flex-shrink-0 hidden sm:flex"
                   />
                   <Avatar
                     v-else
                     :label="getInitials(data.nome)"
                     shape="circle"
-                    class="flex-shrink-0"
+                    class="flex-shrink-0 hidden sm:flex"
                     :style="getAvatarStyle(data.nome)"
                   />
                   <div class="flex flex-col">
-                    <span class="font-bold text-slate-700">{{ data.nome }}</span>
+                    <span class="font-bold text-slate-700 leading-tight">{{ data.nome }}</span>
                     <span class="text-[10px] text-slate-400 font-black uppercase">{{ data.matricula }}</span>
                   </div>
                 </div>

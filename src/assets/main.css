@@ -28,6 +28,31 @@
   --ri-radius-lg: 0.625rem;  /* 10px */
 }
 
+/* Estilos para estado inválido do PrimeVue 4 */
+.p-inputtext.p-invalid,
+.p-password.p-invalid input,
+.p-dropdown.p-invalid,
+.p-select.p-invalid {
+  border-color: #ef4444 !important; /* Tailwind red-500 */
+  border-width: 1px !important;
+}
+
+.p-inputtext.p-invalid:focus,
+.p-password.p-invalid input:focus,
+.p-dropdown.p-invalid:focus,
+.p-select.p-invalid.p-focus {
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2) !important;
+  border-color: #ef4444 !important;
+}
+
+.p-error {
+  color: #ef4444 !important;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-top: 0.25rem;
+  display: block;
+}
+
 /* ===== PADRONIZAÇÃO GLOBAL DE COMPONENTES ===== */
 
 /* Ícones dentro de botões - garantir visibilidade */
@@ -35,7 +60,6 @@
 .p-button [class*="pi-"],
 .p-button .pi {
   font-family: 'primeicons' !important;
-  speak: none;
   font-style: normal;
   font-weight: normal;
   font-variant: normal;
@@ -376,6 +400,12 @@
 .p-datepicker input {
   border-radius: var(--ri-radius-md) !important;
   padding: 0.625rem 0.875rem !important;
+}
+
+/* Correção de sobreposição para IconField */
+.p-iconfield .p-inputtext,
+.p-iconfield .p-password input {
+  padding-left: 2.75rem !important;
 }
 
 .p-select {
@@ -802,3 +832,47 @@ body {
   }
 }
 
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Responsividade Global para PrimeVue 4 */
+@media screen and (max-width: 768px) {
+  .p-datatable.p-datatable-responsive-stack .p-datatable-tbody > tr > td {
+    display: flex !important;
+    width: 100% !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    border: 0 none !important;
+    padding: 0.75rem 1rem !important;
+  }
+
+  .p-datatable.p-datatable-responsive-stack .p-datatable-tbody > tr > td .p-column-title {
+    display: block !important;
+    font-weight: 700 !important;
+    margin-right: 1rem !important;
+    text-transform: uppercase !important;
+    font-size: 0.75rem !important;
+    color: #64748b !important;
+  }
+
+  .p-dialog {
+    width: 95vw !important;
+    margin: 0 auto !important;
+  }
+
+  .p-selectbutton {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    width: 100% !important;
+  }
+
+  .p-selectbutton .p-button {
+    flex: 1 1 auto !important;
+  }
+}

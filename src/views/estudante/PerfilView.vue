@@ -30,6 +30,7 @@ const perfil = ref<Perfil | null>(null)
 const loading = ref(false)
 const loadingSenha = ref(false)
 const loadingBolsista = ref(false)
+const submittedSenha = ref(false)
 
 const formSenha = ref({
   senha_atual: '',
@@ -116,6 +117,12 @@ const carregarPerfil = async () => {
 }
 
 const alterarSenha = async () => {
+  submittedSenha.value = true
+  
+  if (!formSenha.value.senha_atual || !formSenha.value.senha_nova || !formSenha.value.senha_nova_confirmacao) {
+    return
+  }
+
   if (formSenha.value.senha_nova !== formSenha.value.senha_nova_confirmacao) {
     toast.add({
       severity: 'error',
@@ -798,7 +805,7 @@ onMounted(() => {
           </div>
         </AccordionHeader>
         <AccordionContent>
-          <form @submit.prevent="alterarSenha" class="space-y-6 pt-4">
+          <form @submit.prevent="alterarSenha" class="space-y-6 pt-4" novalidate>
             <div class="space-y-1">
               <label class="text-sm font-bold text-slate-600 ml-1">Senha Atual</label>
               <Password
@@ -807,9 +814,10 @@ onMounted(() => {
                 toggleMask
                 class="w-full"
                 inputClass="w-full !rounded-xl border-slate-200 focus:border-primary-500"
-                required
+                :invalid="submittedSenha && !formSenha.senha_atual"
                 placeholder="Digite sua senha atual"
               />
+              <small v-if="submittedSenha && !formSenha.senha_atual" class="p-error ml-1 block">A senha atual é obrigatória</small>
             </div>
 
             <div class="grid gap-4 md:grid-cols-2">
@@ -820,9 +828,11 @@ onMounted(() => {
                   toggleMask
                   class="w-full"
                   inputClass="w-full !rounded-xl border-slate-200 focus:border-primary-500"
-                  required
+                  :invalid="submittedSenha && (!formSenha.senha_nova || formSenha.senha_nova.length < 6)"
                   placeholder="Mínimo 6 caracteres"
                 />
+                <small v-if="submittedSenha && !formSenha.senha_nova" class="p-error ml-1 block">A nova senha é obrigatória</small>
+                <small v-else-if="submittedSenha && formSenha.senha_nova.length < 6" class="p-error ml-1 block">Mínimo 6 caracteres</small>
               </div>
 
               <div class="space-y-1">
@@ -833,9 +843,10 @@ onMounted(() => {
                   toggleMask
                   class="w-full"
                   inputClass="w-full !rounded-xl border-slate-200 focus:border-primary-500"
-                  required
+                  :invalid="submittedSenha && (formSenha.senha_nova !== formSenha.senha_nova_confirmacao)"
                   placeholder="Repita a nova senha"
                 />
+                <small v-if="submittedSenha && formSenha.senha_nova !== formSenha.senha_nova_confirmacao" class="p-error ml-1 block">As senhas não conferem</small>
               </div>
             </div>
 

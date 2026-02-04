@@ -256,7 +256,10 @@ onMounted(() => {
       <div v-if="activeTab === 'semanal'" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div v-if="loading" class="p-8">
           <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            <Skeleton v-for="i in 5" :key="i" height="400px" border-radius="1rem" />
+            <div v-for="i in 5" :key="i" class="space-y-3">
+              <Skeleton height="40px" border-radius="0.5rem" />
+              <Skeleton height="350px" border-radius="1rem" />
+            </div>
           </div>
         </div>
 

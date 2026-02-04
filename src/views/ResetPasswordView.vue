@@ -18,6 +18,7 @@ const loading = ref(false)
 const validating = ref(true)
 const tokenValid = ref(false)
 const success = ref(false)
+const submitted = ref(false)
 
 onMounted(async () => {
   // Pegar token e email da URL
@@ -44,6 +45,7 @@ onMounted(async () => {
 })
 
 const handleSubmit = async () => {
+  submitted.value = true
   if (!password.value || password.value.length < 6) {
     toast.add({ severity: 'warn', summary: 'Atenção', detail: 'A senha deve ter no mínimo 6 caracteres', life: 3000 })
     return
@@ -121,7 +123,7 @@ const goToLogin = () => {
 
           <!-- Formulário -->
           <template v-else-if="!success">
-            <form @submit.prevent="handleSubmit" class="space-y-5">
+            <form @submit.prevent="handleSubmit" class="space-y-5" novalidate>
               <div>
                 <label class="text-xs font-black text-slate-500 uppercase tracking-wider mb-2 block">
                   Nova senha
@@ -133,8 +135,11 @@ const goToLogin = () => {
                   :feedback="true"
                   class="w-full"
                   inputClass="w-full !py-3 !rounded-xl"
+                  :invalid="submitted && (!password || password.length < 6)"
                   :disabled="loading"
                 />
+                <small v-if="submitted && !password" class="p-error ml-1 block mt-1">A senha é obrigatória</small>
+                <small v-else-if="submitted && password.length < 6" class="p-error ml-1 block mt-1">Mínimo de 6 caracteres</small>
               </div>
 
               <div>
@@ -148,8 +153,10 @@ const goToLogin = () => {
                   :feedback="false"
                   class="w-full"
                   inputClass="w-full !py-3 !rounded-xl"
+                  :invalid="submitted && (password !== passwordConfirmation)"
                   :disabled="loading"
                 />
+                <small v-if="submitted && password !== passwordConfirmation" class="p-error ml-1 block mt-1">As senhas não conferem</small>
               </div>
 
               <Button

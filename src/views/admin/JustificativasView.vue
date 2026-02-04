@@ -15,6 +15,7 @@ import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Chart from 'primevue/chart'
 import { computed } from 'vue'
+import Skeleton from 'primevue/skeleton'
 
 const toast = useToast()
 const { getInitials, getAvatarStyle } = useAvatar()
@@ -317,7 +318,10 @@ onMounted(() => {
     />
 
     <!-- Seção de Gráficos -->
-    <div v-if="stats" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <div v-if="loading && !stats" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <Skeleton v-for="i in 2" :key="i" height="400px" border-radius="12px" />
+    </div>
+    <div v-else-if="stats" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
       <!-- Gráfico de Barras -->
       <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
         <h3 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">📊 Gráfico de Barras - Status</h3>
@@ -351,7 +355,10 @@ onMounted(() => {
     </div>
 
     <!-- Cards de Resumo -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div v-if="loading && !stats" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <Skeleton v-for="i in 3" :key="i" height="100px" border-radius="12px" />
+    </div>
+    <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div 
         @click="filters.status.value = 'pendente'"
         class="bg-amber-50 border-2 border-amber-200 rounded-xl p-6 shadow-sm flex flex-col items-center justify-center transition-all hover:shadow-md cursor-pointer"
@@ -391,26 +398,50 @@ onMounted(() => {
 
     <!-- Barra de Filtros -->
     <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-wrap items-end gap-4">
-      <div class="flex flex-col gap-1.5">
+      <div class="flex flex-col gap-1.5 w-full sm:w-44">
         <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Status</label>
-        <Select v-model="filters.status.value" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Status" class="w-44 !rounded-xl" />
+        <Select v-model="filters.status.value" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Status" class="w-full !rounded-xl" />
       </div>
-      <div class="flex flex-col gap-1.5">
+      <div class="flex flex-col gap-1.5 w-full sm:w-44">
         <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tipo</label>
-        <Select v-model="filters.tipo.value" :options="tipoOptions" optionLabel="label" optionValue="value" placeholder="Tipo" class="w-44 !rounded-xl" />
+        <Select v-model="filters.tipo.value" :options="tipoOptions" optionLabel="label" optionValue="value" placeholder="Tipo" class="w-full !rounded-xl" />
       </div>
-      <Button icon="pi pi-refresh" label="Atualizar" class="!rounded-xl px-6 h-11" @click="carregarJustificativas" :loading="loading" />
+      <Button icon="pi pi-refresh" label="Atualizar" class="!rounded-xl px-6 h-11 w-full sm:w-auto" @click="carregarJustificativas" :loading="loading" />
       
-      <div class="flex-1"></div>
+      <div class="hidden md:block flex-1"></div>
       
-      <div class="flex flex-col gap-1.5">
+      <div class="flex flex-col gap-1.5 w-full md:w-64">
         <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Pesquisa</label>
-        <InputText v-model="filters.global.value" placeholder="Buscar aluno ou motivo..." class="!rounded-xl w-64" />
+        <IconField>
+          <InputIcon class="pi pi-search" />
+          <InputText v-model="filters.global.value" placeholder="Buscar aluno ou motivo..." class="!rounded-xl w-full" />
+        </IconField>
       </div>
     </div>
 
     <!-- Lista de Justificativas -->
-    <div class="space-y-4">
+    <!-- Skeleton para Listagem -->
+    <div v-if="loading" class="space-y-4">
+      <div v-for="i in 5" :key="i" class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+        <div class="flex justify-between items-center">
+          <Skeleton width="100px" height="1.5rem" border-radius="1rem" />
+          <Skeleton width="80px" height="1.5rem" border-radius="1rem" />
+        </div>
+        <div class="flex items-center gap-3">
+          <Skeleton shape="circle" size="3rem" />
+          <div class="space-y-2 flex-1">
+            <Skeleton width="40%" height="1.2rem" />
+            <Skeleton width="20%" height="0.8rem" />
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Skeleton v-for="j in 3" :key="j" width="100%" height="3rem" border-radius="0.5rem" />
+        </div>
+        <Skeleton width="100%" height="4rem" border-radius="0.5rem" />
+      </div>
+    </div>
+
+    <div v-else class="space-y-4">
       <div v-if="loading" class="space-y-4">
         <div v-for="i in 3" :key="i" class="h-48 bg-slate-100 animate-pulse rounded-xl border border-slate-200"></div>
       </div>
@@ -420,12 +451,12 @@ onMounted(() => {
         <p class="text-slate-500 font-medium">Nenhuma justificativa encontrada com os filtros selecionados.</p>
       </div>
 
-      <div v-for="just in justificativas" :key="just.id" class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm transition-all hover:shadow-md hover:border-primary-200 relative overflow-hidden group">
+      <div v-for="just in justificativas" :key="just.id" class="bg-white border border-slate-200 rounded-xl p-4 sm:p-6 shadow-sm transition-all hover:shadow-md hover:border-primary-200 relative overflow-hidden group">
         <!-- Badge de Status no topo direito -->
-        <div class="absolute top-6 right-6 flex items-center gap-3">
-          <div v-if="just.status_justificativa === 'pendente'" class="flex gap-2">
-            <Button label="Aprovar" icon="pi pi-check" severity="success" size="small" class="!rounded-xl !px-4" @click="selectedJustificativa = just; aprovar()" :loading="loadingAction && selectedJustificativa?.id === just.id" />
-            <Button label="Rejeitar" icon="pi pi-times" severity="danger" size="small" outlined class="!rounded-xl !px-4" @click="abrirDetalhes(just)" />
+        <div class="flex flex-col sm:flex-row sm:absolute sm:top-6 sm:right-6 items-start sm:items-center gap-3 mb-4 sm:mb-0">
+          <div v-if="just.status_justificativa === 'pendente'" class="flex gap-2 w-full sm:w-auto">
+            <Button label="Aprovar" icon="pi pi-check" severity="success" size="small" class="!rounded-xl !px-4 flex-1 sm:flex-initial" @click="selectedJustificativa = just; aprovar()" :loading="loadingAction && selectedJustificativa?.id === just.id" />
+            <Button label="Rejeitar" icon="pi pi-times" severity="danger" size="small" outlined class="!rounded-xl !px-4 flex-1 sm:flex-initial" @click="abrirDetalhes(just)" />
           </div>
           <Tag :value="getStatusLabel(just.status_justificativa)" :severity="getStatusSeverity(just.status_justificativa)" class="!rounded-full px-4 uppercase text-[10px] font-black shadow-sm" />
         </div>
@@ -434,9 +465,9 @@ onMounted(() => {
           <div class="flex-1 space-y-4">
             <div class="flex items-center gap-3">
               <Avatar :label="getInitials(just.usuario?.nome || 'N/A')" shape="circle" size="normal" class="shadow-sm flex-shrink-0" :style="getAvatarStyle(just.usuario?.nome || '')" />
-              <div class="flex items-baseline gap-2">
-                <span class="text-lg font-black text-slate-700">{{ just.usuario?.nome || 'Usuário não encontrado' }}</span>
-                <span class="text-xs text-slate-400 font-bold">({{ just.usuario?.matricula || '-' }})</span>
+              <div class="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2">
+                <span class="text-base sm:text-lg font-black text-slate-700 leading-tight">{{ just.usuario?.nome || 'Usuário não encontrado' }}</span>
+                <span class="text-[10px] sm:text-xs text-slate-400 font-bold">({{ just.usuario?.matricula || '-' }})</span>
               </div>
             </div>
 
