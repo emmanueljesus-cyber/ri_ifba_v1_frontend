@@ -8,15 +8,13 @@ interface ApiResponse<T> {
 
 export const cardapioService = {
   async hoje(): Promise<CardapioDia> {
-    // Laravel Resource retorna { data: { id, data, almoco, jantar, ... } }
     const response = await api.get('/estudante/cardapio/hoje')
-    return response.data.data || response.data
+    return response.data.data
   },
 
   async hojePublico(): Promise<CardapioDia> {
-    // Rota pública sem autenticação
     const response = await api.get('/cardapio/hoje')
-    return response.data.data || response.data
+    return response.data.data
   },
 
   async semanal(params?: { turno?: string, data?: string }): Promise<Cardapio[]> {

@@ -50,9 +50,17 @@ const carregarCardapio = async () => {
   loadingCardapio.value = true
   errorCardapio.value = ''
   try {
-    cardapio.value = await cardapioService.hoje()
+    const data = await cardapioService.hoje()
+    console.log('Dados do cardápio recebidos:', data)
+    
+    // Se data é nula ou não tem refeições, tratar como não encontrado
+    if (!data || (!data.almoco && !data.jantar)) {
+        cardapio.value = null
+    } else {
+        cardapio.value = data
+    }
   } catch (err: any) {
-      // Se for 404, não é erro - simplesmente não há cardápio para hoje
+    // Se for 404, não é erro - simplesmente não há cardápio para hoje
     if (err?.response?.status === 404) {
       cardapio.value = null
     } else {
@@ -130,12 +138,6 @@ const cancelarInscricao = async (inscricaoId: number) => {
 }
 
 const carregarPresencaHoje = async () => {
-  // Presença só faz sentido para bolsistas
-  if (!isBolsista.value) {
-    presencaHoje.value = null
-    return
-  }
-
   loadingPresenca.value = true
   try {
     presencaHoje.value = await cardapioService.presencaHoje()
@@ -238,6 +240,9 @@ onMounted(async () => {
 
     <!-- Grid de Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Card: Status da Refeição de Hoje (NOVO) -->
+
+
       <!-- Card: Cardápio do Dia (Visual Refinado) -->
       <Card class="overflow-hidden !rounded-xl border border-slate-200 shadow-sm md:col-span-2 lg:col-span-3">
         <template #title>
