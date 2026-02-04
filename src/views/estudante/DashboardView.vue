@@ -258,181 +258,99 @@ onMounted(async () => {
             {{ errorCardapio }}
           </Message>
 
-          <div v-else-if="cardapio" class="grid sm:grid-cols-2 gap-4">
+          <div v-else-if="cardapio" class="grid sm:grid-cols-2 gap-6">
             <!-- Almoço -->
-            <div v-if="cardapio.almoco" class="p-5 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-200 shadow-sm">
-              <div class="flex items-center gap-3 mb-4 pb-3 border-b border-amber-200">
-                <div class="w-10 h-10 rounded-xl bg-amber-600 flex items-center justify-center">
-                  <i class="pi pi-sun text-white text-lg"></i>
+            <div v-if="cardapio.almoco" class="today-card almoco-card">
+              <div class="today-card-header">
+                <div class="today-icon almoco-icon">
+                  <i class="pi pi-sun text-xl"></i>
                 </div>
-                <div class="flex-1">
-                  <h3 class="font-black text-amber-900 text-base">Almoço</h3>
-                  <span class="text-xs text-amber-700 font-semibold">11:00 - 14:00</span>
+                <div>
+                  <h3 class="text-xl font-black">Almoço</h3>
+                  <p class="text-[10px] font-bold opacity-80">11:00 - 14:00</p>
                 </div>
               </div>
-              
-              <div class="space-y-3">
-                <div>
-                  <div class="flex items-center gap-2 mb-2">
-                    <i class="pi pi-star-fill text-amber-600 text-xs"></i>
-                    <span class="text-[10px] font-black text-amber-700 uppercase tracking-wider">Prato Principal</span>
+              <div class="today-card-content">
+                <div class="today-item main">
+                  <span class="today-label">Prato Principal</span>
+                  <span class="today-value">{{ cardapio.almoco.prato_principal }}</span>
+                  <span v-if="cardapio.almoco.prato_principal_ptn02" class="today-value text-slate-500 text-sm">{{ cardapio.almoco.prato_principal_ptn02 }}</span>
+                </div>
+                <div v-if="cardapio.almoco.ovo_lacto_vegetariano" class="today-item vegetarian">
+                  <span class="today-label"><i class="pi pi-heart text-pink-500 mr-1"></i>Vegetariana</span>
+                  <span class="today-value">{{ cardapio.almoco.ovo_lacto_vegetariano }}</span>
+                </div>
+                <div class="today-item">
+                  <span class="today-label">Acompanhamentos</span>
+                  <span class="today-value">{{ cardapio.almoco.acompanhamento }}</span>
+                </div>
+                <div class="today-row">
+                  <div class="today-item small" v-if="cardapio.almoco.guarnicao">
+                    <span class="today-label">Guarnição</span>
+                    <span class="today-value text-sm">{{ cardapio.almoco.guarnicao }}</span>
                   </div>
-                  <div class="grid grid-cols-2 gap-2">
-                    <div class="flex flex-col gap-1">
-                      <span class="text-[10px] font-bold text-amber-600">OP 1</span>
-                      <p class="text-sm font-bold text-amber-950 leading-tight">{{ cardapio.almoco.prato_principal }}</p>
-                    </div>
-                    <div v-if="cardapio.almoco.prato_principal_ptn02" class="flex flex-col gap-1">
-                      <span class="text-[10px] font-bold text-amber-600">OP 2</span>
-                      <p class="text-sm font-bold text-amber-950 leading-tight">{{ cardapio.almoco.prato_principal_ptn02 }}</p>
-                    </div>
+                  <div class="today-item small" v-if="cardapio.almoco.salada">
+                    <span class="today-label">Salada</span>
+                    <span class="today-value text-sm">{{ cardapio.almoco.salada }}</span>
                   </div>
                 </div>
-
-                <div v-if="cardapio.almoco.acompanhamento">
-                  <div class="flex items-center gap-2 mb-2">
-                    <i class="pi pi-circle-fill text-amber-500 text-[6px]"></i>
-                    <span class="text-[10px] font-bold text-amber-600 uppercase">Acompanhamento</span>
+                <div class="today-row" v-if="cardapio.almoco.sobremesa || cardapio.almoco.suco">
+                  <div class="today-item small dessert" v-if="cardapio.almoco.sobremesa">
+                    <span class="today-label">Sobremesa</span>
+                    <span class="today-value text-sm">{{ cardapio.almoco.sobremesa }}</span>
                   </div>
-                  <div class="grid grid-cols-2 gap-2">
-                    <div class="flex flex-col gap-1">
-                      <span class="text-[10px] font-bold text-amber-600">OP 1</span>
-                      <p class="text-xs text-amber-800">{{ cardapio.almoco.acompanhamento?.split(',')[0]?.trim() }}</p>
-                    </div>
-                    <div v-if="cardapio.almoco.acompanhamento?.includes(',')" class="flex flex-col gap-1">
-                      <span class="text-[10px] font-bold text-amber-600">OP 2</span>
-                      <p class="text-xs text-amber-800">{{ cardapio.almoco.acompanhamento?.split(',')[1]?.trim() }}</p>
-                    </div>
+                  <div class="today-item small drink" v-if="cardapio.almoco.suco">
+                    <span class="today-label">Suco</span>
+                    <span class="today-value text-sm">{{ cardapio.almoco.suco }}</span>
                   </div>
-                </div>
-
-                <div v-if="cardapio.almoco.guarnicao">
-                  <div class="flex items-center gap-2 mb-1">
-                    <i class="pi pi-circle-fill text-amber-500 text-[6px]"></i>
-                    <span class="text-[10px] font-bold text-amber-600 uppercase">Guarnição</span>
-                  </div>
-                  <p class="text-xs text-amber-800 ml-3">{{ cardapio.almoco.guarnicao }}</p>
-                </div>
-
-                <div v-if="cardapio.almoco.salada">
-                  <div class="flex items-center gap-2 mb-1">
-                    <i class="pi pi-verified text-green-600 text-xs"></i>
-                    <span class="text-[10px] font-bold text-green-700 uppercase">Salada</span>
-                  </div>
-                  <p class="text-xs text-green-800 ml-4">{{ cardapio.almoco.salada }}</p>
-                </div>
-
-                <div v-if="cardapio.almoco.sobremesa">
-                  <div class="flex items-center gap-2 mb-1">
-                    <i class="pi pi-gift text-pink-600 text-xs"></i>
-                    <span class="text-[10px] font-bold text-pink-700 uppercase">Sobremesa</span>
-                  </div>
-                  <p class="text-xs text-pink-800 ml-4">{{ cardapio.almoco.sobremesa }}</p>
-                </div>
-
-                <div v-if="cardapio.almoco.suco">
-                  <div class="flex items-center gap-2 mb-1">
-                    <i class="pi pi-bolt text-blue-600 text-xs"></i>
-                    <span class="text-[10px] font-bold text-blue-700 uppercase">Suco</span>
-                  </div>
-                  <p class="text-xs text-blue-800 ml-4">{{ cardapio.almoco.suco }}</p>
-                </div>
-
-                <div v-if="cardapio.almoco.ovo_lacto_vegetariano" class="pt-3 border-t border-amber-200">
-                  <div class="flex items-center gap-2 mb-1">
-                    <i class="pi pi-sparkles text-emerald-600 text-xs"></i>
-                    <span class="text-[10px] font-bold text-emerald-700 uppercase">Opção Vegetariana</span>
-                  </div>
-                  <p class="text-xs text-emerald-800 ml-4">{{ cardapio.almoco.ovo_lacto_vegetariano }}</p>
                 </div>
               </div>
             </div>
 
             <!-- Jantar-->
-            <div v-if="cardapio.jantar" class="p-5 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border border-indigo-200 shadow-sm">
-              <div class="flex items-center gap-3 mb-4 pb-3 border-b border-indigo-200">
-                <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center">
-                  <i class="pi pi-moon text-white text-lg"></i>
+            <div v-if="cardapio.jantar" class="today-card jantar-card">
+              <div class="today-card-header">
+                <div class="today-icon jantar-icon">
+                  <i class="pi pi-moon text-xl"></i>
                 </div>
-                <div class="flex-1">
-                  <h3 class="font-black text-indigo-900 text-base">Jantar</h3>
-                  <span class="text-xs text-indigo-700 font-semibold">18:00 - 20:30</span>
+                <div>
+                  <h3 class="text-xl font-black">Jantar</h3>
+                  <p class="text-[10px] font-bold opacity-80">18:00 - 20:30</p>
                 </div>
               </div>
-              
-              <div class="space-y-3">
-                <div>
-                  <div class="flex items-center gap-2 mb-2">
-                    <i class="pi pi-star-fill text-indigo-600 text-xs"></i>
-                    <span class="text-[10px] font-black text-indigo-700 uppercase tracking-wider">Prato Principal</span>
+              <div class="today-card-content">
+                <div class="today-item main">
+                  <span class="today-label">Prato Principal</span>
+                  <span class="today-value">{{ cardapio.jantar.prato_principal }}</span>
+                  <span v-if="cardapio.jantar.prato_principal_ptn02" class="today-value text-slate-500 text-sm">{{ cardapio.jantar.prato_principal_ptn02 }}</span>
+                </div>
+                <div v-if="cardapio.jantar.ovo_lacto_vegetariano" class="today-item vegetarian">
+                  <span class="today-label"><i class="pi pi-heart text-pink-500 mr-1"></i>Vegetariana</span>
+                  <span class="today-value">{{ cardapio.jantar.ovo_lacto_vegetariano }}</span>
+                </div>
+                <div class="today-item">
+                  <span class="today-label">Acompanhamentos</span>
+                  <span class="today-value">{{ cardapio.jantar.acompanhamento }}</span>
+                </div>
+                <div class="today-row">
+                  <div class="today-item small" v-if="cardapio.jantar.guarnicao">
+                    <span class="today-label">Guarnição</span>
+                    <span class="today-value text-sm">{{ cardapio.jantar.guarnicao }}</span>
                   </div>
-                  <div class="grid grid-cols-2 gap-2">
-                    <div class="flex flex-col gap-1">
-                      <span class="text-[10px] font-bold text-indigo-600">OP 1</span>
-                      <p class="text-sm font-bold text-indigo-950 leading-tight">{{ cardapio.jantar.prato_principal }}</p>
-                    </div>
-                    <div v-if="cardapio.jantar.prato_principal_ptn02" class="flex flex-col gap-1">
-                      <span class="text-[10px] font-bold text-indigo-600">OP 2</span>
-                      <p class="text-sm font-bold text-indigo-950 leading-tight">{{ cardapio.jantar.prato_principal_ptn02 }}</p>
-                    </div>
+                  <div class="today-item small" v-if="cardapio.jantar.salada">
+                    <span class="today-label">Salada</span>
+                    <span class="today-value text-sm">{{ cardapio.jantar.salada }}</span>
                   </div>
                 </div>
-
-                <div v-if="cardapio.jantar.acompanhamento">
-                  <div class="flex items-center gap-2 mb-2">
-                    <i class="pi pi-circle-fill text-indigo-500 text-[6px]"></i>
-                    <span class="text-[10px] font-bold text-indigo-600 uppercase">Acompanhamento</span>
+                <div class="today-row" v-if="cardapio.jantar.sobremesa || cardapio.jantar.suco">
+                  <div class="today-item small dessert" v-if="cardapio.jantar.sobremesa">
+                    <span class="today-label">Sobremesa</span>
+                    <span class="today-value text-sm">{{ cardapio.jantar.sobremesa }}</span>
                   </div>
-                  <div class="grid grid-cols-2 gap-2">
-                    <div class="flex flex-col gap-1">
-                      <span class="text-[10px] font-bold text-indigo-600">OP 1</span>
-                      <p class="text-xs text-indigo-800">{{ cardapio.jantar.acompanhamento?.split(',')[0]?.trim() }}</p>
-                    </div>
-                    <div v-if="cardapio.jantar.acompanhamento?.includes(',')" class="flex flex-col gap-1">
-                      <span class="text-[10px] font-bold text-indigo-600">OP 2</span>
-                      <p class="text-xs text-indigo-800">{{ cardapio.jantar.acompanhamento?.split(',')[1]?.trim() }}</p>
-                    </div>
+                  <div class="today-item small drink" v-if="cardapio.jantar.suco">
+                    <span class="today-label">Suco</span>
+                    <span class="today-value text-sm">{{ cardapio.jantar.suco }}</span>
                   </div>
-                </div>
-
-                <div v-if="cardapio.jantar.guarnicao">
-                  <div class="flex items-center gap-2 mb-1">
-                    <i class="pi pi-circle-fill text-indigo-500 text-[6px]"></i>
-                    <span class="text-[10px] font-bold text-indigo-600 uppercase">Guarnição</span>
-                  </div>
-                  <p class="text-xs text-indigo-800 ml-3">{{ cardapio.jantar.guarnicao }}</p>
-                </div>
-
-                <div v-if="cardapio.jantar.salada">
-                  <div class="flex items-center gap-2 mb-1">
-                    <i class="pi pi-verified text-green-600 text-xs"></i>
-                    <span class="text-[10px] font-bold text-green-700 uppercase">Salada</span>
-                  </div>
-                  <p class="text-xs text-green-800 ml-4">{{ cardapio.jantar.salada }}</p>
-                </div>
-
-                <div v-if="cardapio.jantar.sobremesa">
-                  <div class="flex items-center gap-2 mb-1">
-                    <i class="pi pi-gift text-pink-600 text-xs"></i>
-                    <span class="text-[10px] font-bold text-pink-700 uppercase">Sobremesa</span>
-                  </div>
-                  <p class="text-xs text-pink-800 ml-4">{{ cardapio.jantar.sobremesa }}</p>
-                </div>
-
-                <div v-if="cardapio.jantar.suco">
-                  <div class="flex items-center gap-2 mb-1">
-                    <i class="pi pi-bolt text-blue-600 text-xs"></i>
-                    <span class="text-[10px] font-bold text-blue-700 uppercase">Suco</span>
-                  </div>
-                  <p class="text-xs text-blue-800 ml-4">{{ cardapio.jantar.suco }}</p>
-                </div>
-
-                <div v-if="cardapio.jantar.ovo_lacto_vegetariano" class="pt-3 border-t border-indigo-200">
-                  <div class="flex items-center gap-2 mb-1">
-                    <i class="pi pi-sparkles text-emerald-600 text-xs"></i>
-                    <span class="text-[10px] font-bold text-emerald-700 uppercase">Opção Vegetariana</span>
-                  </div>
-                  <p class="text-xs text-emerald-800 ml-4">{{ cardapio.jantar.ovo_lacto_vegetariano }}</p>
                 </div>
               </div>
             </div>
@@ -511,12 +429,12 @@ onMounted(async () => {
             :globalFilterFields="['turno', 'turno_label']"
             class="p-datatable-sm"
             responsiveLayout="stack"
-            breakpoint="768px"
+            breakpoint="960px"
           >
             <template #header>
-              <div class="flex justify-between items-center mb-2">
+              <div class="flex flex-col sm:flex-row justify-between items-center gap-3">
                 <span class="text-sm font-black text-slate-400 uppercase tracking-widest">Vagas Disponíveis</span>
-                <InputText v-model="filters['global'].value" placeholder="Filtrar..." />
+                <InputText v-model="filters['global'].value" placeholder="Filtrar..." class="w-full sm:w-auto !rounded-xl" />
               </div>
             </template>
             <Column header="Refeição" style="min-width: 150px">
@@ -719,3 +637,119 @@ onMounted(async () => {
     </Dialog>
   </div>
 </template>
+
+<style scoped>
+/* Cards de Hoje - Harmonizado com CardapioView.vue */
+.today-card {
+  border-radius: 16px;
+  overflow: hidden;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.today-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.almoco-card {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  border: 2px solid #a7f3d0;
+}
+
+.jantar-card {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border: 2px solid #bfdbfe;
+}
+
+.today-card-header {
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.almoco-card .today-card-header {
+  color: #065f46;
+}
+
+.jantar-card .today-card-header {
+  color: #1e40af;
+}
+
+.today-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.almoco-icon {
+  background: linear-gradient(135deg, var(--p-primary-400), var(--p-primary-600));
+}
+
+.jantar-icon {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.today-card-content {
+  padding: 0 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.today-item {
+  background: white;
+  padding: 14px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.today-item.main {
+  border-left: 4px solid #3b82f6;
+}
+
+.today-item.small {
+  flex: 1;
+  padding: 12px;
+}
+
+.today-item.dessert {
+  border-left: 3px solid #ec4899;
+}
+
+.today-item.drink {
+  border-left: 3px solid #8b5cf6;
+}
+
+.today-item.vegetarian {
+  border-left: 3px solid #ec4899;
+  background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%);
+}
+
+.today-row {
+  display: flex;
+  gap: 12px;
+}
+
+.today-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+.today-value {
+  display: block;
+  font-size: 14px;
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 1.2;
+}
+</style>

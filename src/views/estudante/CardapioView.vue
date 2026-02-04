@@ -225,12 +225,14 @@ onMounted(() => {
               class="tab-selector"
           />
         </div>
+      </div>
 
-        <div class="flex items-center gap-4">
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
+        <div class="flex items-center gap-4 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm w-full sm:w-auto justify-between sm:justify-center">
           <button @click="mudarSemana(-1)" class="nav-btn">
             <i class="pi pi-chevron-left"></i>
           </button>
-          <span class="text-sm font-black text-slate-600 uppercase tracking-wider min-w-[280px] text-center">
+          <span class="text-xs sm:text-sm font-black text-slate-600 uppercase tracking-wider text-center flex-1 sm:flex-initial sm:min-w-[280px]">
             {{ getIntervaloSemana }}
           </span>
           <button @click="mudarSemana(1)" class="nav-btn">
@@ -253,35 +255,33 @@ onMounted(() => {
       <!-- Grid Semanal (Público) -->
       <div v-if="activeTab === 'semanal'" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div v-if="loading" class="p-8">
-          <div class="grid grid-cols-5 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <Skeleton v-for="i in 5" :key="i" height="400px" border-radius="1rem" />
           </div>
         </div>
 
-        <div v-else class="overflow-x-auto">
-          <div class="min-w-[900px] p-6">
-            <div class="grid grid-cols-5 gap-4">
-              <div v-for="dia in getDiasSemana" :key="dia.dataIso" class="flex flex-col gap-3">
-                <div class="day-header">
-                  <span class="day-label">{{ dia.label }}</span>
-                  <span class="day-number">{{ dia.dia }}</span>
-                </div>
+        <div v-else class="p-4 sm:p-6">
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div v-for="dia in getDiasSemana" :key="dia.dataIso" class="flex flex-col gap-3">
+              <div class="day-header">
+                <span class="day-label">{{ dia.label }}</span>
+                <span class="day-number">{{ dia.dia }}</span>
+              </div>
 
-                <div class="flex flex-col gap-2">
-                  <template v-if="getCardapioDoDia(dia.dataIso)">
-                    <div
-                      v-for="(item, idx) in getItensCategorizados(getCardapioDoDia(dia.dataIso))"
-                      :key="idx"
-                      class="menu-item-card"
-                      :class="getCorBorda(item.tipo)"
-                    >
-                      {{ item.valor }}
-                    </div>
-                  </template>
-                  <div v-else class="no-menu-day">
-                    <i class="pi pi-calendar-times text-slate-300 text-xl mb-2"></i>
-                    <span class="text-[10px] text-slate-400 font-bold uppercase">Sem cardápio</span>
+              <div class="flex flex-col gap-2">
+                <template v-if="getCardapioDoDia(dia.dataIso)">
+                  <div
+                    v-for="(item, idx) in getItensCategorizados(getCardapioDoDia(dia.dataIso))"
+                    :key="idx"
+                    class="menu-item-card"
+                    :class="getCorBorda(item.tipo)"
+                  >
+                    {{ item.valor }}
                   </div>
+                </template>
+                <div v-else class="no-menu-day">
+                  <i class="pi pi-calendar-times text-slate-300 text-xl mb-2"></i>
+                  <span class="text-[10px] text-slate-400 font-bold uppercase">Sem cardápio</span>
                 </div>
               </div>
             </div>
@@ -452,8 +452,8 @@ onMounted(() => {
     />
 
     <!-- Header com navegação -->
-    <div class="flex flex-col lg:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-      <div class="flex items-center gap-3">
+    <div class="flex flex-col md:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+      <div class="flex flex-wrap items-center justify-center gap-3">
         <SelectButton
             v-model="activeTab"
             :options="[{ label: 'Hoje', value: 'hoje' }, { label: 'Semanal', value: 'semanal' }]"
@@ -461,9 +461,6 @@ onMounted(() => {
             optionValue="value"
             :allowEmpty="false"
         />
-      </div>
-
-      <div class="flex items-center gap-3">
         <SelectButton
           v-model="turnoFiltro"
           :options="turnoOptions"
@@ -473,11 +470,11 @@ onMounted(() => {
         />
       </div>
 
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-100 w-full md:w-auto justify-between md:justify-center">
         <button @click="mudarSemana(-1)" class="nav-btn">
           <i class="pi pi-chevron-left"></i>
         </button>
-        <span class="text-xs font-bold text-slate-600 uppercase tracking-wider min-w-[200px] text-center">
+        <span class="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider text-center flex-1 md:flex-initial md:min-w-[200px]">
           {{ getIntervaloSemana }}
         </span>
         <button @click="mudarSemana(1)" class="nav-btn">
@@ -489,35 +486,33 @@ onMounted(() => {
     <!-- Grid Semanal (Logado) -->
     <div v-if="activeTab === 'semanal'" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
       <div v-if="loading" class="p-6">
-        <div class="grid grid-cols-5 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           <Skeleton v-for="i in 5" :key="i" height="350px" border-radius="0.75rem" />
         </div>
       </div>
 
-      <div v-else class="overflow-x-auto">
-        <div class="min-w-[900px] p-4">
-          <div class="grid grid-cols-5 gap-3">
-            <div v-for="dia in getDiasSemana" :key="dia.dataIso" class="flex flex-col gap-2">
-              <div class="day-header">
-                <span class="day-label">{{ dia.label }}</span>
-                <span class="day-number">{{ dia.dia }}</span>
-              </div>
+      <div v-else class="p-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div v-for="dia in getDiasSemana" :key="dia.dataIso" class="flex flex-col gap-2">
+            <div class="day-header">
+              <span class="day-label">{{ dia.label }}</span>
+              <span class="day-number">{{ dia.dia }}</span>
+            </div>
 
-              <div class="flex flex-col gap-1.5">
-                <template v-if="getCardapioDoDia(dia.dataIso)">
-                  <div
-                    v-for="(item, idx) in getItensCategorizados(getCardapioDoDia(dia.dataIso))"
-                    :key="idx"
-                    class="menu-item-card"
-                    :class="getCorBorda(item.tipo)"
-                  >
-                    {{ item.valor }}
-                  </div>
-                </template>
-                <div v-else class="no-menu-day">
-                  <i class="pi pi-calendar-times text-slate-300 text-lg mb-1"></i>
-                  <span class="text-[9px] text-slate-400 font-bold uppercase">Sem cardápio</span>
+            <div class="flex flex-col gap-1.5">
+              <template v-if="getCardapioDoDia(dia.dataIso)">
+                <div
+                  v-for="(item, idx) in getItensCategorizados(getCardapioDoDia(dia.dataIso))"
+                  :key="idx"
+                  class="menu-item-card"
+                  :class="getCorBorda(item.tipo)"
+                >
+                  {{ item.valor }}
                 </div>
+              </template>
+              <div v-else class="no-menu-day">
+                <i class="pi pi-calendar-times text-slate-300 text-lg mb-1"></i>
+                <span class="text-[9px] text-slate-400 font-bold uppercase">Sem cardápio</span>
               </div>
             </div>
           </div>

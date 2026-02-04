@@ -393,8 +393,8 @@ onMounted(() => carregarCardapios())
     />
 
     <!-- Barra de Controles -->
-    <div class="flex flex-wrap justify-between items-center gap-4 -mt-10 sm:-mt-12 mb-4 relative z-10">
-      <div class="flex flex-wrap items-center gap-2 sm:gap-4 bg-white/90 backdrop-blur-sm p-2 rounded-2xl border border-slate-200 shadow-sm w-full lg:w-auto">
+    <div class="flex flex-wrap justify-center sm:justify-between items-center gap-4 -mt-10 sm:-mt-12 mb-4 relative z-10 px-2 sm:px-0">
+      <div class="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 bg-white/90 backdrop-blur-sm p-2 rounded-2xl border border-slate-200 shadow-sm w-full lg:w-auto">
         <!-- Seletor de View -->
         <SelectButton
           v-model="viewMode"
@@ -402,10 +402,10 @@ onMounted(() => carregarCardapios())
           optionLabel="label"
           optionValue="value"
           :allowEmpty="false"
-          class="view-select flex-1 sm:flex-initial"
+          class="view-select w-full sm:w-auto"
         >
           <template #option="{ option }">
-            <div class="flex items-center gap-2 px-1 sm:px-2 py-1">
+            <div class="flex items-center gap-2 px-1 sm:px-2 py-1 justify-center">
               <i :class="option.icon" class="text-sm"></i>
               <span class="text-[10px] sm:text-xs font-bold uppercase">{{ option.label }}</span>
             </div>
@@ -414,7 +414,7 @@ onMounted(() => carregarCardapios())
 
 
         <!-- Filtro de Turno -->
-        <div class="flex items-center gap-2 flex-1 sm:flex-initial">
+        <div class="flex items-center gap-2 w-full sm:w-auto">
           <SelectButton
             v-model="turnoFiltro"
             :options="turnoOpcoes"
@@ -434,7 +434,7 @@ onMounted(() => carregarCardapios())
         </div>
       </div>
 
-      <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+      <div class="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-end">
         <Button label="Importar" icon="pi pi-upload" severity="secondary" outlined size="small" @click="displayImport = true" class="!rounded-xl flex-1 sm:flex-initial" />
         <Button label="Novo" icon="pi pi-plus" severity="success" size="small" @click="abrirNovo" class="!rounded-xl shadow-lg flex-1 sm:flex-initial" />
       </div>
