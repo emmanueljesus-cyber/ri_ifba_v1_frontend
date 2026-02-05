@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
+import JustificativasView from '../views/estudante/JustificativasView.vue'
+import CardapioView from '../views/estudante/CardapioView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -40,7 +42,7 @@ const router = createRouter({
     {
       path: '/cardapio',
       name: 'cardapio',
-      component: () => import('../views/estudante/CardapioView.vue'),
+      component: CardapioView,
       meta: { public: true }
     },
     // Student Dashboard
@@ -77,7 +79,7 @@ const router = createRouter({
         {
           path: 'justificativas',
           name: 'justificativas',
-          component: () => import('../views/estudante/JustificativasView.vue'),
+          component: JustificativasView,
           meta: { bolsistaOnly: true }
         },
         {
@@ -89,7 +91,7 @@ const router = createRouter({
         {
           path: 'cardapio',
           name: 'dashboard-cardapio',
-          component: () => import('../views/estudante/CardapioView.vue')
+          component: CardapioView
         }
       ]
     },

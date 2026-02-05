@@ -18,33 +18,33 @@ const goToLogin = () => {
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between h-16">
           <!-- Logo/Title -->
-          <div class="flex items-center gap-3 cursor-pointer" @click="() => router.push('/')">
-            <img 
+          <div class="flex items-center gap-2 sm:gap-3 cursor-pointer" @click="() => router.push('/')">
+            <img
               src="../assets/image/ifba_icone_colorido.svg" 
               alt="IFBA" 
-              class="w-10 h-10"
+              class="w-8 h-8 sm:w-10 sm:h-10"
             />
-            <div>
-              <h1 class="text-lg font-bold text-slate-800">RI-IFBA</h1>
+            <div class="hidden sm:flex flex-col">
+              <h1 class="text-lg font-bold text-slate-800 leading-tight">RI-IFBA</h1>
               <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Campus Salvador</p>
             </div>
           </div>
 
           <!-- Actions -->
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2">
             <Button
               label="Entrar" 
               icon="pi pi-sign-in" 
               @click="goToLogin"
               text
-              class="!text-slate-600 hover:!bg-slate-100 !rounded-xl"
+              class="!text-slate-600 hover:!bg-slate-100 !rounded-xl !text-sm !px-3 !py-2"
             />
             <Button 
               label="Cadastrar" 
               icon="pi pi-user-plus" 
               @click="() => router.push('/cadastro')"
               severity="success"
-              class="!rounded-xl hidden sm:flex"
+              class="!rounded-xl hidden sm:flex !text-sm"
             />
           </div>
         </div>

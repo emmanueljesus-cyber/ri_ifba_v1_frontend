@@ -502,7 +502,7 @@ onMounted(() => {
               <span class="day-number">{{ dia.dia }}</span>
             </div>
 
-            <div class="flex flex-col gap-1.5">
+            <div class="flex flex-col gap-2">
               <template v-if="getCardapioDoDia(dia.dataIso)">
                 <div
                   v-for="(item, idx) in getItensCategorizados(getCardapioDoDia(dia.dataIso))"
@@ -514,8 +514,8 @@ onMounted(() => {
                 </div>
               </template>
               <div v-else class="no-menu-day">
-                <i class="pi pi-calendar-times text-slate-300 text-lg mb-1"></i>
-                <span class="text-[9px] text-slate-400 font-bold uppercase">Sem cardápio</span>
+                <i class="pi pi-calendar-times text-slate-300 text-xl mb-2"></i>
+                <span class="text-[10px] text-slate-400 font-bold uppercase">Sem cardápio</span>
               </div>
             </div>
           </div>
