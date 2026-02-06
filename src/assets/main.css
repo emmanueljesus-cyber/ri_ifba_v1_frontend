@@ -465,18 +465,6 @@
   letter-spacing: 0.03em !important;
 }
 
-/* SelectButton para troca de turnos */
-.p-selectbutton .p-togglebutton {
-  border-radius: var(--ri-radius-md) !important;
-  font-weight: 600 !important;
-  padding: 0.5rem 1rem !important;
-}
-
-.p-selectbutton .p-togglebutton.p-togglebutton-checked {
-  background: var(--p-primary-500) !important;
-  border-color: var(--p-primary-600) !important;
-  color: #ffffff !important;
-}
 
 /* DataTable */
 .p-datatable {
@@ -581,40 +569,67 @@ a:active,
   transform: scale(0.98);
 }
 
-/* SelectButton - Estilo Limpo e Moderno */
+/* SelectButton - Estilo Limpo e Moderno (Padrão Segmented Control) */
 .p-selectbutton {
   border-radius: 0.75rem !important;
-  padding: 3px !important;
+  padding: 4px !important;
   background: #f1f5f9 !important;
   border: 1px solid #e2e8f0 !important;
-  box-shadow: none !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  display: inline-flex !important;
+  gap: 4px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
 }
 
 .p-selectbutton .p-togglebutton {
   border: none !important;
-  border-radius: 0.625rem !important;
-  padding: 0.5rem 1.25rem !important;
-  font-weight: 600 !important;
+  border-radius: 0.5rem !important;
+  padding: 0.5rem 1rem !important;
+  font-weight: 700 !important;
   font-size: 0.875rem !important;
   background: transparent !important;
   color: #64748b !important;
   box-shadow: none !important;
-  transition: all 0.2s ease !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
 }
 
-.p-selectbutton .p-togglebutton:hover:not(.p-togglebutton-checked) {
+.p-selectbutton .p-togglebutton:hover:not(.p-togglebutton-checked):not(.p-highlight) {
   background: #e2e8f0 !important;
   color: #334155 !important;
 }
 
-.p-selectbutton .p-togglebutton.p-togglebutton-checked {
-  background: white !important;
-  color: var(--ifba-verde) !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+.p-selectbutton .p-togglebutton.p-togglebutton-checked,
+.p-selectbutton .p-togglebutton.p-highlight {
+  background: #ffffff !important;
+  color: var(--p-primary-500, #32a041) !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* ELIMINAÇÃO TOTAL DA FAIXA BRANCA (Pseudo-elemento Aura) e Garante Visibilidade */
+.p-selectbutton .p-togglebutton::before,
+.p-selectbutton .p-togglebutton::after,
+.p-selectbutton .p-togglebutton-checked::before,
+.p-selectbutton .p-togglebutton-checked::after,
+.p-selectbutton .p-togglebutton.p-highlight::before,
+.p-selectbutton .p-togglebutton.p-highlight::after {
+  content: none !important;
+  display: none !important;
+}
+
+/* Garante que o conteúdo dentro do botão seja visível e tenha a cor correta quando selecionado */
+.p-selectbutton .p-togglebutton.p-togglebutton-checked *,
+.p-selectbutton .p-togglebutton.p-highlight * {
+  color: var(--p-primary-500, #32a041) !important;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 .p-selectbutton .p-togglebutton:focus {
-  box-shadow: none !important;
+  box-shadow: 0 0 0 2px rgba(50, 160, 65, 0.2) !important;
   outline: none !important;
 }
 
@@ -876,3 +891,40 @@ body {
     flex: 1 1 auto !important;
   }
 }
+
+/* ====================================
+   FIX: Calendar com fundo branco sólido
+   ==================================== */
+.p-datepicker,
+.p-datepicker-input-icon-container,
+.p-datepicker input,
+.p-inputtext {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+}
+
+.p-datepicker .p-inputtext {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+}
+
+/* Força fundo branco no input do calendar especificamente */
+.p-calendar input.p-inputtext {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+}
+
+/* Container do calendar */
+.p-calendar,
+.p-calendar-w-btn {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+}
+
+/* Wrapper do input dentro do calendar */
+.p-calendar > .p-inputtext,
+.p-calendar-w-btn > .p-inputtext {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+}
+

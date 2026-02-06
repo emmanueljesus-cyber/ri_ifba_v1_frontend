@@ -13,7 +13,6 @@ import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Avatar from 'primevue/avatar'
-import Skeleton from 'primevue/skeleton'
 import Select from 'primevue/select'
 
 import Checkbox from 'primevue/checkbox'
@@ -373,33 +372,14 @@ onMounted(() => {
                   <Select v-model="lazyParams.filters['turno_refeicao'].value" :options="turnoOptions" optionLabel="label" optionValue="value" placeholder="Refeição" class="flex-1 sm:w-40 !rounded-xl" />
                   <Select v-model="lazyParams.filters['ativo'].value" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Status" class="flex-1 sm:w-40 !rounded-xl" />
                 </div>
-                <IconField class="w-full sm:w-60">
-                  <InputIcon class="pi pi-search" />
-                  <InputText v-model="lazyParams.filters['global'].value" placeholder="Buscar bolsista..." class="w-full !rounded-xl" />
-                </IconField>
+                <InputText v-model="lazyParams.filters['global'].value" placeholder="Buscar bolsista..." class="w-full sm:w-60 !rounded-xl" />
               </div>
             </div>
           </template>
           
           <template #loading>
-            <div class="p-4 space-y-6">
-              <div v-for="i in 8" :key="i" class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-50 pb-4 last:border-0">
-                <div class="flex items-center gap-3 w-full md:w-1/3">
-                  <Skeleton shape="circle" size="3rem" class="flex-shrink-0 hidden md:block" />
-                  <div class="space-y-2 w-full">
-                    <Skeleton width="70%" height="1rem" />
-                    <Skeleton width="40%" height="0.6rem" />
-                  </div>
-                </div>
-                <div class="w-full md:w-1/3 space-y-2">
-                  <Skeleton width="60%" height="0.875rem" />
-                  <Skeleton width="40%" height="0.875rem" />
-                </div>
-                <div class="flex justify-end w-full md:w-auto gap-2">
-                  <Skeleton width="80px" height="1.5rem" border-radius="20px" />
-                  <Skeleton width="36px" height="36px" border-radius="10px" />
-                </div>
-              </div>
+            <div class="flex items-center justify-center py-12">
+              <i class="pi pi-spinner pi-spin text-4xl text-primary-500"></i>
             </div>
           </template>
 

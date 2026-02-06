@@ -188,21 +188,8 @@ onMounted(() => {
           :loading="loading"
         >
           <template #loading>
-            <div class="p-4 space-y-6">
-              <div v-for="i in 5" :key="i" class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-50 pb-4 last:border-0">
-                <div class="w-full md:w-1/4">
-                  <Skeleton width="100px" height="1rem" />
-                </div>
-                <div class="w-full md:w-1/4 flex md:justify-center">
-                  <Skeleton width="80px" height="1.5rem" border-radius="20px" />
-                </div>
-                <div class="w-full md:w-1/4">
-                  <Skeleton width="150px" height="1rem" />
-                </div>
-                <div class="flex justify-end w-full md:w-auto">
-                  <Skeleton width="100px" height="1rem" />
-                </div>
-              </div>
+            <div class="flex items-center justify-center py-12">
+              <i class="pi pi-spinner pi-spin text-4xl text-primary-500"></i>
             </div>
           </template>
           <template #header>

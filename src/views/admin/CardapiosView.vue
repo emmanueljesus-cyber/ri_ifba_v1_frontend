@@ -831,37 +831,4 @@ onMounted(() => carregarCardapios())
 </template>
 
 <style scoped>
-.view-select :deep(.p-button) {
-  border: 0;
-  background: transparent;
-  color: #64748b;
-  font-weight: 700;
-  padding: 0.5rem;
-  border-radius: 0.75rem;
-}
-.view-select :deep(.p-button.p-highlight) {
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
-  color: white;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
-}
-.view-select :deep(.p-button:not(.p-highlight):hover) {
-  background: #f1f5f9;
-}
-
-.turno-select :deep(.p-button) {
-  border: 1px solid #e2e8f0;
-  background: transparent;
-  color: #64748b;
-  font-weight: 600;
-  padding: 0.375rem 0.5rem;
-  border-radius: 0.5rem;
-}
-.turno-select :deep(.p-button.p-highlight) {
-  background: #3b82f6;
-  border-color: #3b82f6;
-  color: white;
-}
-.turno-select :deep(.p-button:not(.p-highlight):hover) {
-  background: #f8fafc;
-}
 </style>

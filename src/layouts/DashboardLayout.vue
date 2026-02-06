@@ -392,6 +392,15 @@ onUnmounted(() => {
                     </button>
                     <div v-show="menuAccordion.cadastros" class="space-y-1 mt-1">
                       <button
+                          class="flex items-center gap-3 w-full px-4 py-2.5 text-left hover:bg-teal-50 rounded-xl transition-all group"
+                          @click="router.push('/admin/cardapios'); menuPanel?.hide()"
+                      >
+                        <div class="w-8 h-8 rounded-lg bg-teal-50 group-hover:bg-teal-100 flex items-center justify-center transition-colors">
+                          <i class="pi pi-calendar text-teal-600"></i>
+                        </div>
+                        <span class="text-sm font-semibold text-slate-700 group-hover:text-teal-700">Cardápios</span>
+                      </button>
+                      <button
                         class="flex items-center gap-3 w-full px-4 py-2.5 text-left hover:bg-blue-50 rounded-xl transition-all group"
                         @click="router.push('/admin/bolsistas'); menuPanel?.hide()"
                       >
@@ -408,15 +417,6 @@ onUnmounted(() => {
                           <i class="pi pi-user-plus text-indigo-600"></i>
                         </div>
                         <span class="text-sm font-semibold text-slate-700 group-hover:text-indigo-700">Usuários</span>
-                      </button>
-                      <button
-                        class="flex items-center gap-3 w-full px-4 py-2.5 text-left hover:bg-teal-50 rounded-xl transition-all group"
-                        @click="router.push('/admin/cardapios'); menuPanel?.hide()"
-                      >
-                        <div class="w-8 h-8 rounded-lg bg-teal-50 group-hover:bg-teal-100 flex items-center justify-center transition-colors">
-                          <i class="pi pi-calendar text-teal-600"></i>
-                        </div>
-                        <span class="text-sm font-semibold text-slate-700 group-hover:text-teal-700">Cardápios</span>
                       </button>
                     </div>
                   </div>

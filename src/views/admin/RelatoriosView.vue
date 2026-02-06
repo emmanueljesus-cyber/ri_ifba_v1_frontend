@@ -21,7 +21,6 @@ import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
-import ProgressSpinner from 'primevue/progressspinner'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
@@ -359,7 +358,6 @@ const categorias = [
   { key: 'presente', label: 'Presente', color: 'bg-emerald-50 text-emerald-700' },
   { key: 'extra', label: 'Extra', color: 'bg-blue-50 text-blue-700' },
   { key: 'ausente', label: 'Ausente', color: 'bg-red-50 text-red-700' },
-  { key: 'atestado', label: 'Atestado', color: 'bg-orange-50 text-orange-700' },
   { key: 'justificado', label: 'Justificado', color: 'bg-amber-50 text-amber-700' },
   { key: 'n_frequenta', label: 'Ñ Frequenta', color: 'bg-slate-50 text-slate-700' }
 ]
@@ -607,7 +605,13 @@ const geralBarChartOptions = {
   scales: {
     y: {
       beginAtZero: true,
-      ticks: { font: { size: 12, weight: '600' }, color: '#64748b' },
+      ticks: {
+        font: { size: 12, weight: '600' },
+        color: '#64748b',
+        callback: function(value: any) {
+          return Number.isInteger(value) ? value : null
+        }
+      },
       grid: { color: '#e2e8f0' }
     },
     x: {
@@ -1081,19 +1085,19 @@ watch(activeTab, (newTab) => {
 
     <!-- Seletor de Aba usando SelectButton -->
     <div class="flex justify-center mb-6 px-2 sm:px-4">
-      <div class="w-full max-w-4xl overflow-x-auto no-scrollbar pb-2">
+      <div class="w-full max-w-4xl">
         <SelectButton
           v-model="activeTab"
           :options="tabOptions"
           optionLabel="label"
           optionValue="value"
           :allowEmpty="false"
-          class="tab-select-button flex-nowrap whitespace-nowrap"
+          class="tab-select-button"
         >
           <template #option="slotProps">
-            <div class="flex items-center gap-2 px-2 sm:px-4 whitespace-nowrap py-1">
-              <i :class="slotProps.option.icon" class="text-xs sm:text-base"></i>
-              <span class="font-bold text-[10px] sm:text-sm uppercase">{{ slotProps.option.label }}</span>
+            <div class="flex items-center gap-1 sm:gap-2 justify-center whitespace-nowrap" :style="{ color: 'inherit' }">
+              <i :class="slotProps.option.icon" class="text-xs sm:text-sm" :style="{ color: 'inherit' }"></i>
+              <span class="font-bold text-[9px] sm:text-xs uppercase tracking-tight whitespace-nowrap" :style="{ color: 'inherit' }">{{ slotProps.option.label }}</span>
             </div>
           </template>
         </SelectButton>
@@ -1133,22 +1137,25 @@ watch(activeTab, (newTab) => {
 
               <div v-else-if="relatorio" class="overflow-x-auto">
                 <!-- Resumo Rápido -->
-                <div v-if="statsDashboard" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                   <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm hover:border-emerald-200 transition-colors">
-                      <p class="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Presentes</p>
-                      <p class="text-3xl font-black text-slate-800">{{ statsDashboard.resumo?.total_presentes || 0 }}</p>
+                <div v-if="relatorio?.totais" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                   <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm hover:border-emerald-200 transition-all group relative overflow-hidden">
+                      <div class="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
+                      <p class="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1 group-hover:translate-x-1 transition-transform">Presentes</p>
+                      <p class="text-3xl font-black text-slate-800">{{ relatorio.totais.presente || 0 }}</p>
                    </div>
-                   <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm hover:border-blue-200 transition-colors">
-                      <p class="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Extras</p>
-                      <p class="text-3xl font-black text-slate-800">{{ statsDashboard.extras?.total || 0 }}</p>
+                   <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm hover:border-blue-200 transition-all group relative overflow-hidden">
+                      <div class="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+                      <p class="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1 group-hover:translate-x-1 transition-transform">Extras</p>
+                      <p class="text-3xl font-black text-slate-800">{{ relatorio.totais.extra || 0 }}</p>
                    </div>
-                   <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm hover:border-red-200 transition-colors">
-                      <p class="text-[10px] font-black text-red-600 uppercase tracking-widest mb-1">Faltas</p>
-                      <p class="text-3xl font-black text-slate-800">{{ statsDashboard.resumo?.total_faltas || 0 }}</p>
+                   <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm hover:border-red-200 transition-all group relative overflow-hidden">
+                      <div class="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
+                      <p class="text-[10px] font-black text-red-600 uppercase tracking-widest mb-1 group-hover:translate-x-1 transition-transform">Faltas Totais</p>
+                      <p class="text-3xl font-black text-slate-800">{{ (relatorio.totais.ausente || 0) + (relatorio.totais.justificado || 0) }}</p>
                    </div>
-                   <div class="p-4 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl border border-primary-600 shadow-lg">
-                      <p class="text-[10px] font-black text-white/80 uppercase tracking-widest mb-1">Aproveitamento</p>
-                      <p class="text-3xl font-black text-white">{{ statsDashboard.taxa_presenca?.porcentagem || '0%' }}</p>
+                   <div class="p-4 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl border border-primary-600 shadow-lg group">
+                      <p class="text-[10px] font-black text-white/80 uppercase tracking-widest mb-1 group-hover:translate-x-1 transition-transform">Aproveitamento</p>
+                      <p class="text-3xl font-black text-white">{{ relatorio.total_mensal_refeicoes > 0 ? Math.round((relatorio.totais.presente / (relatorio.totais.presente + relatorio.totais.ausente + relatorio.totais.justificado)) * 100) + '%' : '0%' }}</p>
                    </div>
                 </div>
 
@@ -1182,7 +1189,7 @@ watch(activeTab, (newTab) => {
                       <div class="lg:col-span-2 min-h-[320px]">
                         <Chart v-if="chartTypeGeral === 'bar'" type="bar" :data="geralBarChartData" :options="geralBarChartOptions" class="h-full" />
                         <Chart v-else-if="chartTypeGeral === 'doughnut'" type="doughnut" :data="geralChartData" :options="geralChartOptions" class="h-full" />
-                        <Chart v-else type="pie" :data="geralChartData" :options="geralPizzaChartOptions" class="h-full" />
+                        <Chart v-else type="pie" :data="geralChartData" :options="geralChartOptions" class="h-full" />
                       </div>
 
                       <!-- Legendas Customizadas e Estatísticas -->
@@ -1740,61 +1747,29 @@ table th, table td {
   border-width: 1px;
 }
 
-/* Estilo para SelectButton de abas */
+/* Estilo para SelectButton de abas - Simplificado e robusto */
+.tab-select-button.p-selectbutton {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  width: 100% !important;
+}
+
+@media (min-width: 768px) {
+  .tab-select-button.p-selectbutton {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+}
+
 .tab-select-button :deep(.p-togglebutton) {
-  border: 1px solid #e2e8f0;
-  background: white;
-  color: #64748b;
-  font-weight: 600;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.75rem;
-  margin: 0 4px;
-  transition: all 0.2s ease;
+  min-height: 3rem !important;
+  flex: 1 !important;
 }
 
-.tab-select-button :deep(.p-togglebutton:hover:not(.p-togglebutton-checked)) {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-}
-
-.tab-select-button :deep(.p-togglebutton.p-togglebutton-checked) {
-  background: var(--ifba-verde, #32a041);
-  border-color: var(--ifba-verde, #32a041);
-  color: white;
-  box-shadow: 0 2px 8px rgba(50, 160, 65, 0.3);
-}
-
-.custom-select-button :deep(.p-togglebutton) {
-  border: 0;
-  background: transparent;
-  color: #64748b;
-  font-weight: 700;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.75rem;
-}
-
-.custom-select-button :deep(.p-button) {
-  border: 1px solid #e2e8f0;
-  background: white;
-  color: #64748b;
-  font-weight: 600;
-  padding: 0.5rem 1rem;
-  transition: all 0.2s;
-}
-
-.custom-select-button :deep(.p-button.p-highlight) {
-  background: #3b82f6;
-  border-color: #3b82f6;
-  color: white;
-}
-
-.custom-select-button :deep(.p-button:first-child) {
-  border-top-left-radius: 12px;
-  border-bottom-left-radius: 12px;
-}
-
-.custom-select-button :deep(.p-button:last-child) {
-  border-top-right-radius: 12px;
-  border-bottom-right-radius: 12px;
+@media (min-width: 640px) {
+  .tab-select-button :deep(.p-togglebutton) {
+    width: auto !important;
+    flex: initial !important;
+    min-width: 160px !important;
+  }
 }
 </style>

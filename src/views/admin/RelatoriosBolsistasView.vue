@@ -72,16 +72,34 @@ const rankingFaltas = computed(() => {
 
 // Computed - Estatísticas por dia da semana
 const estatsDiaSemana = computed(() => {
-  // Inicializa apenas dias úteis: Seg (1) a Sex (5)
+  // Inicializa apenas dias úteis: Seg (1) a Sex (5) - SEMPRE mostra os 5 dias
   const nomesDias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
-  const dias = [1, 2, 3, 4, 5].map(idx => ({ dia: nomesDias[idx], presentes: 0, ausentes: 0, total: 0, idx }))
-  
+  const dias = [
+    { dia: 'Seg', idx: 1, presentes: 0, ausentes: 0, total: 0 },
+    { dia: 'Ter', idx: 2, presentes: 0, ausentes: 0, total: 0 },
+    { dia: 'Qua', idx: 3, presentes: 0, ausentes: 0, total: 0 },
+    { dia: 'Qui', idx: 4, presentes: 0, ausentes: 0, total: 0 },
+    { dia: 'Sex', idx: 5, presentes: 0, ausentes: 0, total: 0 }
+  ]
+
+  // Filtrar apenas dados dentro do período selecionado
+  const dataInicioTimestamp = filtroDataInicio.value ? new Date(filtroDataInicio.value).setHours(0, 0, 0, 0) : null
+  const dataFimTimestamp = filtroDataFim.value ? new Date(filtroDataFim.value).setHours(23, 59, 59, 999) : null
+
   presencas.value.forEach(p => {
     const d = p.refeicao?.data ? new Date(p.refeicao.data) : null
     if (!d || isNaN(d.getTime())) return
+
+    // Verificar se a data está dentro do período filtrado
+    const dataTimestamp = d.getTime()
+    if (dataInicioTimestamp && dataTimestamp < dataInicioTimestamp) return
+    if (dataFimTimestamp && dataTimestamp > dataFimTimestamp) return
+
     const idx = d.getDay()
     
-    // Filtra apenas Seg-Sex
+    // Filtra apenas Seg-Sex (1-5)
+    if (idx < 1 || idx > 5) return
+
     const diaAlvo = dias.find(item => item.idx === idx)
     if (!diaAlvo) return
     
@@ -89,6 +107,8 @@ const estatsDiaSemana = computed(() => {
     if (p.status_da_presenca === 'presente') diaAlvo.presentes++
     else diaAlvo.ausentes++
   })
+
+  // Retorna SEMPRE os 5 dias, mesmo sem dados
   return dias
 })
 
@@ -115,13 +135,86 @@ const faltasPorBolsista = computed(() => {
   return mapa
 })
 
+const periodoSelecionado = computed(() => {
+  if (!filtroDataInicio.value || !filtroDataFim.value) return null
+  const inicio = filtroDataInicio.value.toLocaleDateString('pt-BR')
+  const fim = filtroDataFim.value.toLocaleDateString('pt-BR')
+  return `${inicio} a ${fim}`
+})
+
 // Gráficos
-const chartTurnoData = computed(() => ({ labels: ['Almoço', 'Jantar', 'Ambos'], datasets: [{ data: [estatisticas.value.almoco, estatisticas.value.jantar, estatisticas.value.ambos], backgroundColor: ['#f59e0b', '#3b82f6', '#8b5cf6'] }] }))
-const chartPresencaData = computed(() => ({ labels: ['Presentes', 'Justificadas', 'Ausentes'], datasets: [{ data: [estatPresencas.value.presentes, estatPresencas.value.justificadas, estatPresencas.value.ausentes], backgroundColor: ['#10b981', '#f59e0b', '#ef4444'] }] }))
+const chartTurnoData = computed(() => {
+  const dados = [estatisticas.value.almoco, estatisticas.value.jantar, estatisticas.value.ambos]
+  const total = dados.reduce((a, b) => a + b, 0)
+  const labels = ['Almoço', 'Jantar', 'Ambos'].map((label, i) => {
+    const valor = dados[i]
+    const percentual = total > 0 ? ((valor / total) * 100).toFixed(1) : '0'
+    return `${label}: ${valor} (${percentual}%)`
+  })
+  return {
+    labels,
+    datasets: [{ data: dados, backgroundColor: ['#f59e0b', '#3b82f6', '#8b5cf6'] }]
+  }
+})
+
+const chartPresencaData = computed(() => {
+  const dados = [estatPresencas.value.presentes, estatPresencas.value.justificadas, estatPresencas.value.ausentes]
+  const total = dados.reduce((a, b) => a + b, 0)
+  const labels = ['Presentes', 'Justificadas', 'Ausentes'].map((label, i) => {
+    const valor = dados[i]
+    const percentual = total > 0 ? ((valor / total) * 100).toFixed(1) : '0'
+    return `${label}: ${valor} (${percentual}%)`
+  })
+  return {
+    labels,
+    datasets: [{ data: dados, backgroundColor: ['#10b981', '#f59e0b', '#ef4444'] }]
+  }
+})
+
 const chartDiaData = computed(() => ({ labels: estatsDiaSemana.value.map(d => d.dia), datasets: [{ label: 'Presentes', backgroundColor: '#10b981', data: estatsDiaSemana.value.map(d => d.presentes) }, { label: 'Ausentes', backgroundColor: '#ef4444', data: estatsDiaSemana.value.map(d => d.ausentes) }] }))
 
-const chartOpts = { plugins: { legend: { position: 'bottom' as const } }, maintainAspectRatio: false }
-const chartBarOpts = { plugins: { legend: { position: 'top' as const } }, scales: { y: { beginAtZero: true } }, maintainAspectRatio: false }
+const chartOpts = {
+  plugins: {
+    legend: {
+      position: 'bottom' as const,
+      labels: {
+        boxWidth: 15,
+        padding: 10,
+        font: {
+          size: 11
+        }
+      }
+    },
+    tooltip: {
+      enabled: true
+    }
+  },
+  maintainAspectRatio: false
+}
+const chartBarOpts = {
+  plugins: {
+    legend: { position: 'top' as const },
+    tooltip: {
+      callbacks: {
+        label: function(context: any) {
+          const label = context.dataset.label || ''
+          const value = context.parsed.y || 0
+          return `${label}: ${value}`
+        }
+      }
+    }
+  },
+  scales: {
+    y: {
+      beginAtZero: true,
+      max: 1000,
+      ticks: {
+        stepSize: 100
+      }
+    }
+  },
+  maintainAspectRatio: false
+}
 
 // Métodos
 const carregarBolsistas = async () => {
@@ -183,16 +276,27 @@ onMounted(() => {
 
     <!-- Filtros -->
     <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap gap-4 items-end">
-      <div class="flex flex-col gap-1"><label class="text-xs font-bold text-slate-500">Início</label><Calendar v-model="filtroDataInicio" dateFormat="dd/mm/yy" showIcon class="w-full sm:w-36" /></div>
-      <div class="flex flex-col gap-1"><label class="text-xs font-bold text-slate-500">Fim</label><Calendar v-model="filtroDataFim" dateFormat="dd/mm/yy" showIcon class="w-full sm:w-36" /></div>
-      <div class="flex flex-col gap-1"><label class="text-xs font-bold text-slate-500">Turno</label><Select v-model="filtroTurno" :options="turnoOptions" optionLabel="label" optionValue="value" class="w-full sm:w-32 !rounded-xl" /></div>
-      <div class="flex flex-col gap-1"><label class="text-xs font-bold text-slate-500">Status</label><Select v-model="filtroStatus" :options="statusOptions" optionLabel="label" optionValue="value" class="w-full sm:w-40 !rounded-xl" /></div>
+      <div class="w-full sm:w-auto flex flex-col sm:flex-row gap-4">
+        <div class="flex flex-col gap-1 w-full sm:w-auto"><label class="text-xs font-bold text-slate-500">Início</label><Calendar v-model="filtroDataInicio" dateFormat="dd/mm/yy" showIcon placeholder="dd/mm/aa" class="w-full sm:w-36" :pt="{ root: { class: '!bg-white' }, input: { class: '!bg-white' } }" /></div>
+        <div class="flex flex-col gap-1 w-full sm:w-auto"><label class="text-xs font-bold text-slate-500">Fim</label><Calendar v-model="filtroDataFim" dateFormat="dd/mm/yy" showIcon placeholder="dd/mm/aa" class="w-full sm:w-36" :pt="{ root: { class: '!bg-white' }, input: { class: '!bg-white' } }" /></div>
+      </div>
+      <div class="flex flex-col gap-1 w-full sm:w-auto"><label class="text-xs font-bold text-slate-500">Turno</label><Select v-model="filtroTurno" :options="turnoOptions" optionLabel="label" optionValue="value" placeholder="Selecione" class="w-full sm:w-32 !rounded-xl" /></div>
+      <div class="flex flex-col gap-1 w-full sm:w-auto"><label class="text-xs font-bold text-slate-500">Status</label><Select v-model="filtroStatus" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Selecione" class="w-full sm:w-40 !rounded-xl" /></div>
       <div class="flex gap-2 w-full sm:w-auto">
-        <Button icon="pi pi-search" @click="carregarPresencas" class="!rounded-xl flex-1 sm:flex-initial" />
+        <Button icon="pi pi-search" @click="carregarPresencas" class="!rounded-xl flex-1 sm:flex-none" />
         <Button icon="pi pi-times" severity="secondary" text @click="limparFiltros" class="!rounded-xl" />
       </div>
       <div class="hidden sm:block flex-1"></div>
       <Button label="Exportar" icon="pi pi-file-excel" severity="success" @click="exportarBolsistas" :loading="loadingExport" class="w-full sm:w-auto !rounded-xl" />
+    </div>
+
+    <div v-if="periodoSelecionado" class="bg-gradient-to-r from-emerald-500 to-teal-600 text-white p-3 rounded-xl flex items-center justify-center gap-2 shadow-sm">
+      <i class="pi pi-calendar text-lg"></i>
+      <span class="font-semibold">Período analisado:</span>
+      <span class="font-bold">{{ periodoSelecionado }}</span>
+      <span v-if="filtroTurno" class="ml-2 px-2 py-1 bg-white/20 rounded-lg text-xs font-bold">
+        {{ filtroTurno === 'almoco' ? '🍽️ Almoço' : '🌙 Jantar' }}
+      </span>
     </div>
 
     <!-- Cards -->

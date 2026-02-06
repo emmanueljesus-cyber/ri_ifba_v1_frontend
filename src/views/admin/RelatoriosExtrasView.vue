@@ -16,6 +16,7 @@ import Chart from 'primevue/chart'
 import TabView from 'primevue/tabview'
 import TabPanel from 'primevue/tabpanel'
 import AutoComplete from 'primevue/autocomplete'
+import Skeleton from 'primevue/skeleton'
 
 const toast = useToast()
 const { getInitials, getAvatarStyle } = useAvatar()
@@ -45,7 +46,9 @@ const inscricoes = computed(() => {
     else if (item.status === 'rejeitado') { statusFinal = 'nao_compareceu'; statusLabel = 'Não Compareceu'; statusIcon = 'pi pi-times-circle'; statusColor = 'text-red-500' }
     else if (item.status === 'inscrito' && dataRef && dataRef < hoje) { statusFinal = 'nao_atendido'; statusLabel = 'Não Atendido'; statusIcon = 'pi pi-minus-circle'; statusColor = 'text-slate-400' }
     return { ...item, statusFinal, statusLabel, statusIcon, statusColor, diaSemana: dataRef ? dias[dataRef.getDay()] : '-' }
-  }).filter(item => !filtroStatus.value || item.statusFinal === filtroStatus.value)
+  })
+  .filter(item => !filtroStatus.value || item.statusFinal === filtroStatus.value)
+  .filter(item => !filtroTurno.value || item.refeicao?.turno === filtroTurno.value)
 })
 
 const estatisticas = computed(() => {
@@ -96,11 +99,24 @@ const estatsDiaSemana = computed(() => {
   const diasMap = new Map<number, { dia: string, total: number, atendidos: number, almoco: number, jantar: number }>()
   const diasNomes = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
   
+  // Filtrar apenas dados dentro do período selecionado
+  const dataInicioTimestamp = filtroDataInicio.value ? new Date(filtroDataInicio.value).setHours(0, 0, 0, 0) : null
+  const dataFimTimestamp = filtroDataFim.value ? new Date(filtroDataFim.value).setHours(23, 59, 59, 999) : null
+
   inscricoes.value.forEach(i => {
     const d = i.refeicao?.data ? new Date(i.refeicao.data) : null
     if (!d) return
     
+    // Verificar se a data está dentro do período filtrado
+    const dataTimestamp = d.getTime()
+    if (dataInicioTimestamp && dataTimestamp < dataInicioTimestamp) return
+    if (dataFimTimestamp && dataTimestamp > dataFimTimestamp) return
+
     const idx = d.getDay()
+
+    // ✅ FILTRAR APENAS DIAS ÚTEIS: Segunda (1) a Sexta (5)
+    if (idx === 0 || idx === 6) return // Ignora Domingo (0) e Sábado (6)
+
     if (!diasMap.has(idx)) {
       diasMap.set(idx, { dia: diasNomes[idx] ?? '', total: 0, atendidos: 0, almoco: 0, jantar: 0 })
     }
@@ -117,19 +133,113 @@ const estatsDiaSemana = computed(() => {
     .map(([_, stats]) => stats)
 })
 
-const chartStatusData = computed(() => ({ labels: ['Atendidos', 'Na Fila', 'Não Atendidos', 'Não Compareceram'], datasets: [{ data: [estatisticas.value.atendidos, estatisticas.value.naFila, estatisticas.value.naoAtendidos, estatisticas.value.naoCompareceram], backgroundColor: ['#10b981', '#f59e0b', '#94a3b8', '#ef4444'] }] }))
-const chartTurnoData = computed(() => ({ labels: ['Almoço', 'Jantar'], datasets: [{ data: [inscricoes.value.filter(i => i.refeicao?.turno === 'almoco').length, inscricoes.value.filter(i => i.refeicao?.turno === 'jantar').length], backgroundColor: ['#f59e0b', '#3b82f6'] }] }))
-const chartDiaData = computed(() => ({ labels: estatsDiaSemana.value.map(d => d.dia), datasets: [{ label: 'Almoço', backgroundColor: '#f59e0b', data: estatsDiaSemana.value.map(d => d.almoco) }, { label: 'Jantar', backgroundColor: '#3b82f6', data: estatsDiaSemana.value.map(d => d.jantar) }] }))
-
-const chartEvolucao = computed(() => {
-  const p: Record<string, { a: number, t: number }> = {}
-  inscricoes.value.forEach(i => { const d = i.refeicao?.data; if (!d) return; if (!p[d]) p[d] = { a: 0, t: 0 }; p[d].t++; if (i.statusFinal === 'atendido') p[d].a++ })
-  const labels = Object.keys(p).sort().slice(-14)
-  return { labels: labels.map(d => new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })), datasets: [{ label: 'Atendidos', borderColor: '#10b981', data: labels.map(d => p[d]?.a || 0), fill: false, tension: 0.4 }, { label: 'Total', borderColor: '#6366f1', data: labels.map(d => p[d]?.t || 0), fill: false, tension: 0.4 }] }
+const chartStatusData = computed(() => {
+  const dados = [estatisticas.value.atendidos, estatisticas.value.naFila, estatisticas.value.naoAtendidos, estatisticas.value.naoCompareceram]
+  const total = dados.reduce((a, b) => a + b, 0)
+  const labels = ['Atendidos', 'Na Fila', 'Não Atendidos', 'Não Compareceram'].map((label, i) => {
+    const valor = dados[i] || 0
+    const percentual = total > 0 ? ((valor / total) * 100).toFixed(1) : '0'
+    return `${label}: ${valor} (${percentual}%)`
+  })
+  return {
+    labels,
+    datasets: [{ data: dados, backgroundColor: ['#10b981', '#f59e0b', '#94a3b8', '#ef4444'] }]
+  }
 })
 
-const chartOpts = { plugins: { legend: { position: 'bottom' as const } }, maintainAspectRatio: false }
-const chartBarOpts = { plugins: { legend: { position: 'top' as const } }, scales: { y: { beginAtZero: true } }, maintainAspectRatio: false }
+const chartTurnoData = computed(() => {
+  const almoco = inscricoes.value.filter(i => i.refeicao?.turno === 'almoco').length
+  const jantar = inscricoes.value.filter(i => i.refeicao?.turno === 'jantar').length
+  const total = almoco + jantar
+  const labels = [
+    `Almoço: ${almoco} (${total > 0 ? ((almoco / total) * 100).toFixed(1) : '0'}%)`,
+    `Jantar: ${jantar} (${total > 0 ? ((jantar / total) * 100).toFixed(1) : '0'}%)`
+  ]
+  return {
+    labels,
+    datasets: [{ data: [almoco, jantar], backgroundColor: ['#f59e0b', '#3b82f6'] }]
+  }
+})
+
+const chartDiaData = computed(() => ({ labels: estatsDiaSemana.value.map(d => d.dia), datasets: [{ label: 'Almoço', backgroundColor: '#f59e0b', data: estatsDiaSemana.value.map(d => d.almoco) }, { label: 'Jantar', backgroundColor: '#3b82f6', data: estatsDiaSemana.value.map(d => d.jantar) }] }))
+
+const chartOpts = {
+  plugins: {
+    legend: {
+      position: 'bottom' as const,
+      labels: {
+        boxWidth: 15,
+        padding: 10,
+        font: {
+          size: 11
+        }
+      }
+    },
+    tooltip: {
+      enabled: true
+    }
+  },
+  maintainAspectRatio: false
+}
+const chartBarOpts = {
+  plugins: {
+    legend: {
+      position: 'top' as const,
+      labels: {
+        boxWidth: 20,
+        padding: 15,
+        font: {
+          size: 13,
+          weight: '600'
+        }
+      }
+    },
+    tooltip: {
+      backgroundColor: '#1e293b',
+      titleFont: { size: 14, weight: 'bold' },
+      bodyFont: { size: 13 },
+      padding: 12,
+      callbacks: {
+        label: function(context: any) {
+          const label = context.dataset.label || ''
+          const value = context.parsed.y || 0
+          return `${label}: ${value}`
+        }
+      }
+    }
+  },
+  scales: {
+    y: {
+      beginAtZero: true,
+      max: 1000,
+      ticks: {
+        stepSize: 100,
+        font: {
+          size: 12
+        },
+        padding: 8
+      },
+      grid: {
+        color: '#e2e8f0'
+      }
+    },
+    x: {
+      ticks: {
+        font: {
+          size: 13,
+          weight: '600'
+        },
+        padding: 8
+      },
+      grid: {
+        display: false
+      }
+    }
+  },
+  barPercentage: 0.7,
+  categoryPercentage: 0.8,
+  maintainAspectRatio: false
+}
 
 const carregarDados = async () => {
   loading.value = true
@@ -314,10 +424,6 @@ const exportarExcel = async () => {
       console.log('➡️ Exportando Por Dia')
       await exportarPorDia()
       break
-    case 3: // Detalhado
-      console.log('➡️ Exportando Detalhado')
-      await exportarDetalhado()
-      break
     default:
       console.log('➡️ Exportando Geral (default)')
       await exportarGeral()
@@ -326,6 +432,13 @@ const exportarExcel = async () => {
 const selecionarUsuario = (usuario: any) => {
   filtroUsuario.value = usuario
 }
+
+const periodoSelecionado = computed(() => {
+  if (!filtroDataInicio.value || !filtroDataFim.value) return null
+  const inicio = filtroDataInicio.value.toLocaleDateString('pt-BR')
+  const fim = filtroDataFim.value.toLocaleDateString('pt-BR')
+  return `${inicio} a ${fim}`
+})
 
 const limparFiltros = () => { filtroDataInicio.value = null; filtroDataFim.value = null; filtroTurno.value = null; filtroStatus.value = null; filtroUsuario.value = null; carregarDados() }
 const formatarData = (d: string) => d ? new Date(d).toLocaleDateString('pt-BR') : '-'
@@ -339,16 +452,32 @@ onMounted(() => { const h = new Date(), t = new Date(); t.setDate(h.getDate() - 
     <PageHeader title="Relatório de Extras" subtitle="Análise completa com gráficos e estatísticas" :show-back-button="true" :breadcrumbs="[{ label: 'Admin', route: '/admin' }, { label: 'Relatórios' }, { label: 'Extras' }]" />
 
     <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap gap-4 items-end">
-      <div class="flex flex-col gap-1"><label class="text-xs font-bold text-slate-500">Início</label><Calendar v-model="filtroDataInicio" dateFormat="dd/mm/yy" showIcon class="w-36" /></div>
-      <div class="flex flex-col gap-1"><label class="text-xs font-bold text-slate-500">Fim</label><Calendar v-model="filtroDataFim" dateFormat="dd/mm/yy" showIcon class="w-36" /></div>
-      <div class="flex flex-col gap-1"><label class="text-xs font-bold text-slate-500">Turno</label><Select v-model="filtroTurno" :options="turnoOptions" optionLabel="label" optionValue="value" class="w-32" /></div>
-      <div class="flex flex-col gap-1"><label class="text-xs font-bold text-slate-500">Status</label><Select v-model="filtroStatus" :options="statusOptions" optionLabel="label" optionValue="value" class="w-40" /></div>
-      <Button icon="pi pi-search" @click="carregarDados" /><Button icon="pi pi-times" severity="secondary" text @click="limparFiltros" />
-      <div class="flex-1"></div>
-      <Button label="Exportar" icon="pi pi-file-excel" severity="success" @click="exportarExcel" :loading="loadingExport" />
+      <div class="w-full sm:w-auto flex flex-col sm:flex-row gap-4">
+        <div class="flex flex-col gap-1 w-full sm:w-auto"><label class="text-xs font-bold text-slate-500">Início</label><Calendar v-model="filtroDataInicio" dateFormat="dd/mm/yy" showIcon placeholder="dd/mm/aa" class="w-full sm:w-36" :pt="{ root: { class: '!bg-white' }, input: { class: '!bg-white' } }" /></div>
+        <div class="flex flex-col gap-1 w-full sm:w-auto"><label class="text-xs font-bold text-slate-500">Fim</label><Calendar v-model="filtroDataFim" dateFormat="dd/mm/yy" showIcon placeholder="dd/mm/aa" class="w-full sm:w-36" :pt="{ root: { class: '!bg-white' }, input: { class: '!bg-white' } }" /></div>
+      </div>
+      <div class="flex flex-col gap-1 w-full sm:w-auto"><label class="text-xs font-bold text-slate-500">Turno</label><Select v-model="filtroTurno" :options="turnoOptions" optionLabel="label" optionValue="value" placeholder="Selecione" class="w-full sm:w-32" /></div>
+      <div class="flex flex-col gap-1 w-full sm:w-auto"><label class="text-xs font-bold text-slate-500">Status</label><Select v-model="filtroStatus" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Selecione" class="w-full sm:w-40" /></div>
+      <div class="flex gap-2 w-full sm:w-auto">
+        <Button icon="pi pi-search" @click="carregarDados" class="flex-1 sm:flex-none" /><Button icon="pi pi-times" severity="secondary" text @click="limparFiltros" class="flex-1 sm:flex-none" />
+      </div>
+      <div class="hidden sm:block flex-1"></div>
+      <Button label="Exportar" icon="pi pi-file-excel" severity="success" @click="exportarExcel" :loading="loadingExport" class="w-full sm:w-auto" />
     </div>
 
-    <div class="grid grid-cols-3 md:grid-cols-6 gap-3">
+    <div v-if="periodoSelecionado" class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-3 rounded-xl flex items-center justify-center gap-2 shadow-sm">
+      <i class="pi pi-calendar text-lg"></i>
+      <span class="font-semibold">Período analisado:</span>
+      <span class="font-bold">{{ periodoSelecionado }}</span>
+      <span v-if="filtroTurno" class="ml-2 px-2 py-1 bg-white/20 rounded-lg text-xs font-bold">
+        {{ filtroTurno === 'almoco' ? '🍽️ Almoço' : '🌙 Jantar' }}
+      </span>
+    </div>
+
+    <div v-if="loading" class="grid grid-cols-3 md:grid-cols-6 gap-3">
+      <Skeleton v-for="i in 6" :key="i" height="60px" borderRadius="12px" />
+    </div>
+    <div v-else class="grid grid-cols-3 md:grid-cols-6 gap-3">
       <div class="bg-white p-3 rounded-xl border flex items-center gap-2"><div class="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center"><i class="pi pi-list text-slate-600"></i></div><div><p class="text-xl font-black">{{ estatisticas.total }}</p><p class="text-[9px] text-slate-400 uppercase">Total</p></div></div>
       <div class="bg-white p-3 rounded-xl border flex items-center gap-2"><div class="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center"><i class="pi pi-check-circle text-emerald-600"></i></div><div><p class="text-xl font-black text-emerald-600">{{ estatisticas.atendidos }}</p><p class="text-[9px] text-slate-400 uppercase">Atendidos</p></div></div>
       <div class="bg-white p-3 rounded-xl border flex items-center gap-2"><div class="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center"><i class="pi pi-clock text-amber-500"></i></div><div><p class="text-xl font-black text-amber-500">{{ estatisticas.naFila }}</p><p class="text-[9px] text-slate-400 uppercase">Na Fila</p></div></div>
@@ -368,12 +497,28 @@ onMounted(() => { const h = new Date(), t = new Date(); t.setDate(h.getDate() - 
       }"
     >
       <TabPanel value="0" header="Visão Geral">
-        <div class="p-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div v-if="loading" class="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Skeleton height="250px" borderRadius="12px" />
+          <Skeleton height="250px" borderRadius="12px" />
+        </div>
+        <div v-else class="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div class="bg-slate-50 p-4 rounded-xl"><h3 class="text-sm font-bold mb-3"><i class="pi pi-chart-pie text-indigo-500 mr-2"></i>Status</h3><div class="h-56"><Chart type="pie" :data="chartStatusData" :options="chartOpts" class="h-full" /></div></div>
           <div class="bg-slate-50 p-4 rounded-xl"><h3 class="text-sm font-bold mb-3"><i class="pi pi-sun text-amber-500 mr-2"></i>Turno</h3><div class="h-56"><Chart type="doughnut" :data="chartTurnoData" :options="chartOpts" class="h-full" /></div></div>
-          <div class="bg-slate-50 p-4 rounded-xl"><h3 class="text-sm font-bold mb-3"><i class="pi pi-calendar text-blue-500 mr-2"></i>Dia da Semana</h3><div class="h-56"><Chart type="bar" :data="chartDiaData" :options="chartBarOpts" class="h-full" /></div></div>
         </div>
-        <div class="px-4 pb-4"><div class="bg-slate-50 p-4 rounded-xl"><h3 class="text-sm font-bold mb-3"><i class="pi pi-chart-line text-green-500 mr-2"></i>Evolução (14 dias)</h3><div class="h-64"><Chart type="line" :data="chartEvolucao" :options="chartBarOpts" class="h-full" /></div></div></div>
+        <div class="px-4 pb-4">
+          <div class="bg-white p-4 rounded-xl border border-slate-200 mt-4">
+            <DataTable v-model:filters="filters" :value="inscricoes" :loading="loading" paginator :rows="15" :globalFilterFields="['user.nome', 'user.matricula']">
+              <template #header><div class="flex justify-between"><span class="font-bold">Histórico Completo</span><InputText v-model="filters['global'].value" placeholder="Buscar..." class="w-64" /></div></template>
+              <template #empty><div class="text-center py-8 text-slate-400"><i class="pi pi-inbox text-4xl mb-2"></i><p>Nenhum registro</p></div></template>
+              <Column field="user.nome" header="Estudante" :sortable="true"><template #body="{ data }"><div class="flex items-center gap-2"><Avatar v-if="data.user?.foto" :image="data.user.foto" shape="circle" size="small" /><Avatar v-else :label="getInitials(data.user?.nome)" shape="circle" size="small" :style="getAvatarStyle(data.user?.nome)" /><div><p class="font-bold text-sm">{{ data.user?.nome }}</p><p class="text-[10px] text-slate-400">{{ data.user?.matricula }}</p></div></div></template></Column>
+              <Column header="Data" :sortable="true" sortField="refeicao.data"><template #body="{ data }"><i class="pi pi-calendar text-slate-400 mr-1"></i>{{ formatarData(data.refeicao?.data) }}</template></Column>
+              <Column header="Dia"><template #body="{ data }">{{ data.diaSemana }}</template></Column>
+              <Column header="Turno"><template #body="{ data }"><i :class="data.refeicao?.turno === 'almoco' ? 'pi pi-sun text-amber-500' : 'pi pi-moon text-blue-500'" class="mr-1"></i>{{ data.refeicao?.turno === 'almoco' ? 'Alm' : 'Jan' }}</template></Column>
+              <Column header="Inscrito"><template #body="{ data }"><i class="pi pi-clock text-slate-400 mr-1"></i>{{ formatarDataHora(data.inscrito_em) }}</template></Column>
+              <Column header="Status"><template #body="{ data }"><i :class="[data.statusIcon, data.statusColor]" class="mr-1"></i><span :class="data.statusColor" class="font-semibold text-sm">{{ data.statusLabel }}</span></template></Column>
+            </DataTable>
+          </div>
+        </div>
       </TabPanel>
 
       <TabPanel value="1" header="Por Usuário">
@@ -445,34 +590,11 @@ onMounted(() => { const h = new Date(), t = new Date(); t.setDate(h.getDate() - 
       </TabPanel>
 
       <TabPanel value="2" header="Por Dia">
-        <div class="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div class="bg-slate-50 p-4 rounded-xl"><h3 class="text-sm font-bold mb-3"><i class="pi pi-chart-bar text-blue-500 mr-2"></i>Gráfico</h3><div class="h-72"><Chart type="bar" :data="chartDiaData" :options="chartBarOpts" class="h-full" /></div></div>
-          <div class="bg-slate-50 p-4 rounded-xl"><h3 class="text-sm font-bold mb-3"><i class="pi pi-table text-slate-500 mr-2"></i>Detalhes</h3>
-            <div class="space-y-2">
-              <div v-for="d in estatsDiaSemana" :key="d.dia" class="flex items-center gap-3 p-2 bg-white rounded-lg border">
-                <span class="w-10 font-bold">{{ d.dia }}</span>
-                <div class="flex-1 h-3 bg-slate-200 rounded-full overflow-hidden flex"><div class="bg-amber-500" :style="{ width: `${(d.almoco / (d.total || 1)) * 100}%` }"></div><div class="bg-blue-500" :style="{ width: `${(d.jantar / (d.total || 1)) * 100}%` }"></div></div>
-                <span class="text-xs flex items-center gap-1"><i class="pi pi-sun text-amber-500"></i>{{ d.almoco }}</span>
-                <span class="text-xs flex items-center gap-1"><i class="pi pi-moon text-blue-500"></i>{{ d.jantar }}</span>
-                <span class="font-bold">{{ d.total }}</span>
-              </div>
-            </div>
+        <div class="p-6">
+          <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+            <h3 class="text-base font-bold mb-4 text-slate-700"><i class="pi pi-chart-bar text-blue-500 mr-2"></i>Distribuição por Dia da Semana (Seg-Sex)</h3>
+            <div style="height: 400px"><Chart type="bar" :data="chartDiaData" :options="chartBarOpts" class="h-full" /></div>
           </div>
-        </div>
-      </TabPanel>
-
-      <TabPanel value="3" header="Detalhado">
-        <div class="p-4">
-          <DataTable v-model:filters="filters" :value="inscricoes" :loading="loading" paginator :rows="15" :globalFilterFields="['user.nome', 'user.matricula']">
-            <template #header><div class="flex justify-between"><span class="font-bold">Histórico Completo</span><InputText v-model="filters['global'].value" placeholder="Buscar..." class="w-64" /></div></template>
-            <template #empty><div class="text-center py-8 text-slate-400"><i class="pi pi-inbox text-4xl mb-2"></i><p>Nenhum registro</p></div></template>
-            <Column field="user.nome" header="Estudante" :sortable="true"><template #body="{ data }"><div class="flex items-center gap-2"><Avatar v-if="data.user?.foto" :image="data.user.foto" shape="circle" size="small" /><Avatar v-else :label="getInitials(data.user?.nome)" shape="circle" size="small" :style="getAvatarStyle(data.user?.nome)" /><div><p class="font-bold text-sm">{{ data.user?.nome }}</p><p class="text-[10px] text-slate-400">{{ data.user?.matricula }}</p></div></div></template></Column>
-            <Column header="Data" :sortable="true" sortField="refeicao.data"><template #body="{ data }"><i class="pi pi-calendar text-slate-400 mr-1"></i>{{ formatarData(data.refeicao?.data) }}</template></Column>
-            <Column header="Dia"><template #body="{ data }">{{ data.diaSemana }}</template></Column>
-            <Column header="Turno"><template #body="{ data }"><i :class="data.refeicao?.turno === 'almoco' ? 'pi pi-sun text-amber-500' : 'pi pi-moon text-blue-500'" class="mr-1"></i>{{ data.refeicao?.turno === 'almoco' ? 'Alm' : 'Jan' }}</template></Column>
-            <Column header="Inscrito"><template #body="{ data }"><i class="pi pi-clock text-slate-400 mr-1"></i>{{ formatarDataHora(data.inscrito_em) }}</template></Column>
-            <Column header="Status"><template #body="{ data }"><i :class="[data.statusIcon, data.statusColor]" class="mr-1"></i><span :class="data.statusColor" class="font-semibold text-sm">{{ data.statusLabel }}</span></template></Column>
-          </DataTable>
         </div>
       </TabPanel>
     </TabView>

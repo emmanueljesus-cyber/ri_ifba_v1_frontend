@@ -28,7 +28,6 @@ import Tag from 'primevue/tag'
 import DatePicker from 'primevue/datepicker'
 import SelectButton from 'primevue/selectbutton'
 import Avatar from 'primevue/avatar'
-import Skeleton from 'primevue/skeleton'
 
 const toast = useToast()
 const { getInitials, getAvatarStyle } = useAvatar()
@@ -382,34 +381,16 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
             class="p-datatable-sm custom-table"
           >
             <template #loading>
-              <div class="p-4 space-y-6">
-                <div v-for="i in 8" :key="i" class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-50 pb-4 last:border-0">
-                  <div class="flex items-center gap-3 w-full md:w-1/2">
-                    <Skeleton shape="circle" size="3rem" class="flex-shrink-0 hidden md:block" />
-                    <div class="space-y-2 w-full">
-                      <Skeleton width="70%" height="1rem" />
-                      <Skeleton width="40%" height="0.6rem" />
-                    </div>
-                  </div>
-                  <div class="w-full md:w-1/4 flex md:justify-center">
-                    <Skeleton width="80px" height="1.5rem" border-radius="20px" />
-                  </div>
-                  <div class="flex justify-end w-full md:w-auto gap-2">
-                    <Skeleton width="36px" height="36px" border-radius="10px" />
-                    <Skeleton width="36px" height="36px" border-radius="10px" />
-                  </div>
-                </div>
+              <div class="flex items-center justify-center py-12">
+                <i class="pi pi-spinner pi-spin text-4xl text-primary-500"></i>
               </div>
             </template>
             <template #header>
               <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                 <div class="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
                   <div class="flex gap-2 w-full sm:w-auto">
-                    <Button type="button" icon="pi pi-filter-slash" label="Limpar" variant="outlined" @click="clearFilter()" size="small" class="!rounded-xl flex-1 sm:flex-initial" />
-                    <IconField class="flex-[2] sm:w-64">
-                      <InputIcon class="pi pi-search" />
-                      <InputText v-model="filters['global'].value" placeholder="Buscar aluno..." size="small" class="w-full !rounded-xl" />
-                    </IconField>
+                    <Button type="button" icon="pi pi-filter-slash" label="Limpar" variant="outlined" @click="clearFilter()" size="small" class="!rounded-xl hidden sm:flex" />
+                    <InputText v-model="filters['global'].value" placeholder="Buscar aluno..." size="small" class="w-full sm:w-64 !rounded-xl" />
                   </div>
                 </div>
                 <div class="flex flex-col sm:flex-row gap-2 items-center w-full lg:w-auto">
@@ -593,21 +574,4 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
   border-right: 0;
 }
 
-.custom-select-button :deep(.p-button) {
-  border: 0;
-  background: transparent;
-  color: #64748b;
-  font-weight: 700;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.75rem;
-}
-
-.custom-select-button :deep(.p-button.p-highlight) {
-  background: #f1f5f9;
-  color: #1e293b;
-}
-
-.custom-select-button :deep(.p-button:not(.p-highlight):hover) {
-  background: #f8fafc;
-}
 </style>

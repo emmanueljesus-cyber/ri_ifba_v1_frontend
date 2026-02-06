@@ -344,14 +344,6 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- Gráfico de Donut/Pizza -->
-      <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-        <h3 class="text-sm font-black text-slate-700 mb-4 uppercase tracking-widest">🍩 Gráfico de Donut - Distribuição</h3>
-        <Chart v-if="statusChartData" type="doughnut" :data="statusChartData" :options="statusChartOptions" class="h-64" />
-        <div v-else class="flex items-center justify-center h-64 text-slate-400">
-          <p>Sem dados para exibir</p>
-        </div>
-      </div>
     </div>
 
     <!-- Cards de Resumo -->

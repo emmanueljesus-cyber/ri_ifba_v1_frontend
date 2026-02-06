@@ -170,22 +170,8 @@ onMounted(async () => {
           :loading="filaStore.loading"
         >
           <template #loading>
-            <div class="p-4 space-y-6">
-              <div v-for="i in 5" :key="i" class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-50 pb-4 last:border-0">
-                <div class="flex items-center gap-3 w-full md:w-1/3">
-                  <Skeleton width="2rem" height="2rem" border-radius="0.5rem" class="flex-shrink-0" />
-                  <div class="space-y-2 w-full">
-                    <Skeleton width="60%" height="1rem" />
-                    <Skeleton width="40%" height="0.75rem" />
-                  </div>
-                </div>
-                <div class="w-full md:w-1/3 flex md:justify-center">
-                  <Skeleton width="80px" height="1.5rem" border-radius="20px" />
-                </div>
-                <div class="flex justify-end w-full md:w-auto">
-                  <Skeleton width="120px" height="2rem" border-radius="0.75rem" />
-                </div>
-              </div>
+            <div class="flex items-center justify-center py-12">
+              <i class="pi pi-spinner pi-spin text-4xl text-primary-500"></i>
             </div>
           </template>
           <template #header>

@@ -127,35 +127,30 @@ onMounted(() => {
     </div>
     <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
       <!-- 1. Bolsistas Ativos -->
-      <div class="bg-white p-5 sm:p-6 rounded-2xl border-l-4 border-l-emerald-500 border border-slate-200 shadow-sm flex items-center gap-4 group hover:shadow-md transition-all duration-300">
-        <div class="p-3 bg-emerald-50 rounded-2xl text-emerald-600 group-hover:scale-110 transition-transform">
+      <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 group hover:shadow-md transition-all duration-300 relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-1.5 h-full bg-emerald-500"></div>
+        <div class="p-3 bg-emerald-50 rounded-2xl text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white transition-all duration-300">
           <i class="pi pi-users text-2xl sm:text-3xl"></i>
         </div>
         <div class="flex-1">
-          <div class="flex items-center gap-2">
-            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Bolsistas Ativos</p>
-          </div>
-          <p class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.metricas.bolsistas_ativos || 0 }}</p>
-          <div class="flex items-center gap-1 mt-1">
-            <span class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">Sistema RI</span>
-          </div>
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Bolsistas Ativos</p>
+          <p class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight">{{ resumo?.metricas.bolsistas_ativos || 0 }}</p>
         </div>
       </div>
 
       <!-- 2. Presenças Hoje -->
-      <div class="bg-white p-5 sm:p-6 rounded-2xl border-l-4 border-l-blue-500 border border-slate-200 shadow-sm flex items-center gap-4 group hover:shadow-md transition-all duration-300">
-        <div class="p-3 bg-blue-50 rounded-2xl text-blue-600 group-hover:scale-110 transition-transform">
+      <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 group hover:shadow-md transition-all duration-300 relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-1.5 h-full bg-blue-500"></div>
+        <div class="p-3 bg-blue-50 rounded-2xl text-blue-600 group-hover:bg-blue-500 group-hover:text-white transition-all duration-300">
           <i class="pi pi-check-circle text-2xl sm:text-3xl"></i>
         </div>
         <div class="flex-1">
-          <div class="flex items-center gap-2">
-            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Presenças Hoje</p>
-          </div>
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Presenças Hoje</p>
           <div class="flex items-baseline gap-2">
-            <p class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight lato-black">{{ resumo?.refeicao_atual?.confirmados || 0 }}</p>
+            <p class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight">{{ resumo?.refeicao_atual?.confirmados || 0 }}</p>
             <span class="text-xs text-slate-400 font-bold">/ {{ resumo?.refeicao_atual?.total_esperados || 0 }}</span>
           </div>
-          <div class="w-full bg-blue-100 h-1.5 rounded-full mt-2 overflow-hidden">
+          <div class="w-full bg-slate-100 h-1.5 rounded-full mt-2 overflow-hidden">
              <div class="bg-blue-500 h-full rounded-full transition-all duration-500" 
                   :style="{ width: (resumo?.refeicao_atual?.total_esperados > 0 ? (resumo.refeicao_atual.confirmados / resumo.refeicao_atual.total_esperados) * 100 : 0) + '%' }"></div>
           </div>
@@ -163,49 +158,34 @@ onMounted(() => {
       </div>
 
       <!-- 3. Justificativas -->
-      <div class="bg-white p-5 sm:p-6 rounded-2xl border-l-4 border-l-orange-500 border border-slate-200 shadow-sm flex items-center gap-4 group hover:shadow-md transition-all duration-300 cursor-pointer" @click="$router.push('/admin/justificativas')">
-        <div class="p-3 bg-orange-50 rounded-2xl text-orange-600 group-hover:scale-110 transition-transform">
+      <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 group hover:shadow-md transition-all duration-300 relative overflow-hidden cursor-pointer" @click="$router.push('/admin/justificativas')">
+        <div class="absolute top-0 left-0 w-1.5 h-full bg-orange-500"></div>
+        <div class="p-3 bg-orange-50 rounded-2xl text-orange-600 group-hover:bg-orange-500 group-hover:text-white transition-all duration-300">
           <i class="pi pi-exclamation-triangle text-2xl sm:text-3xl"></i>
         </div>
         <div class="flex-1">
-          <div class="flex items-center gap-2">
-            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pendências</p>
-          </div>
-          <p class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight lato-black">
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Pendências</p>
+          <p class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight">
             {{ (resumo?.metricas.justificativas_pendentes || 0) + (resumo?.refeicao_atual?.total_esperados - resumo?.refeicao_atual?.confirmados > 0 ? resumo?.refeicao_atual?.total_esperados - resumo?.refeicao_atual?.confirmados : 0) }}
           </p>
-          <div class="flex flex-col gap-0.5 mt-1">
-            <span v-if="resumo?.metricas.justificativas_pendentes > 0" class="text-[9px] text-orange-600 font-bold bg-orange-50 px-1.5 py-0.5 rounded w-fit">
-              {{ resumo.metricas.justificativas_pendentes }} Justificativas
-            </span>
-            <span class="text-[9px] text-slate-400 font-bold px-1.5 py-0.5">
-              {{ resumo?.refeicao_atual?.total_esperados - resumo?.refeicao_atual?.confirmados }} Faltas no turno
-            </span>
-          </div>
         </div>
         <i class="pi pi-chevron-right text-slate-300"></i>
       </div>
 
       <!-- 4. Aproveitamento -->
-      <div class="bg-white p-5 sm:p-6 rounded-2xl border-l-4 border-l-purple-500 border border-slate-200 shadow-sm flex items-center gap-4 group hover:shadow-md transition-all duration-300">
-        <div class="p-3 bg-purple-50 rounded-2xl text-purple-600 group-hover:scale-110 transition-transform">
+      <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 group hover:shadow-md transition-all duration-300 relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-1.5 h-full bg-purple-500"></div>
+        <div class="p-3 bg-purple-50 rounded-2xl text-purple-600 group-hover:bg-purple-500 group-hover:text-white transition-all duration-300">
           <i class="pi pi-chart-line text-2xl sm:text-3xl"></i>
         </div>
         <div class="flex-1">
-          <div class="flex items-center gap-2">
-            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Aproveitamento</p>
-          </div>
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Aproveitamento</p>
           <div class="flex items-baseline gap-1">
-            <p class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight lato-black">
+            <p class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight">
               {{ (resumo?.refeicao_atual?.total_esperados > 0)
                 ? Math.round((resumo.refeicao_atual.confirmados / resumo.refeicao_atual.total_esperados) * 100)
                 : 0 }}%
             </p>
-            <span class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">no turno</span>
-          </div>
-          <div class="flex items-center gap-1 mt-2">
-             <i class="pi pi-bolt text-purple-400 text-xs"></i>
-             <span class="text-[10px] text-purple-600 font-bold">Meta: 100%</span>
           </div>
         </div>
       </div>
@@ -265,23 +245,8 @@ onMounted(() => {
               paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
             >
               <template #loading>
-                <!-- Skeleton Padronizado e Profissional -->
-                <div class="p-4 space-y-6">
-                  <div v-for="i in 5" :key="i" class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-50 pb-4 last:border-0">
-                    <div class="flex items-center gap-3 w-full md:w-1/3">
-                      <Skeleton shape="circle" size="3rem" class="flex-shrink-0 hidden md:block" />
-                      <div class="space-y-2 w-full">
-                        <Skeleton width="70%" height="1rem" />
-                        <Skeleton width="40%" height="0.6rem" />
-                      </div>
-                    </div>
-                    <div class="w-full md:w-1/3">
-                      <Skeleton width="60%" height="0.875rem" />
-                    </div>
-                    <div class="flex justify-end w-full md:w-auto">
-                      <Skeleton width="80px" height="1.5rem" border-radius="20px" />
-                    </div>
-                  </div>
+                <div class="flex items-center justify-center py-12">
+                  <i class="pi pi-spinner pi-spin text-4xl text-primary-500"></i>
                 </div>
               </template>
               <template #empty>
