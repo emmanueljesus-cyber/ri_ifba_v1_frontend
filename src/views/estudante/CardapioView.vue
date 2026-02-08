@@ -221,8 +221,8 @@ onMounted(() => {
               :options="[{ label: 'Hoje', value: 'hoje' }, { label: 'Semanal', value: 'semanal' }]"
               optionLabel="label"
               optionValue="value"
-              :allowEmpty="false"
-              class="tab-selector"
+              :unselectable="false"
+              class="w-full sm:w-auto !rounded-xl shadow-sm border-slate-100 [&>button]:flex-1"
           />
         </div>
       </div>
@@ -248,7 +248,8 @@ onMounted(() => {
           :options="turnoOptions"
           optionLabel="label"
           optionValue="value"
-          :allowEmpty="false"
+          :unselectable="false"
+          class="w-full sm:w-auto !rounded-xl shadow-sm border-slate-100 [&>button]:flex-1"
         />
       </div>
 
@@ -456,20 +457,22 @@ onMounted(() => {
 
     <!-- Header com navegação -->
     <div class="flex flex-col md:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-      <div class="flex flex-wrap items-center justify-center gap-3">
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-3 w-full md:w-auto">
         <SelectButton
             v-model="activeTab"
             :options="[{ label: 'Hoje', value: 'hoje' }, { label: 'Semanal', value: 'semanal' }]"
             optionLabel="label"
             optionValue="value"
-            :allowEmpty="false"
+            :unselectable="false"
+            class="w-full sm:w-auto !rounded-xl shadow-sm border-slate-100 [&>button]:flex-1"
         />
         <SelectButton
           v-model="turnoFiltro"
           :options="turnoOptions"
           optionLabel="label"
           optionValue="value"
-          :allowEmpty="false"
+          :unselectable="false"
+          class="w-full sm:w-auto !rounded-xl shadow-sm border-slate-100 [&>button]:flex-1"
         />
       </div>
 

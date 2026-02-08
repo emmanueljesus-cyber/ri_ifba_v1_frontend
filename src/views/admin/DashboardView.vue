@@ -216,7 +216,7 @@ onMounted(() => {
                   optionLabel="label"
                   optionValue="value"
                   :unselectable="false"
-                  class="!rounded-xl shadow-sm border-slate-100"
+                  class="w-full sm:w-auto !rounded-xl shadow-sm border-slate-100 [&>button]:flex-1"
                 />
               </div>
               <!-- Filtro de busca -->

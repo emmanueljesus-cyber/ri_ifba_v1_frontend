@@ -397,43 +397,27 @@ onMounted(() => carregarCardapios())
     <div class="flex flex-wrap justify-center sm:justify-between items-center gap-4 -mt-10 sm:-mt-12 mb-4 relative z-10 px-2 sm:px-0">
       <div class="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 bg-white/90 backdrop-blur-sm p-2 rounded-2xl border border-slate-200 shadow-sm w-full lg:w-auto">
         <!-- Seletor de View -->
-        <div class="w-full sm:w-auto overflow-x-auto no-scrollbar">
+        <div class="w-full sm:w-auto">
           <SelectButton
             v-model="viewMode"
-            :options="[{label: 'Cards', value: 'cards', icon: 'pi pi-th-large'}, {label: 'Mensal', value: 'calendar', icon: 'pi pi-calendar'}]"
+            :options="[{label: 'Cards', value: 'cards'}, {label: 'Mensal', value: 'calendar'}]"
             optionLabel="label"
             optionValue="value"
-            :allowEmpty="false"
-            class="view-select w-full flex-nowrap"
-          >
-            <template #option="{ option }">
-              <div class="flex items-center gap-2 px-1 sm:px-2 py-1 justify-center whitespace-nowrap">
-                <i :class="option.icon" class="text-sm"></i>
-                <span class="text-[10px] sm:text-xs font-bold uppercase">{{ option.label }}</span>
-              </div>
-            </template>
-          </SelectButton>
+            :unselectable="false"
+            class="w-full sm:w-auto !rounded-xl shadow-sm border-slate-100 [&>button]:flex-1"
+          />
         </div>
 
 
-        <!-- Filtro de Turno -->
-        <div class="flex items-center gap-2 w-full sm:w-auto overflow-x-auto no-scrollbar">
+        <div class="w-full sm:w-auto">
           <SelectButton
             v-model="turnoFiltro"
             :options="turnoOpcoes"
             optionLabel="label"
             optionValue="value"
-            class="turno-select w-full flex-nowrap"
-          >
-            <template #option="{ option }">
-              <div class="flex items-center gap-1.5 px-1 sm:px-2 py-1 justify-center whitespace-nowrap">
-                <i v-if="option.value === 'almoco'" class="pi pi-sun text-amber-500 text-xs"></i>
-                <i v-else-if="option.value === 'jantar'" class="pi pi-moon text-indigo-500 text-xs"></i>
-                <i v-else class="pi pi-circle text-slate-400 text-xs"></i>
-                <span class="text-[10px] sm:text-xs font-semibold">{{ option.label }}</span>
-              </div>
-            </template>
-          </SelectButton>
+            :unselectable="false"
+            class="w-full sm:w-auto !rounded-xl shadow-sm border-slate-100 [&>button]:flex-1"
+          />
         </div>
       </div>
 

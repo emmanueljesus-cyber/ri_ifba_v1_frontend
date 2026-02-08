@@ -167,24 +167,14 @@ onMounted(() => {
       <SelectButton
         v-model="turnoSelecionado"
         :options="[
-          { label: 'Almoço', value: 'almoco', icon: 'pi pi-sun', total: estatisticasAlmoco.total, naFila: estatisticasAlmoco.naFila },
-          { label: 'Jantar', value: 'jantar', icon: 'pi pi-moon', total: estatisticasJantar.total, naFila: estatisticasJantar.naFila }
+          { label: 'Almoço', value: 'almoco' },
+          { label: 'Jantar', value: 'jantar' }
         ]"
         optionLabel="label"
         optionValue="value"
-        :allowEmpty="false"
-        class="w-full md:w-auto"
-      >
-        <template #option="slotProps">
-          <div class="flex items-center gap-3 px-2">
-            <i :class="slotProps.option.icon" class="text-lg"></i>
-            <span class="font-bold">{{ slotProps.option.label }}</span>
-            <span v-if="slotProps.option.naFila > 0" class="bg-amber-100 text-amber-700 text-xs font-black px-2 py-0.5 rounded-full">
-              {{ slotProps.option.naFila }} na fila
-            </span>
-          </div>
-        </template>
-      </SelectButton>
+        :unselectable="false"
+        class="w-full sm:w-auto !rounded-xl shadow-sm border-slate-100 [&>button]:flex-1"
+      />
     </div>
 
     <!-- Cards de Estatísticas -->

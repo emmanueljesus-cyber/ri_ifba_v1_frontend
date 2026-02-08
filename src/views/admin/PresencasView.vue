@@ -395,22 +395,15 @@ const marcarFaltaManual = async (userId: number, justificada = false) => {
                 </div>
                 <div class="flex flex-col sm:flex-row gap-2 items-center w-full lg:w-auto">
                   <DatePicker v-model="dataFiltro" dateFormat="dd/mm/yy" showIcon class="w-full sm:w-40" :locale="ptBR" size="small" />
-                  <div class="w-full sm:w-auto overflow-x-auto no-scrollbar">
+                  <div class="w-full sm:w-auto">
                     <SelectButton 
                       v-model="turnoFiltro" 
                       :options="turnos" 
                       optionLabel="label" 
                       optionValue="value" 
-                      :allowEmpty="false"
-                      class="custom-select-button flex-nowrap whitespace-nowrap"
-                    >
-                      <template #option="slotProps">
-                        <div class="flex items-center gap-1 px-2 py-1 justify-center">
-                          <i :class="slotProps.option.value === 'almoco' ? 'pi pi-sun' : 'pi pi-moon'" class="text-xs"></i>
-                          <span class="text-[10px] font-bold uppercase tracking-tight">{{ slotProps.option.label }}</span>
-                        </div>
-                      </template>
-                    </SelectButton>
+                      :unselectable="false"
+                      class="w-full sm:w-auto !rounded-xl shadow-sm border-slate-100 [&>button]:flex-1"
+                    />
                   </div>
                 </div>
               </div>

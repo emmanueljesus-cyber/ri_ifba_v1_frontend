@@ -1091,8 +1091,8 @@ watch(activeTab, (newTab) => {
           :options="tabOptions"
           optionLabel="label"
           optionValue="value"
-          :allowEmpty="false"
-          class="tab-select-button"
+          :unselectable="false"
+          class="w-full !rounded-xl shadow-sm border-slate-100 flex flex-wrap [&>button]:flex-1 [&>button]:min-w-[45%] sm:[&>button]:min-w-0"
         >
           <template #option="slotProps">
             <div class="flex items-center gap-1 sm:gap-2 justify-center whitespace-nowrap" :style="{ color: 'inherit' }">
@@ -1167,7 +1167,7 @@ watch(activeTab, (newTab) => {
                         Visualizações Gráficas
                       </h3>
                       <div class="overflow-x-auto no-scrollbar max-w-full pb-1">
-                        <SelectButton v-model="chartTypeGeral" :options="chartTypeOptions" optionLabel="label" optionValue="value" :allowEmpty="false" class="custom-select-button scale-90 sm:scale-100 flex-nowrap whitespace-nowrap">
+                        <SelectButton v-model="chartTypeGeral" :options="chartTypeOptions" optionLabel="label" optionValue="value" :unselectable="false" class="w-full sm:w-auto min-w-[200px] sm:min-w-0 !rounded-xl shadow-sm border-slate-100 [&>button]:flex-1">
                           <template #option="slotProps">
                             <i :class="slotProps.option.icon"></i>
                           </template>
@@ -1288,15 +1288,15 @@ watch(activeTab, (newTab) => {
                     <label class="text-[10px] font-bold uppercase text-slate-500 text-center lg:text-left">Fim</label>
                     <DatePicker v-model="filtroDataFim" dateFormat="dd/mm/yy" class="w-full" :locale="ptBR" showIcon />
                   </div>
-                  <div class="flex flex-col gap-1 w-full sm:w-auto overflow-x-auto no-scrollbar">
+                  <div class="flex flex-col gap-1 w-full sm:w-auto">
                     <label class="text-[10px] font-bold uppercase text-slate-500 text-center lg:text-left">Turno</label>
                     <SelectButton
                       v-model="filtroTurno" 
                       :options="turnos" 
                       optionLabel="label" 
                       optionValue="value" 
-                      :allowEmpty="false"
-                      class="custom-select-button w-full sm:w-auto flex-nowrap whitespace-nowrap"
+                      :unselectable="false"
+                      class="w-full sm:w-auto !rounded-xl shadow-sm border-slate-100 [&>button]:flex-1"
                     />
                   </div>
                   <Button icon="pi pi-search" label="Buscar" severity="primary" @click="carregarPresencas" :loading="loading" class="!rounded-xl w-full lg:w-auto shadow-sm" />
@@ -1335,7 +1335,7 @@ watch(activeTab, (newTab) => {
                       Visualizações Gráficas - Presenças
                     </h3>
                     <div class="overflow-x-auto no-scrollbar max-w-full pb-1">
-                      <SelectButton v-model="chartTypePresencas" :options="chartTypeOptions" optionLabel="label" optionValue="value" :allowEmpty="false" class="custom-select-button scale-90 sm:scale-100 flex-nowrap whitespace-nowrap">
+                      <SelectButton v-model="chartTypePresencas" :options="chartTypeOptions" optionLabel="label" optionValue="value" :unselectable="false" class="w-full sm:w-auto min-w-[200px] sm:min-w-0 !rounded-xl shadow-sm border-slate-100 [&>button]:flex-1">
                         <template #option="slotProps">
                           <i :class="slotProps.option.icon"></i>
                         </template>
@@ -1485,8 +1485,8 @@ watch(activeTab, (newTab) => {
                       :options="turnos"
                       optionLabel="label"
                       optionValue="value"
-                      :allowEmpty="false"
-                      class="custom-select-button w-full sm:w-auto"
+                      :unselectable="false"
+                      class="w-full sm:w-auto !rounded-xl shadow-sm border-slate-100 [&>button]:flex-1"
                     />
                   </div>
                   <Button icon="pi pi-search" label="Buscar" severity="primary" @click="carregarExtras" :loading="loadingExtras" class="!rounded-xl w-full sm:w-auto" />
@@ -1521,7 +1521,7 @@ watch(activeTab, (newTab) => {
                     Visualizações Gráficas - Extras
                   </h3>
                   <div class="overflow-x-auto no-scrollbar max-w-full pb-1">
-                    <SelectButton v-model="chartTypeExtras" :options="chartTypeOptions" optionLabel="label" optionValue="value" :allowEmpty="false" class="custom-select-button scale-90 sm:scale-100 flex-nowrap whitespace-nowrap">
+                    <SelectButton v-model="chartTypeExtras" :options="chartTypeOptions" optionLabel="label" optionValue="value" :unselectable="false" class="w-full sm:w-auto min-w-[200px] sm:min-w-0 !rounded-xl shadow-sm border-slate-100 [&>button]:flex-1">
                       <template #option="slotProps">
                         <i :class="slotProps.option.icon"></i>
                       </template>
